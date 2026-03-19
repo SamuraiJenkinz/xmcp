@@ -27,4 +27,5 @@ dev = [
 asyncio_mode = "strict"
 markers = [
     "network: marks tests that require live DNS/network access",
+    "exchange: marks tests that require live Exchange Online credentials (AZURE_CERT_THUMBPRINT, AZURE_CLIENT_ID, AZURE_TENANT_DOMAIN)",
 ]
