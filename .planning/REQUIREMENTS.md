@@ -16,10 +16,10 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### MCP Server Infrastructure
 
-- [ ] **MCPS-01**: Tool registration via official mcp SDK with stdio transport
-- [ ] **MCPS-02**: Structured error handling — isError: true on all failure paths with sanitized error messages
-- [ ] **MCPS-03**: Tool descriptions optimized for LLM tool selection (<800 characters each)
-- [ ] **MCPS-04**: All logging to stderr only — zero stdout pollution in server.py
+- [x] **MCPS-01**: Tool registration via official mcp SDK with stdio transport
+- [x] **MCPS-02**: Structured error handling — isError: true on all failure paths with sanitized error messages
+- [x] **MCPS-03**: Tool descriptions optimized for LLM tool selection (<800 characters each)
+- [x] **MCPS-04**: All logging to stderr only — zero stdout pollution in server.py
 
 ### Mailbox Tools
 
@@ -127,10 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXCL-02 | Phase 1 | Pending |
 | EXCL-03 | Phase 1 | Pending |
 | EXCL-04 | Phase 1 | Pending |
-| MCPS-01 | Phase 2 | Pending |
-| MCPS-02 | Phase 2 | Pending |
-| MCPS-03 | Phase 2 | Pending |
-| MCPS-04 | Phase 2 | Pending |
+| MCPS-01 | Phase 2 | Complete |
+| MCPS-02 | Phase 2 | Complete |
+| MCPS-03 | Phase 2 | Complete |
+| MCPS-04 | Phase 2 | Complete |
 | MBOX-01 | Phase 3 | Pending |
 | MBOX-02 | Phase 3 | Pending |
 | MBOX-03 | Phase 3 | Pending |

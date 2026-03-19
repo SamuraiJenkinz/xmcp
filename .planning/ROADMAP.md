@@ -13,7 +13,7 @@ This roadmap delivers a complete Exchange management system for Marsh McLennan: 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, interactive/CBA auth, DNS utilities, JSON output parsing
-- [ ] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
+- [x] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
 - [ ] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [ ] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
 - [ ] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
@@ -54,9 +54,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Scaffold server.py with stderr-only logging, stdio transport, startup validation, and ping placeholder tool
-- [ ] 02-02-PLAN.md — Register all 15 Exchange tools with dispatch table, error wrapping template, and isError conventions
-- [ ] 02-03-PLAN.md — Refine and validate all tool descriptions for LLM tool-selection accuracy
+- [x] 02-01-PLAN.md — Scaffold server.py with stderr-only logging, stdio transport, startup validation, and ping placeholder tool
+- [x] 02-02-PLAN.md — Register all 15 Exchange tools with dispatch table, error wrapping template, and isError conventions
+- [x] 02-03-PLAN.md — Refine and validate all tool descriptions for LLM tool-selection accuracy
 
 ### Phase 3: Mailbox Tools
 **Goal**: The three mailbox tools are fully implemented, return well-structured JSON, and pass end-to-end validation through the MCP server
@@ -188,7 +188,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Exchange Client Foundation | 4/4 | ✓ Complete | 2026-03-19 |
-| 2. MCP Server Scaffold | 0/3 | Not started | - |
+| 2. MCP Server Scaffold | 3/3 | ✓ Complete | 2026-03-19 |
 | 3. Mailbox Tools | 0/3 | Not started | - |
 | 4. DAG and Database Tools | 0/3 | Not started | - |
 | 5. Mail Flow and Security Tools | 0/5 | Not started | - |
