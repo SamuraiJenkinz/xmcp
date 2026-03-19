@@ -1,0 +1,21 @@
+[project]
+name = "exchange-mcp"
+version = "0.1.0"
+description = "Exchange Online MCP server for Marsh McLennan"
+requires-python = ">=3.11"
+dependencies = [
+    "dnspython>=2.8.0",
+    "mcp>=1.0.0",
+    "flask>=3.0",
+    "waitress>=3.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["exchange_mcp"]
+
+[dependency-groups]
+dev = []
