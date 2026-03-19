@@ -47,11 +47,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_mailbox_stats",
         description=(
-            "Returns size, item count, quota limits, and last logon time for a single "
-            "Exchange Online mailbox. "
-            "Use when asked about how full a mailbox is, how many emails a user has, "
-            "when someone last logged into their mailbox, or whether a user is near "
-            "their quota."
+            "Returns size, item count, quota limits, last logon time, and database "
+            "location for one specific user's mailbox. "
+            "Use when asked about a single person's mailbox: 'How full is alice@contoso.com?', "
+            "'When did Bob last log in?', 'Is Jane near her quota?'. "
+            "Does NOT search or list multiple mailboxes — use search_mailboxes for that."
         ),
         inputSchema={
             "type": "object",
@@ -67,10 +67,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="search_mailboxes",
         description=(
-            "Searches Exchange Online mailboxes using a filter and returns matching "
-            "mailbox names, addresses, and types. "
-            "Use when asked to find all mailboxes of a certain type, search by display "
-            "name, or look up mailboxes stored in a specific database."
+            "Finds and lists multiple mailboxes matching a filter by database, mailbox "
+            "type, or display name pattern. Returns names, addresses, and types. "
+            "Use when asked to enumerate or find mailboxes: 'List all shared mailboxes', "
+            "'Which mailboxes are on DB01?', 'Find mailboxes with Sales in the name'. "
+            "Does NOT return size or quota details for a specific user — use get_mailbox_stats for that."
         ),
         inputSchema={
             "type": "object",
@@ -100,10 +101,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_shared_mailbox_owners",
         description=(
-            "Returns the list of users who have full-access permissions on a shared "
-            "mailbox, along with their permission type. "
-            "Use when asked who owns or has access to a shared mailbox, who manages a "
-            "team inbox, or who can read a distribution email address."
+            "Returns the list of users who have full-access permissions on a specific "
+            "shared mailbox, along with each person's permission type. "
+            "Use when asked who has access to a shared mailbox: 'Who can read the finance inbox?', "
+            "'Who manages the support@contoso.com mailbox?', 'List delegates for the HR mailbox'. "
+            "Does NOT find or list shared mailboxes — use search_mailboxes with type=SharedMailbox for that."
         ),
         inputSchema={
             "type": "object",
@@ -123,10 +125,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="list_dag_members",
         description=(
-            "Lists the servers that belong to a Database Availability Group (DAG), "
-            "including each server's operational status. "
-            "Use when asked which servers are in a DAG, how many nodes a DAG has, "
-            "or to get an overview of all DAGs in the environment."
+            "Returns the server inventory for a database availability group (DAG): "
+            "which servers are members, their names, and operational status. "
+            "Use when asked which servers belong to a DAG: 'What servers are in DAG01?', "
+            "'How many nodes does the DAG have?', 'List all DAG members'. "
+            "Does NOT check replication health or queue lengths — use get_dag_health for that."
         ),
         inputSchema={
             "type": "object",
@@ -145,10 +148,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_dag_health",
         description=(
-            "Returns the health status of a Database Availability Group (DAG), "
-            "including replication state, operational servers, and any active alerts. "
-            "Use when asked whether a DAG is healthy, if replication is working, or "
-            "to diagnose DAG-related failures."
+            "Returns replication health for a database availability group (DAG): "
+            "copy queue lengths, content index state, replay queue lengths, and copy status. "
+            "Use when asked about DAG health or replication: 'Is DAG01 healthy?', "
+            "'Are there replication errors?', 'What is the copy queue length on EX01?'. "
+            "Does NOT list which servers are in the DAG — use list_dag_members for that."
         ),
         inputSchema={
             "type": "object",
@@ -164,10 +168,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_database_copies",
         description=(
-            "Returns the copies of a specific mailbox database across DAG members, "
-            "including each copy's activation preference, queue length, and status. "
-            "Use when asked about database replication, which server hosts the active "
-            "copy, or how many copies exist for a database."
+            "Returns all copies of a specific mailbox database across DAG members: "
+            "activation preference, copy queue length, replay queue length, and status. "
+            "Use when asked about a specific database's copies: 'Which server holds the active "
+            "copy of MBX-DB01?', 'How many copies exist for the Sales database?', "
+            "'What is the replication lag for DB02?'."
         ),
         inputSchema={
             "type": "object",
@@ -187,10 +192,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="check_mail_flow",
         description=(
-            "Tests whether email can flow between a sender and recipient by tracing "
-            "the routing path and checking for delivery restrictions. "
-            "Use when asked if someone can send email to another person, why emails "
-            "are being blocked, or to verify mail routing between two addresses."
+            "Tests whether email can flow from a specific sender to a specific recipient "
+            "by tracing the routing path and checking for delivery restrictions. "
+            "Use when asked about email delivery between two people: 'Can Alice email Bob?', "
+            "'Why is mail from sales@contoso.com blocked to partner@fabrikam.com?', "
+            "'Verify routing between these two addresses'."
         ),
         inputSchema={
             "type": "object",
@@ -210,10 +216,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_transport_queues",
         description=(
-            "Returns the current state of transport queues on Exchange servers, "
-            "including message backlog counts and queue types. "
-            "Use when asked if there is a mail backlog, whether emails are stuck, "
-            "or to check queue depth on a specific server."
+            "Returns the current state of email sending queues on Exchange servers: "
+            "message backlog counts, queue types, and next hop destinations. "
+            "Use when asked about email backlogs or stuck messages: 'Are there emails stuck "
+            "in the queue?', 'Is there a mail backlog on EX02?', 'How many messages are queued?'. "
+            "Does NOT test routing between two addresses — use check_mail_flow for that."
         ),
         inputSchema={
             "type": "object",
@@ -236,10 +243,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_smtp_connectors",
         description=(
-            "Returns the Send and/or Receive connectors configured in Exchange, "
-            "including their address spaces, permissions, and enabled status. "
-            "Use when asked what SMTP connectors are configured, how outbound email "
-            "is routed, or what relays are permitted."
+            "Returns Send and Receive connectors configured in Exchange: address spaces, "
+            "permissions, authentication settings, and enabled status. "
+            "Use when asked about SMTP connector configuration: 'What connectors are set up?', "
+            "'How is outbound email routed?', 'What relays or smart hosts are configured?', "
+            "'Show me the Receive connector settings'."
         ),
         inputSchema={
             "type": "object",
@@ -263,10 +271,12 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_dkim_config",
         description=(
-            "Returns the DKIM (DomainKeys Identified Mail) signing configuration for "
-            "a domain, including whether it is enabled and the selector details. "
-            "Use when asked if DKIM is set up, whether email signing is active, "
-            "or to check DKIM selectors for a domain."
+            "Returns the DKIM (DomainKeys Identified Mail) signing configuration from "
+            "Exchange for a domain: whether signing is enabled, selector names, and the "
+            "CNAME records needed in DNS. "
+            "Use when asked about DKIM signing setup: 'Is DKIM enabled for contoso.com?', "
+            "'What are the DKIM selectors?', 'Show DKIM signing config'. "
+            "Does NOT check DMARC policy or SPF — use get_dmarc_status for that."
         ),
         inputSchema={
             "type": "object",
@@ -282,10 +292,12 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_dmarc_status",
         description=(
-            "Returns the DMARC (Domain-based Message Authentication) policy and "
-            "alignment status for a domain. "
-            "Use when asked about email authentication policy, whether DMARC is "
-            "enforced, or what happens to emails that fail SPF/DKIM checks."
+            "Returns the DMARC policy and SPF record for a domain by querying DNS directly "
+            "(no Exchange PowerShell required). Shows the policy action (none/quarantine/reject), "
+            "alignment mode, and reporting addresses. "
+            "Use when asked about email authentication policy: 'Does contoso.com have DMARC?', "
+            "'What happens to emails that fail authentication?', 'Check SPF and DMARC for fabrikam.com'. "
+            "Does NOT check DKIM signing configuration — use get_dkim_config for that."
         ),
         inputSchema={
             "type": "object",
@@ -301,11 +313,10 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="check_mobile_devices",
         description=(
-            "Returns the mobile devices (phones and tablets) that have synced with "
-            "a user's mailbox via ActiveSync or Outlook mobile, including device type "
-            "and last sync time. "
-            "Use when asked what devices a user has connected, when a phone last "
-            "synced, or to audit mobile access for a mailbox."
+            "Returns the phones and tablets that have synced with a user's mailbox "
+            "via ActiveSync or Outlook Mobile, including device type, model, and last sync time. "
+            "Use when asked about a user's connected mobile devices: 'What phones does Alice have "
+            "connected?', 'When did Bob's iPhone last sync?', 'Audit mobile access for this mailbox'."
         ),
         inputSchema={
             "type": "object",
@@ -325,20 +336,22 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_hybrid_config",
         description=(
-            "Returns the Exchange Hybrid configuration, including the hybrid connector "
-            "settings and the on-premises/cloud relationship details. "
-            "Use when asked about hybrid Exchange setup, how on-premises and cloud are "
-            "connected, or to verify the hybrid wizard configuration."
+            "Returns the full Exchange hybrid topology: organization relationships, "
+            "federation trust details, OAuth configuration, and which domains are hybrid-enabled. "
+            "Use when asked about the overall hybrid setup: 'How is Exchange hybrid configured?', "
+            "'What domains are in the hybrid relationship?', 'Show the federation trust settings'. "
+            "Does NOT test whether hybrid connectors are currently working — use get_connector_status for that."
         ),
         inputSchema={"type": "object", "properties": {}, "required": []},
     ),
     types.Tool(
         name="get_migration_batches",
         description=(
-            "Returns the current mailbox migration batches, including their status, "
-            "progress, and any errors. "
-            "Use when asked how many users have been migrated, whether a migration "
-            "batch is running, or to check the status of a specific migration."
+            "Returns mailbox migration batches: their names, status, progress percentage, "
+            "number of mailboxes completed, and any per-mailbox errors. "
+            "Use when asked about mailbox migrations: 'How many users have been migrated?', "
+            "'Is the Wave2 migration batch still running?', 'Which migrations failed?', "
+            "'Show all active migration batches'."
         ),
         inputSchema={
             "type": "object",
@@ -358,10 +371,12 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_connector_status",
         description=(
-            "Returns the status of Exchange hybrid connectors, including inbound and "
-            "outbound connector health and recent activity. "
-            "Use when asked whether hybrid connectors are working, if mail is flowing "
-            "between on-premises and cloud, or to check connector health."
+            "Checks whether Exchange hybrid connectors are currently working by running "
+            "a live test against Exchange Online: reports inbound and outbound connector "
+            "health, last successful mail time, and any recent errors. "
+            "Use when asked if hybrid mail flow is working right now: 'Are the hybrid connectors up?', "
+            "'Is mail flowing between on-premises and cloud?', 'Test the hybrid connector health'. "
+            "Does NOT return the hybrid topology or federation settings — use get_hybrid_config for that."
         ),
         inputSchema={"type": "object", "properties": {}, "required": []},
     ),
