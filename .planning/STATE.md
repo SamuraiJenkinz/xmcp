@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 ## Current Position
 
 Phase: 1 of 9 (Exchange Client Foundation)
-Plan: 3 of 5 in current phase
-Status: In progress
-Last activity: 2026-03-19 — Completed 01-03-PLAN.md (ExchangeClient with CBA auth, retry, and 13 unit tests)
+Plan: 4 of 5 in current phase (paused at checkpoint:human-verify)
+Status: Awaiting human verification — Exchange Online CBA connectivity test
+Last activity: 2026-03-19 — Executed 01-04-PLAN.md Task 1 (verification scripts created, DNS confirmed passing)
 
-Progress: [█░░░░░░░░░] 9% (3/35 plans complete)
+Progress: [█░░░░░░░░░] 9% (3/35 plans complete — 01-04 pending checkpoint approval)
 
 ## Performance Metrics
 
@@ -59,6 +59,9 @@ Recent decisions affecting current work:
 - [01-03]: Non-retryable patterns (AADSTS, authentication failed, couldn't find object, cannot bind) checked case-insensitively — raise immediately, no retry
 - [01-03]: Empty string from run_ps() returns [] from run_cmdlet() — some cmdlets produce no output for empty result sets
 - [01-03]: verify_connection() catches bare Exception (not just RuntimeError) — health checks must be resilient to all failure modes
+- [01-04]: pytest.mark.exchange registered alongside pytest.mark.network — skippable independently in CI
+- [01-04]: verify_exchange.py cmdlet_line does NOT include ConvertTo-Json — _build_cmdlet_script() template already wraps with ConvertTo-Json -Depth 10
+- [01-04]: google.com used as DNS reference domain — stable well-known DMARC (p=reject) and SPF records
 
 ### Pending Todos
 
@@ -74,6 +77,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-19T20:11:45Z
-Stopped at: Completed 01-03-PLAN.md — ExchangeClient with CBA auth, retry logic, and 13 unit tests
-Resume file: None
+Last session: 2026-03-19T20:17:19Z
+Stopped at: 01-04-PLAN.md Task 1 complete (a16369d) — paused at checkpoint:human-verify for Exchange Online CBA test
+Resume file: None (resume after user types "approved" at checkpoint)
