@@ -5,33 +5,34 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 1 complete — ready for Phase 2
+**Current focus:** Phase 2 in progress — Plan 01 complete
 
 ## Current Position
 
-Phase: 1 of 9 (Exchange Client Foundation) — COMPLETE
-Plan: 4 of 4 in phase 1 (all complete)
-Status: Phase 1 verified and complete
-Last activity: 2026-03-19 — Phase 1 execution complete (4 plans, 31 tests passing)
+Phase: 2 of 9 (MCP Server Scaffold) — In progress
+Plan: 1 of 3 in phase 2 complete
+Status: In progress
+Last activity: 2026-03-19 — Completed 02-01-PLAN.md (server scaffold, 7 tests passing)
 
-Progress: [█░░░░░░░░░] 11% (4/35 plans complete)
+Progress: [██░░░░░░░░] 14% (5/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
-- Average duration: 12 min
-- Total execution time: ~50 min
+- Total plans completed: 5
+- Average duration: 11 min
+- Total execution time: ~57 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
+| 02-mcp-server-scaffold | 1/3 | 7 min | 7 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (37 min), 01-02 (3 min), 01-03 (3 min), 01-04 (5 min)
-- Trend: Pure Python plans much faster than scaffold/external service plans
+- Last 5 plans: 01-02 (3 min), 01-03 (3 min), 01-04 (5 min), 02-01 (7 min)
+- Trend: Pure Python plans very fast; scaffold plans slightly longer but still quick
 
 *Updated after each plan completion*
 
@@ -55,6 +56,10 @@ Recent decisions affecting current work:
 - [01-03]: Empty string from run_ps() returns [] from run_cmdlet()
 - [01-04]: Interactive auth (browser popup) as default, CBA as optional fallback — user requested removal of certificate requirement
 - [01-04]: Auth mode auto-detected: AZURE_CERT_THUMBPRINT present → CBA, absent → interactive
+- [02-01]: anyio.run(main) as entry point — mcp SDK uses anyio internally; asyncio.run works but anyio.run is idiomatic
+- [02-01]: Human-readable log format over structured JSON — internal admin tool, terminal readability preferred at this stage
+- [02-01]: raise RuntimeError(sanitized) from None in call_tool — SDK's _make_error_result(str(e)) creates isError=True with the clean message
+- [02-01]: SIGTERM handler in try/except — Windows may not support SIGTERM registration; wrap for compatibility
 
 ### Pending Todos
 
@@ -69,5 +74,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-19
-Stopped at: Phase 1 complete — all 4 plans executed, 31 tests passing, verification passed
+Stopped at: Completed 02-01-PLAN.md — server scaffold, ping tool, error sanitization, 7 tests passing
 Resume file: None
