@@ -51,12 +51,12 @@ Plans:
   2. Every failure path returns isError: true with a sanitized error message — no raw PowerShell tracebacks reach the client
   3. All logging goes to stderr; stdout contains only valid JSON-RPC messages with zero pollution
   4. Tool descriptions are under 800 characters each and produce correct tool selection when tested with a prompt
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 02-01: Scaffold server.py with stderr-only logging configured as first act, stdio transport, and one placeholder tool
-- [ ] 02-02: Implement tool registration pattern, error wrapping template, and isError conventions
-- [ ] 02-03: Write and validate all tool descriptions for LLM tool-selection accuracy
+- [ ] 02-01-PLAN.md — Scaffold server.py with stderr-only logging, stdio transport, startup validation, and ping placeholder tool
+- [ ] 02-02-PLAN.md — Register all 15 Exchange tools with dispatch table, error wrapping template, and isError conventions
+- [ ] 02-03-PLAN.md — Refine and validate all tool descriptions for LLM tool-selection accuracy
 
 ### Phase 3: Mailbox Tools
 **Goal**: The three mailbox tools are fully implemented, return well-structured JSON, and pass end-to-end validation through the MCP server
