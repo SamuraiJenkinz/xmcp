@@ -9,10 +9,10 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### Exchange Client
 
-- [ ] **EXCL-01**: Async PowerShell subprocess runner using asyncio.create_subprocess_exec with per-call PSSession lifecycle (create + destroy each invocation)
-- [ ] **EXCL-02**: Basic Auth service account authentication to Exchange (Kerberos pass-through deferred to v2)
-- [ ] **EXCL-03**: DNS resolver for DMARC/SPF/DKIM lookups via dnspython (no PowerShell dependency)
-- [ ] **EXCL-04**: Structured JSON output parsing with ConvertTo-Json -Depth 10 and explicit Select-Object field selection per tool
+- [x] **EXCL-01**: Async PowerShell subprocess runner using asyncio.create_subprocess_exec with per-call PSSession lifecycle (create + destroy each invocation)
+- [x] **EXCL-02**: Interactive auth (browser popup) as default, certificate-based auth as optional fallback (Kerberos deferred to v2)
+- [x] **EXCL-03**: DNS resolver for DMARC/SPF lookups via dnspython (no PowerShell dependency)
+- [x] **EXCL-04**: Structured JSON output parsing with ConvertTo-Json -Depth 10 and explicit Select-Object field selection per tool
 
 ### MCP Server Infrastructure
 

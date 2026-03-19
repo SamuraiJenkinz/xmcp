@@ -12,7 +12,7 @@ This roadmap delivers a complete Exchange management system for Marsh McLennan: 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, CBA auth, DNS utilities, JSON output parsing
+- [x] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, interactive/CBA auth, DNS utilities, JSON output parsing
 - [ ] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
 - [ ] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [ ] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
@@ -37,10 +37,10 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 4 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Project scaffold with uv, Python 3.11, and async PowerShell subprocess runner
-- [ ] 01-02-PLAN.md — DNS resolver utilities for DMARC/SPF with TTL cache
-- [ ] 01-03-PLAN.md — ExchangeClient class with CBA auth, retry logic, and verify_connection
-- [ ] 01-04-PLAN.md — End-to-end integration verification against live Exchange and DNS
+- [x] 01-01-PLAN.md — Project scaffold with uv, Python 3.11, and async PowerShell subprocess runner
+- [x] 01-02-PLAN.md — DNS resolver utilities for DMARC/SPF with TTL cache
+- [x] 01-03-PLAN.md — ExchangeClient class with interactive/CBA auth, retry logic, and verify_connection
+- [x] 01-04-PLAN.md — End-to-end integration verification against live Exchange and DNS
 
 ### Phase 2: MCP Server Scaffold
 **Goal**: A runnable MCP server exists that can be inspected with mcp dev, registers tools correctly over stdio, and applies error handling and logging discipline uniformly
@@ -187,7 +187,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Exchange Client Foundation | 0/4 | Planned | - |
+| 1. Exchange Client Foundation | 4/4 | ✓ Complete | 2026-03-19 |
 | 2. MCP Server Scaffold | 0/3 | Not started | - |
 | 3. Mailbox Tools | 0/3 | Not started | - |
 | 4. DAG and Database Tools | 0/3 | Not started | - |
