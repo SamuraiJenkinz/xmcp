@@ -123,47 +123,47 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXCL-01 | TBD | Pending |
-| EXCL-02 | TBD | Pending |
-| EXCL-03 | TBD | Pending |
-| EXCL-04 | TBD | Pending |
-| MCPS-01 | TBD | Pending |
-| MCPS-02 | TBD | Pending |
-| MCPS-03 | TBD | Pending |
-| MCPS-04 | TBD | Pending |
-| MBOX-01 | TBD | Pending |
-| MBOX-02 | TBD | Pending |
-| MBOX-03 | TBD | Pending |
-| DAGD-01 | TBD | Pending |
-| DAGD-02 | TBD | Pending |
-| DAGD-03 | TBD | Pending |
-| FLOW-01 | TBD | Pending |
-| FLOW-02 | TBD | Pending |
-| FLOW-03 | TBD | Pending |
-| SECU-01 | TBD | Pending |
-| SECU-02 | TBD | Pending |
-| SECU-03 | TBD | Pending |
-| HYBR-01 | TBD | Pending |
-| HYBR-02 | TBD | Pending |
-| HYBR-03 | TBD | Pending |
-| CHAT-01 | TBD | Pending |
-| CHAT-02 | TBD | Pending |
-| CHAT-03 | TBD | Pending |
-| CHAT-04 | TBD | Pending |
-| UIUX-01 | TBD | Pending |
-| UIUX-02 | TBD | Pending |
-| UIUX-03 | TBD | Pending |
-| UIUX-04 | TBD | Pending |
-| UIUX-05 | TBD | Pending |
-| UIUX-06 | TBD | Pending |
-| UIUX-07 | TBD | Pending |
-| UIUX-08 | TBD | Pending |
+| EXCL-01 | Phase 1 | Pending |
+| EXCL-02 | Phase 1 | Pending |
+| EXCL-03 | Phase 1 | Pending |
+| EXCL-04 | Phase 1 | Pending |
+| MCPS-01 | Phase 2 | Pending |
+| MCPS-02 | Phase 2 | Pending |
+| MCPS-03 | Phase 2 | Pending |
+| MCPS-04 | Phase 2 | Pending |
+| MBOX-01 | Phase 3 | Pending |
+| MBOX-02 | Phase 3 | Pending |
+| MBOX-03 | Phase 3 | Pending |
+| DAGD-01 | Phase 4 | Pending |
+| DAGD-02 | Phase 4 | Pending |
+| DAGD-03 | Phase 4 | Pending |
+| FLOW-01 | Phase 5 | Pending |
+| FLOW-02 | Phase 5 | Pending |
+| FLOW-03 | Phase 5 | Pending |
+| SECU-01 | Phase 5 | Pending |
+| SECU-02 | Phase 5 | Pending |
+| SECU-03 | Phase 5 | Pending |
+| HYBR-01 | Phase 6 | Pending |
+| HYBR-02 | Phase 6 | Pending |
+| HYBR-03 | Phase 6 | Pending |
+| CHAT-01 | Phase 7 | Pending |
+| CHAT-02 | Phase 7 | Pending |
+| CHAT-03 | Phase 7 | Pending |
+| CHAT-04 | Phase 7 | Pending |
+| UIUX-01 | Phase 8 | Pending |
+| UIUX-02 | Phase 8 | Pending |
+| UIUX-03 | Phase 9 | Pending |
+| UIUX-04 | Phase 9 | Pending |
+| UIUX-05 | Phase 8 | Pending |
+| UIUX-06 | Phase 9 | Pending |
+| UIUX-07 | Phase 9 | Pending |
+| UIUX-08 | Phase 9 | Pending |
 
 **Coverage:**
 - v1 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35 (pending roadmap creation)
+- Mapped to phases: 35
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after initial definition*
+*Last updated: 2026-03-19 after roadmap creation*
