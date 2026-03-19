@@ -1,13 +1,17 @@
-"""Exchange Online client with certificate-based authentication (CBA).
+"""Exchange Online client with interactive or certificate-based authentication.
 
 Wraps the async PowerShell subprocess runner (ps_runner) with Exchange Online-
 specific concerns:
 
-* Certificate-based Azure AD authentication (CBA) via Connect-ExchangeOnline
+* Interactive auth (default) or certificate-based Azure AD authentication (CBA)
 * Per-call Connect/Disconnect lifecycle inside a try/finally block
 * ConvertTo-Json -Depth 10 enforcement to prevent object truncation
 * Retry logic with exponential backoff for transient failures
 * Health-check endpoint via verify_connection()
+
+Auth mode is auto-detected:
+  - If AZURE_CERT_THUMBPRINT env var is set → CBA (unattended)
+  - Otherwise → interactive (browser popup for login)
 
 All Exchange-facing MCP tools in Phases 3-6 call this module — not ps_runner
 directly.  This layer owns the PowerShell script template and the JSON
@@ -40,9 +44,16 @@ logger = logging.getLogger(__name__)
 # PowerShell script fragments
 # ---------------------------------------------------------------------------
 
-# Connect-ExchangeOnline using CBA — env vars are read by PowerShell at
-# runtime so no credentials are embedded in Python source.
-_PS_CONNECT_TEMPLATE: str = """\
+# Interactive auth — opens browser for login. Works on Windows desktop.
+_PS_CONNECT_INTERACTIVE: str = """\
+Import-Module ExchangeOnlineManagement -ErrorAction Stop
+Connect-ExchangeOnline `
+    -ShowBanner:$false `
+    -SkipLoadingFormatData"""
+
+# Certificate-based auth (CBA) — env vars are read by PowerShell at runtime.
+# Used when AZURE_CERT_THUMBPRINT env var is set.
+_PS_CONNECT_CBA: str = """\
 Import-Module ExchangeOnlineManagement -ErrorAction Stop
 Connect-ExchangeOnline `
     -CertificateThumbPrint $env:AZURE_CERT_THUMBPRINT `
@@ -113,7 +124,11 @@ def _is_retryable(error_message: str) -> bool:
 
 
 class ExchangeClient:
-    """High-level client for Exchange Online via PowerShell CBA.
+    """High-level client for Exchange Online via PowerShell.
+
+    Auth mode is auto-detected:
+      - If AZURE_CERT_THUMBPRINT is set → certificate-based auth (CBA)
+      - Otherwise → interactive auth (browser popup)
 
     Every public method is a coroutine — callers must ``await`` them.
 
@@ -121,6 +136,7 @@ class ExchangeClient:
         timeout:            Per-cmdlet PowerShell timeout in seconds.
         max_retries:        Maximum retry attempts for transient errors.
         default_result_size: Default -ResultSize argument passed by tools.
+        auth_mode:          "interactive" or "certificate" (auto-detected).
     """
 
     def __init__(
@@ -129,7 +145,7 @@ class ExchangeClient:
         max_retries: int = 3,
         default_result_size: int = 100,
     ) -> None:
-        """Initialise the client and verify required environment variables.
+        """Initialise the client, auto-detect auth mode.
 
         Args:
             timeout:             Max seconds to wait for a cmdlet to finish.
@@ -137,13 +153,21 @@ class ExchangeClient:
             default_result_size: Suggested -ResultSize for listing cmdlets.
 
         Raises:
-            EnvironmentError: If any required Azure AD credential env var is
-                              missing or empty.
+            EnvironmentError: If certificate auth is detected (AZURE_CERT_THUMBPRINT
+                              set) but other required cert env vars are missing.
         """
         self.timeout = timeout
         self.max_retries = max_retries
         self.default_result_size = default_result_size
-        self._verify_env()
+
+        # Auto-detect auth mode
+        if os.environ.get("AZURE_CERT_THUMBPRINT"):
+            self.auth_mode = "certificate"
+            self._verify_env()
+            logger.info("ExchangeClient using certificate-based auth (CBA)")
+        else:
+            self.auth_mode = "interactive"
+            logger.info("ExchangeClient using interactive auth (browser popup)")
 
     # ------------------------------------------------------------------
     # Private helpers
@@ -177,7 +201,7 @@ class ExchangeClient:
         """Return a complete PowerShell script that connects, runs, and disconnects.
 
         The script structure is:
-            1. Connect-ExchangeOnline via CBA
+            1. Connect-ExchangeOnline (interactive or CBA depending on auth_mode)
             2. Execute *cmdlet_line* and capture output as JSON
             3. Always disconnect in the finally block
 
@@ -196,9 +220,10 @@ class ExchangeClient:
         Returns:
             Complete PowerShell script body ready for ``ps_runner.run_ps()``.
         """
+        connect = _PS_CONNECT_CBA if self.auth_mode == "certificate" else _PS_CONNECT_INTERACTIVE
         body = f"""\
 try {{
-    {_PS_CONNECT_TEMPLATE}
+    {connect}
     $result = {cmdlet_line} | ConvertTo-Json -Depth 10
     Write-Output $result
 }}

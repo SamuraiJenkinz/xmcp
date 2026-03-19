@@ -6,21 +6,19 @@ Tests are divided into two categories:
    - test_dns_dmarc_live: DMARC lookup for google.com
    - test_dns_spf_live: SPF lookup for google.com
 
-2. Exchange live tests (require Azure AD / Exchange Online credentials):
+2. Exchange live tests (require Exchange Online access):
    - test_exchange_verify_connection: health-check via ExchangeClient
    - test_exchange_cmdlet_returns_json: run_cmdlet returns parsed dict
    - test_exchange_json_depth: no @{} truncation in deep nested objects
 
-Exchange tests are marked with @pytest.mark.exchange so they can be skipped
-in environments without credentials:
+Exchange tests are marked with @pytest.mark.exchange so they can be skipped:
 
     uv run pytest tests/test_integration.py -v -m "not exchange"   # DNS only
     uv run pytest tests/test_integration.py -v                     # all tests
 
-Required environment variables for Exchange tests:
-    AZURE_CERT_THUMBPRINT  - Certificate thumbprint for CBA
-    AZURE_CLIENT_ID        - Azure AD application (client) ID
-    AZURE_TENANT_DOMAIN    - Tenant domain (e.g. contoso.onmicrosoft.com)
+Auth is auto-detected by ExchangeClient:
+    - If AZURE_CERT_THUMBPRINT is set → certificate auth (unattended)
+    - Otherwise → interactive auth (browser popup)
 """
 
 from __future__ import annotations
@@ -106,14 +104,10 @@ async def test_dns_spf_live(fresh_dns_cache):
 @pytest.mark.asyncio
 @pytest.mark.exchange
 async def test_exchange_verify_connection():
-    """ExchangeClient.verify_connection() returns True against live Exchange Online.
-
-    Requires:
-        AZURE_CERT_THUMBPRINT, AZURE_CLIENT_ID, AZURE_TENANT_DOMAIN
-    """
+    """ExchangeClient.verify_connection() returns True against live Exchange Online."""
     from exchange_mcp.exchange_client import ExchangeClient
 
-    client = ExchangeClient(timeout=90)
+    client = ExchangeClient(timeout=120)
     result = await client.verify_connection()
 
     assert result is True, (
@@ -132,7 +126,7 @@ async def test_exchange_cmdlet_returns_json():
     """
     from exchange_mcp.exchange_client import ExchangeClient
 
-    client = ExchangeClient(timeout=90)
+    client = ExchangeClient(timeout=120)
     result = await client.run_cmdlet(
         "Get-OrganizationConfig | Select-Object Name, DisplayName, Identity"
     )
@@ -158,7 +152,7 @@ async def test_exchange_json_depth():
 
     from exchange_mcp.exchange_client import ExchangeClient
 
-    client = ExchangeClient(timeout=90)
+    client = ExchangeClient(timeout=120)
     result = await client.run_cmdlet(
         "Get-OrganizationConfig | Select-Object Name, DisplayName, WhenCreated"
     )

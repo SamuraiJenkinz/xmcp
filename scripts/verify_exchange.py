@@ -1,18 +1,17 @@
 """End-to-end verification script for Exchange Online connectivity and cmdlet execution.
 
 Proves the complete Phase 1 Exchange client layer works against live infrastructure:
-  1. Environment variable check (ExchangeClient constructor)
+  1. ExchangeClient constructor (auto-detects auth mode)
   2. Connection health-check via verify_connection()
   3. Proof-of-concept cmdlet: Get-OrganizationConfig with explicit Select-Object
   4. Second cmdlet to confirm no orphaned sessions: Get-AcceptedDomain
 
+Auth mode is auto-detected:
+  - If AZURE_CERT_THUMBPRINT env var is set → certificate-based auth (CBA)
+  - Otherwise → interactive auth (browser popup for login)
+
 Usage:
     uv run python scripts/verify_exchange.py
-
-Required environment variables:
-    AZURE_CERT_THUMBPRINT  - Certificate thumbprint for CBA
-    AZURE_CLIENT_ID        - Azure AD application (client) ID
-    AZURE_TENANT_DOMAIN    - Tenant domain (e.g. contoso.onmicrosoft.com)
 """
 
 from __future__ import annotations
@@ -57,26 +56,28 @@ async def main() -> int:
     failed = 0
 
     # ------------------------------------------------------------------
-    # Step 1: Environment variable check
+    # Step 1: Create client (auto-detects auth mode)
     # ------------------------------------------------------------------
-    _print_section("Step 1: Environment variable check")
+    _print_section("Step 1: Auth mode detection")
     try:
-        client = ExchangeClient(timeout=90)
-        print("  [PASS] ExchangeClient created — all env vars present")
-        _print_result("AZURE_CERT_THUMBPRINT", os.environ.get("AZURE_CERT_THUMBPRINT", "")[:8] + "...")
-        _print_result("AZURE_CLIENT_ID", os.environ.get("AZURE_CLIENT_ID", "")[:8] + "...")
-        _print_result("AZURE_TENANT_DOMAIN", os.environ.get("AZURE_TENANT_DOMAIN", ""))
+        client = ExchangeClient(timeout=120)  # generous timeout for browser login
+        print(f"  [PASS] ExchangeClient created — auth mode: {client.auth_mode}")
+        if client.auth_mode == "certificate":
+            _print_result("AZURE_CERT_THUMBPRINT", os.environ.get("AZURE_CERT_THUMBPRINT", "")[:8] + "...")
+            _print_result("AZURE_CLIENT_ID", os.environ.get("AZURE_CLIENT_ID", "")[:8] + "...")
+            _print_result("AZURE_TENANT_DOMAIN", os.environ.get("AZURE_TENANT_DOMAIN", ""))
+        else:
+            print("  Interactive auth — browser will open for login on first Exchange call")
         passed += 1
     except EnvironmentError as exc:
-        print(f"  [FAIL] Missing environment variables: {exc}")
-        print("\nSet the required env vars and re-run.")
+        print(f"  [FAIL] Configuration error: {exc}")
         return 1
 
     # ------------------------------------------------------------------
     # Step 2: verify_connection()
     # ------------------------------------------------------------------
     _print_section("Step 2: Exchange Online connectivity (verify_connection)")
-    print("  Connecting to Exchange Online via CBA...")
+    print(f"  Connecting to Exchange Online via {client.auth_mode} auth...")
     try:
         ok = await client.verify_connection()
         if ok:

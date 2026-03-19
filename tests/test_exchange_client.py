@@ -4,8 +4,9 @@ All tests mock ``exchange_mcp.ps_runner.run_ps`` to avoid actual PowerShell
 execution.  No live Exchange Online connection is required.
 
 Tests cover:
-    - Environment variable validation at construction time
-    - PowerShell script template structure
+    - Auth mode auto-detection (interactive vs certificate)
+    - Environment variable validation for certificate mode
+    - PowerShell script template structure (both auth modes)
     - Successful cmdlet execution and JSON parsing
     - Error propagation (RuntimeError, TimeoutError, empty output)
     - Retry logic: transient errors retry, auth/input errors do not
@@ -29,27 +30,56 @@ from exchange_mcp.exchange_client import ExchangeClient
 
 
 @pytest.fixture()
-def env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Set the required Azure AD credential env vars for every test that uses it."""
+def env_vars_cba(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Set Azure AD credential env vars for certificate-based auth tests."""
     monkeypatch.setenv("AZURE_CERT_THUMBPRINT", "AABBCCDDEEFF1122334455667788990011223344")
     monkeypatch.setenv("AZURE_CLIENT_ID", "00000000-0000-0000-0000-000000000001")
     monkeypatch.setenv("AZURE_TENANT_DOMAIN", "contoso.onmicrosoft.com")
 
 
 @pytest.fixture()
-def client(env_vars: None) -> ExchangeClient:
-    """Return an ExchangeClient with all env vars set."""
+def env_vars_interactive(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure no cert env vars → interactive auth mode."""
+    monkeypatch.delenv("AZURE_CERT_THUMBPRINT", raising=False)
+    monkeypatch.delenv("AZURE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("AZURE_TENANT_DOMAIN", raising=False)
+
+
+@pytest.fixture()
+def client(env_vars_interactive: None) -> ExchangeClient:
+    """Return an ExchangeClient in interactive auth mode."""
+    return ExchangeClient(timeout=30, max_retries=3)
+
+
+@pytest.fixture()
+def client_cba(env_vars_cba: None) -> ExchangeClient:
+    """Return an ExchangeClient in certificate auth mode."""
     return ExchangeClient(timeout=30, max_retries=3)
 
 
 # ---------------------------------------------------------------------------
-# 1. test_init_missing_env_vars
+# 1. test_init_interactive_no_env_vars
 # ---------------------------------------------------------------------------
 
 
-def test_init_missing_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
-    """ExchangeClient() must raise EnvironmentError when env vars are absent."""
+def test_init_interactive_no_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ExchangeClient() uses interactive auth when no cert env vars are set."""
     monkeypatch.delenv("AZURE_CERT_THUMBPRINT", raising=False)
+    monkeypatch.delenv("AZURE_CLIENT_ID", raising=False)
+    monkeypatch.delenv("AZURE_TENANT_DOMAIN", raising=False)
+
+    client = ExchangeClient()
+    assert client.auth_mode == "interactive"
+
+
+# ---------------------------------------------------------------------------
+# 1b. test_init_cba_missing_partial_env_vars
+# ---------------------------------------------------------------------------
+
+
+def test_init_cba_missing_partial_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ExchangeClient() raises if AZURE_CERT_THUMBPRINT is set but other vars missing."""
+    monkeypatch.setenv("AZURE_CERT_THUMBPRINT", "AABBCCDD")
     monkeypatch.delenv("AZURE_CLIENT_ID", raising=False)
     monkeypatch.delenv("AZURE_TENANT_DOMAIN", raising=False)
 
@@ -57,33 +87,69 @@ def test_init_missing_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
         ExchangeClient()
 
     msg = str(exc_info.value)
-    assert "AZURE_CERT_THUMBPRINT" in msg
     assert "AZURE_CLIENT_ID" in msg
     assert "AZURE_TENANT_DOMAIN" in msg
 
 
 # ---------------------------------------------------------------------------
-# 2. test_init_success
+# 2. test_init_success_interactive
 # ---------------------------------------------------------------------------
 
 
-def test_init_success(env_vars: None) -> None:
-    """ExchangeClient() must not raise when all env vars are set."""
+def test_init_success_interactive(env_vars_interactive: None) -> None:
+    """ExchangeClient() works without any env vars in interactive mode."""
     client = ExchangeClient()
     assert client.timeout == 60
     assert client.max_retries == 3
     assert client.default_result_size == 100
+    assert client.auth_mode == "interactive"
 
 
 # ---------------------------------------------------------------------------
-# 3. test_build_cmdlet_script_structure
+# 2b. test_init_success_cba
 # ---------------------------------------------------------------------------
 
 
-def test_build_cmdlet_script_structure(client: ExchangeClient) -> None:
-    """_build_cmdlet_script() must contain all required PowerShell fragments."""
+def test_init_success_cba(env_vars_cba: None) -> None:
+    """ExchangeClient() auto-detects certificate mode when cert env vars are set."""
+    client = ExchangeClient()
+    assert client.auth_mode == "certificate"
+
+
+# ---------------------------------------------------------------------------
+# 3. test_build_cmdlet_script_interactive
+# ---------------------------------------------------------------------------
+
+
+def test_build_cmdlet_script_interactive(client: ExchangeClient) -> None:
+    """_build_cmdlet_script() in interactive mode uses Connect-ExchangeOnline without CBA params."""
     cmdlet = "Get-Mailbox -Identity user@contoso.com"
     script = client._build_cmdlet_script(cmdlet)
+
+    # Interactive auth — no CBA params
+    assert "Connect-ExchangeOnline" in script, "Missing Connect-ExchangeOnline"
+    assert "CertificateThumbPrint" not in script, "Interactive mode must NOT have CertificateThumbPrint"
+
+    # JSON serialisation contract
+    assert "ConvertTo-Json -Depth 10" in script, "Must use ConvertTo-Json -Depth 10"
+
+    # Clean disconnect in finally
+    assert "Disconnect-ExchangeOnline" in script, "Missing Disconnect-ExchangeOnline"
+    assert "finally" in script, "Disconnect must be inside a finally block"
+
+    # The requested cmdlet must appear in the script
+    assert cmdlet in script, f"Cmdlet {cmdlet!r} not found in script"
+
+
+# ---------------------------------------------------------------------------
+# 3b. test_build_cmdlet_script_cba
+# ---------------------------------------------------------------------------
+
+
+def test_build_cmdlet_script_cba(client_cba: ExchangeClient) -> None:
+    """_build_cmdlet_script() in certificate mode includes CBA params."""
+    cmdlet = "Get-Mailbox -Identity user@contoso.com"
+    script = client_cba._build_cmdlet_script(cmdlet)
 
     # CBA authentication
     assert "Connect-ExchangeOnline" in script, "Missing Connect-ExchangeOnline"
@@ -101,11 +167,6 @@ def test_build_cmdlet_script_structure(client: ExchangeClient) -> None:
 
     # The requested cmdlet must appear in the script
     assert cmdlet in script, f"Cmdlet {cmdlet!r} not found in script"
-
-    # UTF-8 encoding preamble — set by ps_runner but we verify the body
-    # does NOT duplicate it (ps_runner auto-prepends it)
-    # The body itself should not contain the preamble to avoid duplication.
-    # (We do not call build_script() in _build_cmdlet_script.)
 
 
 # ---------------------------------------------------------------------------
