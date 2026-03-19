@@ -10,9 +10,8 @@ Usage
     uv run mcp dev exchange_mcp/server.py
 
 The server validates Exchange connectivity at startup and refuses to start
-if the connection check fails.  After startup it enumerates tools via the
-list_tools handler (one placeholder 'ping' tool in this phase; all 15 tools
-are added in Plan 02).
+if the connection check fails.  After startup it enumerates all 16 registered
+tools (15 Exchange tools + ping) via the list_tools handler.
 """
 
 # ---------------------------------------------------------------------------
@@ -44,6 +43,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from exchange_mcp.exchange_client import ExchangeClient
+from exchange_mcp.tools import TOOL_DEFINITIONS, TOOL_DISPATCH
 
 # ---------------------------------------------------------------------------
 # Error classification constants
@@ -141,21 +141,13 @@ def _sanitize_error(exc: Exception) -> str:
 
 @server.list_tools()
 async def handle_list_tools() -> list[types.Tool]:
-    """Return the list of registered tools.
+    """Return the list of all registered Exchange MCP tools.
 
-    Currently registers one placeholder 'ping' tool.  All 15 Exchange tools
-    are added in Plan 02.
+    Delegates to TOOL_DEFINITIONS from exchange_mcp.tools, which enumerates
+    all 16 tools (15 Exchange tools + ping).  Phases 3-6 replace stub handlers
+    in TOOL_DISPATCH without changing this registration list.
     """
-    return [
-        types.Tool(
-            name="ping",
-            description=(
-                "Test server connectivity. "
-                "Use when checking if the Exchange MCP server is running and responsive."
-            ),
-            inputSchema={"type": "object", "properties": {}, "required": []},
-        )
-    ]
+    return TOOL_DEFINITIONS
 
 
 @server.call_tool()
@@ -169,12 +161,18 @@ async def handle_call_tool(
     RuntimeError so the SDK's built-in exception handler creates an
     isError=True CallToolResult with a clean message.
 
+    Routing:
+        1. Look up the handler in TOOL_DISPATCH (raises ValueError if unknown).
+        2. Await the handler with (arguments, _exchange_client).
+        3. NotImplementedError from stubs → RuntimeError "not yet implemented".
+        4. All other exceptions → sanitized RuntimeError (strips PS tracebacks).
+
     Args:
         name:      The tool name (must be one of the registered tools).
         arguments: Tool input arguments (may be None for tools with no params).
 
     Returns:
-        A list containing a single TextContent with the tool result.
+        A list containing a single TextContent with the JSON-encoded tool result.
 
     Raises:
         RuntimeError: With a sanitized message on any tool execution failure.
@@ -184,12 +182,20 @@ async def handle_call_tool(
     logger.info("tool_call name=%s args=%r", name, arguments)
 
     try:
-        if name == "ping":
-            duration = time.monotonic() - start
-            logger.info("tool_ok name=%s duration=%.2fs", name, duration)
-            return [types.TextContent(type="text", text='"pong"')]
+        if name not in TOOL_DISPATCH:
+            raise ValueError(f"Unknown tool: {name!r}")
 
-        raise ValueError(f"Unknown tool: {name}")
+        handler = TOOL_DISPATCH[name]
+        result = await handler(arguments, _exchange_client)
+
+        duration = time.monotonic() - start
+        logger.info("tool_ok name=%s duration=%.2fs", name, duration)
+        return [types.TextContent(type="text", text=json.dumps(result, indent=2))]
+
+    except NotImplementedError as exc:
+        duration = time.monotonic() - start
+        logger.warning("tool_not_implemented name=%s duration=%.2fs", name, duration)
+        raise RuntimeError(str(exc)) from None
 
     except Exception as exc:
         duration = time.monotonic() - start
@@ -259,11 +265,10 @@ async def main() -> None:
         sys.exit(1)
 
     # -- Startup banner -----------------------------------------------------
-    tools = await handle_list_tools()
     logger.info(
         "exchange-mcp v0.1.0 started | auth=%s | tools=%d | endpoint=Exchange Online",
         client.auth_mode,
-        len(tools),
+        len(TOOL_DEFINITIONS),
     )
 
     # -- Open stdio transport and serve -------------------------------------
