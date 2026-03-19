@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 ## Current Position
 
 Phase: 1 of 9 (Exchange Client Foundation)
-Plan: 1 of 5 in current phase
+Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-19 — Completed 01-01-PLAN.md (project scaffold + async PowerShell runner)
+Last activity: 2026-03-19 — Completed 01-02-PLAN.md (DNS resolver utilities — DMARC/SPF with TTL cache)
 
-Progress: [█░░░░░░░░░] 3% (1/35 plans complete)
+Progress: [█░░░░░░░░░] 6% (2/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 37 min
+- Total plans completed: 2
+- Average duration: 20 min
 - Total execution time: 0.6 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-exchange-client-foundation | 1/5 | 37 min | 37 min |
+| 01-exchange-client-foundation | 2/5 | 40 min | 20 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (37 min)
-- Trend: baseline
+- Last 5 plans: 01-01 (37 min), 01-02 (3 min)
+- Trend: 01-02 was pure Python/no external services — faster than average
 
 *Updated after each plan completion*
 
@@ -51,6 +51,10 @@ Recent decisions affecting current work:
 - [01-01]: Auto-prepend _PS_PREAMBLE inside run_ps() so all callers get UTF-8 stdout by default — callers must not skip this preamble
 - [01-01]: proc.communicate() not proc.wait() everywhere — prevents pipe-buffer deadlock on large output
 - [01-01]: uv binary at C:\Users\taylo\uv_install\uv.exe — not in system PATH; run via full path or add to PATH
+- [01-02]: System default DNS resolver only — no custom nameserver configuration in dns_utils.py; avoids environment drift
+- [01-02]: Negative-cache NXDOMAIN/NoAnswer for 300s — prevents hammering DNS during bulk sender-domain audits
+- [01-02]: parse_dmarc/parse_spf are pure synchronous functions — testable offline, reusable without async executor
+- [01-02]: pytest.mark.network registered in pyproject.toml — CI can skip network tests with -m "not network"
 
 ### Pending Todos
 
@@ -62,10 +66,10 @@ None.
 - [Phase 1]: Verify Exchange throttling policy for service account before Phase 3 tool testing (run Get-ThrottlingPolicyAssociation). An overly restrictive policy produces intermittent failures that look like code bugs.
 - [Phase 7]: Flask vs FastAPI decision is documented as resolved (Flask + thread executor) — confirm before Phase 7 planning begins.
 - [General]: MMC Azure OpenAI gateway API version pinned at 2023-05-15 — verify with MMC CTS before attempting any upgrade.
-- [Env]: uv not in system PATH; currently installed at C:\Users\taylo\uv_install\uv.exe — consider adding to PATH before Plan 02 to simplify dev workflow.
+- [Env]: uv not in system PATH; currently installed at C:\Users\taylo\uv_install\uv.exe — consider adding to PATH to simplify dev workflow.
 
 ## Session Continuity
 
-Last session: 2026-03-19T20:04:24Z
-Stopped at: Completed 01-01-PLAN.md — project scaffold and async PowerShell runner
+Last session: 2026-03-19T20:10:51Z
+Stopped at: Completed 01-02-PLAN.md — DNS resolver utilities (DMARC/SPF with TTL cache)
 Resume file: None
