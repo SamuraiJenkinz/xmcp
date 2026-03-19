@@ -62,7 +62,7 @@ completed: 2026-03-19
 - **Duration:** 2 min
 - **Started:** 2026-03-19T20:15:25Z
 - **Completed:** 2026-03-19T20:17:19Z
-- **Tasks:** 1 of 2 complete (paused at checkpoint:human-verify)
+- **Tasks:** 2 of 2 complete (checkpoint approved)
 - **Files modified:** 4
 
 ## Accomplishments
@@ -77,8 +77,10 @@ completed: 2026-03-19
 Each task was committed atomically:
 
 1. **Task 1: Create end-to-end verification scripts for Exchange and DNS** - `a16369d` (feat)
+2. **Task 2: Human verification checkpoint** - approved by user
+3. **Auth refactor: Switch to interactive auth** - `8fd4cc8` (refactor) — user requested removal of certificate requirement
 
-**Plan metadata:** pending (checkpoint awaiting human verification)
+**Plan metadata:** complete
 
 ## Files Created/Modified
 - `scripts/verify_exchange.py` - 4-step Exchange Online connectivity and cmdlet proof-of-concept
@@ -101,17 +103,20 @@ None.
 
 ## User Setup Required
 
-Exchange Online tests require Azure AD certificate-based authentication setup.
-See checkpoint details for the complete one-time setup procedure.
+Install ExchangeOnlineManagement PowerShell module:
+```powershell
+Install-Module -Name ExchangeOnlineManagement -Force -Scope CurrentUser
+```
+No certificates or Azure AD app registration needed — interactive auth opens browser for login.
 
 ## Next Phase Readiness
 
-- DNS verification confirmed: ALL DNS CHECKS PASSED (google.com DMARC p=reject, SPF include:_spf.google.com ~all)
-- All 28 unit tests passing
-- Exchange scripts ready to run once Azure AD CBA credentials are configured
-- Awaiting human verification of Exchange Online connectivity (Step 3: uv run python scripts/verify_exchange.py)
-- Phase 2 planning can begin once checkpoint is approved
+- DNS verification confirmed: ALL DNS CHECKS PASSED
+- All 31 unit tests passing (after auth refactor added new tests)
+- Auth refactored to interactive mode (CBA remains as optional fallback)
+- Human checkpoint approved
+- Phase 2 planning can begin
 
 ---
 *Phase: 01-exchange-client-foundation*
-*Completed: 2026-03-19 (pending checkpoint approval)*
+*Completed: 2026-03-19*
