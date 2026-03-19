@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 ## Current Position
 
 Phase: 1 of 9 (Exchange Client Foundation)
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-19 — Completed 01-02-PLAN.md (DNS resolver utilities — DMARC/SPF with TTL cache)
+Last activity: 2026-03-19 — Completed 01-03-PLAN.md (ExchangeClient with CBA auth, retry, and 13 unit tests)
 
-Progress: [█░░░░░░░░░] 6% (2/35 plans complete)
+Progress: [█░░░░░░░░░] 9% (3/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 2
-- Average duration: 20 min
-- Total execution time: 0.6 hours
+- Total plans completed: 3
+- Average duration: 14 min
+- Total execution time: 0.7 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-exchange-client-foundation | 2/5 | 40 min | 20 min |
+| 01-exchange-client-foundation | 3/5 | 43 min | 14 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (37 min), 01-02 (3 min)
-- Trend: 01-02 was pure Python/no external services — faster than average
+- Last 5 plans: 01-01 (37 min), 01-02 (3 min), 01-03 (3 min)
+- Trend: 01-02 and 01-03 were pure Python/no external services — faster than average
 
 *Updated after each plan completion*
 
@@ -55,6 +55,10 @@ Recent decisions affecting current work:
 - [01-02]: Negative-cache NXDOMAIN/NoAnswer for 300s — prevents hammering DNS during bulk sender-domain audits
 - [01-02]: parse_dmarc/parse_spf are pure synchronous functions — testable offline, reusable without async executor
 - [01-02]: pytest.mark.network registered in pyproject.toml — CI can skip network tests with -m "not network"
+- [01-03]: run_cmdlet() does NOT call build_script() — run_ps() auto-prepends preamble; calling build_script() would duplicate it
+- [01-03]: Non-retryable patterns (AADSTS, authentication failed, couldn't find object, cannot bind) checked case-insensitively — raise immediately, no retry
+- [01-03]: Empty string from run_ps() returns [] from run_cmdlet() — some cmdlets produce no output for empty result sets
+- [01-03]: verify_connection() catches bare Exception (not just RuntimeError) — health checks must be resilient to all failure modes
 
 ### Pending Todos
 
@@ -70,6 +74,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-19T20:10:51Z
-Stopped at: Completed 01-02-PLAN.md — DNS resolver utilities (DMARC/SPF with TTL cache)
+Last session: 2026-03-19T20:11:45Z
+Stopped at: Completed 01-03-PLAN.md — ExchangeClient with CBA auth, retry logic, and 13 unit tests
 Resume file: None
