@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 2 in progress — Plan 02 complete
+**Current focus:** Phase 2 complete — ready for Phase 3
 
 ## Current Position
 
-Phase: 2 of 9 (MCP Server Scaffold) — In progress
-Plan: 2 of 3 in phase 2 complete
-Status: In progress
-Last activity: 2026-03-19 — Completed 02-02-PLAN.md (16 tools registered, dispatch table, 13 tests passing)
+Phase: 2 of 9 (MCP Server Scaffold) — Complete
+Plan: 3 of 3 in phase 2 complete
+Status: Phase complete
+Last activity: 2026-03-19 — Completed 02-03-PLAN.md (tool descriptions refined, 10 quality tests, 56 tests passing)
 
-Progress: [██░░░░░░░░] 17% (6/35 plans complete)
+Progress: [███░░░░░░░] 20% (7/35 plans complete)
 
 ## Performance Metrics
 
@@ -28,11 +28,11 @@ Progress: [██░░░░░░░░] 17% (6/35 plans complete)
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
-| 02-mcp-server-scaffold | 2/3 | 11 min | 5.5 min |
+| 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-03 (3 min), 01-04 (5 min), 02-01 (7 min), 02-02 (4 min)
-- Trend: Tool registration plans very fast; pure definitions + dispatch is well-scoped
+- Last 5 plans: 01-04 (5 min), 02-01 (7 min), 02-02 (4 min), 02-03 (4 min)
+- Trend: Tool registration/description plans very fast; well-scoped single-concern work
 
 *Updated after each plan completion*
 
@@ -62,7 +62,10 @@ Recent decisions affecting current work:
 - [02-01]: SIGTERM handler in try/except — Windows may not support SIGTERM registration; wrap for compatibility
 - [02-02]: NotImplementedError from stubs re-raised as plain RuntimeError (no _sanitize_error) — stub message already clean
 - [02-02]: Startup banner uses len(TOOL_DEFINITIONS) directly — avoids async call, simpler
-- [02-02]: TYPE_CHECKING guard on ExchangeClient in tools.py — avoids circular import; client passed at call time
+- [02-02]: TYPE_CHECKING guard on ExchangeClient in tools.py
+- [02-03]: Does NOT clause cross-references sibling tool by name — makes disambiguation machine-readable
+- [02-03]: Single-quoted example queries in descriptions as LLM trigger phrase convention
+- [02-03]: "PowerShell" forbidden in tool descriptions — descriptions are user-facing, not admin-facing — avoids circular import; client passed at call time
 
 ### Pending Todos
 
@@ -76,6 +79,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-19T22:57:03Z
-Stopped at: Completed 02-02-PLAN.md — 16 tools registered, TOOL_DEFINITIONS + TOOL_DISPATCH, 13 tests passing
+Last session: 2026-03-19T23:05:23Z
+Stopped at: Completed 02-03-PLAN.md — tool descriptions refined, 10 quality tests added, 56 tests passing, Phase 2 complete
 Resume file: None
