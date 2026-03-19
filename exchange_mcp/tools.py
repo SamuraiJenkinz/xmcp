@@ -292,9 +292,8 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_dmarc_status",
         description=(
-            "Returns the DMARC policy and SPF record for a domain by querying DNS directly "
-            "(no Exchange PowerShell required). Shows the policy action (none/quarantine/reject), "
-            "alignment mode, and reporting addresses. "
+            "Returns the DMARC policy and SPF record for a domain by querying DNS directly. "
+            "Shows the policy action (none/quarantine/reject), alignment mode, and reporting addresses. "
             "Use when asked about email authentication policy: 'Does contoso.com have DMARC?', "
             "'What happens to emails that fail authentication?', 'Check SPF and DMARC for fabrikam.com'. "
             "Does NOT check DKIM signing configuration — use get_dkim_config for that."
