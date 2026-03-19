@@ -12,7 +12,7 @@ This roadmap delivers a complete Exchange management system for Marsh McLennan: 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, Basic Auth, DNS utilities, JSON output parsing
+- [ ] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, CBA auth, DNS utilities, JSON output parsing
 - [ ] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
 - [ ] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [ ] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
@@ -25,23 +25,22 @@ Decimal phases appear between their surrounding integers in numeric order.
 ## Phase Details
 
 ### Phase 1: Exchange Client Foundation
-**Goal**: A verified, tested Exchange client layer exists that proves the PowerShell subprocess pattern works against the real Exchange environment
+**Goal**: A verified, tested Exchange client layer exists that proves the PowerShell subprocess pattern works against the real Exchange Online environment with certificate-based Azure AD authentication
 **Depends on**: Nothing (first phase)
 **Requirements**: EXCL-01, EXCL-02, EXCL-03, EXCL-04
 **Success Criteria** (what must be TRUE):
   1. A PowerShell command against Exchange completes and returns structured JSON without hanging or orphaning a session
   2. The async subprocess runner handles timeout and clean session teardown via try/finally on every execution path
   3. A DNS TXT record lookup for a test domain returns parsed DMARC/SPF data without invoking PowerShell
-  4. A single proof-of-concept cmdlet (Get-MailboxStatistics or Get-ExchangeServer) returns a response with all expected fields populated via explicit Select-Object
-  5. Basic Auth service account credentials authenticate successfully to Exchange over WinRM
-**Plans**: TBD
+  4. A single proof-of-concept cmdlet (Get-OrganizationConfig) returns a response with all expected fields populated via explicit Select-Object
+  5. Certificate-based Azure AD app-only credentials authenticate successfully to Exchange Online
+**Plans**: 4 plans
 
 Plans:
-- [ ] 01-01: Set up project scaffold, uv environment, and verify asyncio ProactorEventLoop on Windows
-- [ ] 01-02: Implement async PowerShell subprocess runner with per-call PSSession lifecycle and timeout handling
-- [ ] 01-03: Implement Basic Auth Exchange connection and verify service account RBAC roles
-- [ ] 01-04: Implement DNS resolver utilities for DMARC/SPF/DKIM via dnspython
-- [ ] 01-05: Implement JSON output parsing layer with ConvertTo-Json -Depth 10 and Select-Object field selection
+- [ ] 01-01-PLAN.md — Project scaffold with uv, Python 3.11, and async PowerShell subprocess runner
+- [ ] 01-02-PLAN.md — DNS resolver utilities for DMARC/SPF with TTL cache
+- [ ] 01-03-PLAN.md — ExchangeClient class with CBA auth, retry logic, and verify_connection
+- [ ] 01-04-PLAN.md — End-to-end integration verification against live Exchange and DNS
 
 ### Phase 2: MCP Server Scaffold
 **Goal**: A runnable MCP server exists that can be inspected with mcp dev, registers tools correctly over stdio, and applies error handling and logging discipline uniformly
@@ -184,11 +183,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Exchange Client Foundation | 0/5 | Not started | - |
+| 1. Exchange Client Foundation | 0/4 | Planned | - |
 | 2. MCP Server Scaffold | 0/3 | Not started | - |
 | 3. Mailbox Tools | 0/3 | Not started | - |
 | 4. DAG and Database Tools | 0/3 | Not started | - |
