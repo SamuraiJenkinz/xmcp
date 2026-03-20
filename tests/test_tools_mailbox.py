@@ -9,6 +9,9 @@ Tests cover:
     - _get_mailbox_stats_handler: valid input with merged stats+quota response,
       invalid email rejection, not-found error interception, other Exchange errors
       propagating unchanged, null LastLogonTime, no client, list normalization
+    - _search_mailboxes_handler: all three filter modes, empty results, truncation
+      detection, invalid filter type, empty filter value, single-result normalization,
+      no client, wildcard stripping, not-found as empty result, default max_results
 """
 
 from __future__ import annotations
@@ -21,6 +24,7 @@ from exchange_mcp.tools import (
     _escape_ps_single_quote,
     _format_size,
     _get_mailbox_stats_handler,
+    _search_mailboxes_handler,
     _validate_upn,
 )
 
@@ -228,3 +232,204 @@ async def test_get_mailbox_stats_stats_returns_list(mock_client: MagicMock) -> N
 
     assert result["display_name"] == "Alice Smith"
     assert result["total_size"] == "2.4 GB"
+
+
+# ---------------------------------------------------------------------------
+# _search_mailboxes_handler tests
+# ---------------------------------------------------------------------------
+
+_MB_JOHN = {
+    "DisplayName": "John Smith",
+    "PrimarySmtpAddress": "john.smith@contoso.com",
+    "RecipientTypeDetails": "UserMailbox",
+    "Database": "DB01",
+}
+_MB_JOHN2 = {
+    "DisplayName": "John Doe",
+    "PrimarySmtpAddress": "john.doe@contoso.com",
+    "RecipientTypeDetails": "UserMailbox",
+    "Database": "DB02",
+}
+_MB_JOHN3 = {
+    "DisplayName": "John Brown",
+    "PrimarySmtpAddress": "john.brown@contoso.com",
+    "RecipientTypeDetails": "UserMailbox",
+    "Database": "DB01",
+}
+_MB_SHARED1 = {
+    "DisplayName": "Finance Inbox",
+    "PrimarySmtpAddress": "finance@contoso.com",
+    "RecipientTypeDetails": "SharedMailbox",
+    "Database": "DB01",
+}
+_MB_SHARED2 = {
+    "DisplayName": "HR Inbox",
+    "PrimarySmtpAddress": "hr@contoso.com",
+    "RecipientTypeDetails": "SharedMailbox",
+    "Database": "DB02",
+}
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_by_name(mock_client: MagicMock) -> None:
+    """Filter by name returns list of mailboxes with snake_case fields."""
+    mock_client.run_cmdlet_with_retry.return_value = [_MB_JOHN, _MB_JOHN2, _MB_JOHN3]
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "john"}, mock_client
+    )
+
+    assert result["count"] == 3
+    assert result["truncated"] is False
+    assert len(result["results"]) == 3
+    first = result["results"][0]
+    assert "display_name" in first
+    assert "email_address" in first
+    assert "mailbox_type" in first
+    assert "database" in first
+    assert first["display_name"] == "John Smith"
+    assert first["email_address"] == "john.smith@contoso.com"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_by_type(mock_client: MagicMock) -> None:
+    """Filter by type returns mailboxes matching the given RecipientTypeDetails."""
+    mock_client.run_cmdlet_with_retry.return_value = [_MB_SHARED1, _MB_SHARED2]
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "type", "filter_value": "SharedMailbox"}, mock_client
+    )
+
+    assert result["count"] == 2
+    assert all(r["mailbox_type"] == "SharedMailbox" for r in result["results"])
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_by_database(mock_client: MagicMock) -> None:
+    """Filter by database returns mailboxes on that database."""
+    mock_client.run_cmdlet_with_retry.return_value = [_MB_JOHN]
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "database", "filter_value": "DB01"}, mock_client
+    )
+
+    assert result["count"] == 1
+    assert result["results"][0]["database"] == "DB01"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_empty_results(mock_client: MagicMock) -> None:
+    """Empty list from Exchange returns structured empty response."""
+    mock_client.run_cmdlet_with_retry.return_value = []
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "nobody"}, mock_client
+    )
+
+    assert result["count"] == 0
+    assert result["results"] == []
+    assert result["truncated"] is False
+    assert "No mailboxes matched" in result["message"]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_truncation(mock_client: MagicMock) -> None:
+    """When Exchange returns more results than max_results, truncated flag is set."""
+    # Return 4 results; max_results=3 → truncation detected
+    mock_client.run_cmdlet_with_retry.return_value = [
+        _MB_JOHN, _MB_JOHN2, _MB_JOHN3, _MB_SHARED1
+    ]
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "test", "max_results": 3}, mock_client
+    )
+
+    assert result["truncated"] is True
+    assert result["count"] == 3
+    assert "capped at 3" in result["message"]
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_invalid_filter_type(mock_client: MagicMock) -> None:
+    """Unknown filter_type raises RuntimeError with 'Unknown filter_type'."""
+    with pytest.raises(RuntimeError, match="Unknown filter_type"):
+        await _search_mailboxes_handler(
+            {"filter_type": "invalid", "filter_value": "x"}, mock_client
+        )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_empty_filter_value(mock_client: MagicMock) -> None:
+    """Empty filter_value raises RuntimeError before calling Exchange."""
+    with pytest.raises(RuntimeError, match="filter_value is required"):
+        await _search_mailboxes_handler(
+            {"filter_type": "name", "filter_value": ""}, mock_client
+        )
+    mock_client.run_cmdlet_with_retry.assert_not_called()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_single_result_dict(mock_client: MagicMock) -> None:
+    """Single dict result (not a list) is normalised to a list of 1."""
+    mock_client.run_cmdlet_with_retry.return_value = _MB_JOHN
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "john"}, mock_client
+    )
+
+    assert result["count"] == 1
+    assert isinstance(result["results"], list)
+    assert len(result["results"]) == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_no_client() -> None:
+    """client=None raises RuntimeError mentioning 'not available'."""
+    with pytest.raises(RuntimeError, match="not available"):
+        await _search_mailboxes_handler(
+            {"filter_type": "name", "filter_value": "john"}, None
+        )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_name_strips_wildcard(mock_client: MagicMock) -> None:
+    """Trailing wildcard in name filter_value is stripped before passing to -Anr."""
+    mock_client.run_cmdlet_with_retry.return_value = [_MB_JOHN]
+
+    await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "john*"}, mock_client
+    )
+
+    call_args = mock_client.run_cmdlet_with_retry.call_args
+    cmdlet_str = call_args[0][0]
+    assert "-Anr 'john'" in cmdlet_str
+    assert "-Anr 'john*'" not in cmdlet_str
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_not_found_returns_empty(mock_client: MagicMock) -> None:
+    """Exchange 'not found' error for database filter returns empty result (not raised)."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError(
+        "Couldn't find the object 'BadDB'."
+    )
+
+    result = await _search_mailboxes_handler(
+        {"filter_type": "database", "filter_value": "BadDB"}, mock_client
+    )
+
+    assert result["count"] == 0
+    assert result["results"] == []
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_search_mailboxes_default_max_results(mock_client: MagicMock) -> None:
+    """Without max_results arg, cmdlet uses ResultSize 101 (default 100 + 1)."""
+    mock_client.run_cmdlet_with_retry.return_value = [_MB_JOHN, _MB_JOHN2, _MB_JOHN3]
+
+    await _search_mailboxes_handler(
+        {"filter_type": "name", "filter_value": "test"}, mock_client
+    )
+
+    call_args = mock_client.run_cmdlet_with_retry.call_args
+    cmdlet_str = call_args[0][0]
+    assert "-ResultSize 101" in cmdlet_str

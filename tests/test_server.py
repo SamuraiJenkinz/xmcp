@@ -191,8 +191,8 @@ async def test_call_tool_not_implemented_raises() -> None:
     """handle_call_tool() with a stub Exchange tool must raise RuntimeError."""
     with pytest.raises(RuntimeError) as exc_info:
         await handle_call_tool(
-            "search_mailboxes",
-            {"filter_type": "database", "filter_value": "DB01"},
+            "list_dag_members",
+            {},
         )
 
     assert "not yet implemented" in str(exc_info.value).lower()
