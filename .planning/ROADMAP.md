@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
 - [x] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [x] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
-- [ ] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
+- [x] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
 - [ ] **Phase 6: Hybrid Tools** - get_hybrid_config, get_migration_batches, get_connector_status
 - [ ] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
 - [ ] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
@@ -104,11 +104,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — Implement check_mail_flow with config-based route inference and accepted domain detection
-- [ ] 05-02-PLAN.md — Implement get_transport_queues with per-server iteration and backlog threshold flagging
-- [ ] 05-03-PLAN.md — Implement get_smtp_connectors with send/receive filter and multi-valued property projection
-- [ ] 05-04-PLAN.md — Add get_cname_record to dns_utils and implement get_dkim_config with DNS CNAME validation
-- [ ] 05-05-PLAN.md — Implement get_dmarc_status (pure DNS) and check_mobile_devices (Exchange with wipe history)
+- [x] 05-01-PLAN.md — Implement check_mail_flow with config-based route inference and accepted domain detection
+- [x] 05-02-PLAN.md — Implement get_transport_queues with per-server iteration and backlog threshold flagging
+- [x] 05-03-PLAN.md — Implement get_smtp_connectors with send/receive filter and multi-valued property projection
+- [x] 05-04-PLAN.md — Add get_cname_record to dns_utils and implement get_dkim_config with DNS CNAME validation
+- [x] 05-05-PLAN.md — Implement get_dmarc_status (pure DNS) and check_mobile_devices (Exchange with wipe history)
 
 ### Phase 6: Hybrid Tools
 **Goal**: All three hybrid tools are implemented and validate the live Exchange Online connector health — completing the full 15-tool MCP server
@@ -191,7 +191,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 2. MCP Server Scaffold | 3/3 | ✓ Complete | 2026-03-19 |
 | 3. Mailbox Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 4. DAG and Database Tools | 3/3 | ✓ Complete | 2026-03-20 |
-| 5. Mail Flow and Security Tools | 0/5 | Not started | - |
+| 5. Mail Flow and Security Tools | 5/5 | ✓ Complete | 2026-03-20 |
 | 6. Hybrid Tools | 0/3 | Not started | - |
 | 7. Chat App Core | 0/6 | Not started | - |
 | 8. Conversation Persistence | 0/3 | Not started | - |

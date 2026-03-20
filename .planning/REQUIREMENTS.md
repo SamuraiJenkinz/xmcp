@@ -35,15 +35,15 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### Mail Flow Tools
 
-- [ ] **FLOW-01**: check_mail_flow — traces routing path between sender and recipient, connector resolution, TLS requirements
-- [ ] **FLOW-02**: get_transport_queues — returns queue depths across all transport servers, flags backlogs over threshold
-- [ ] **FLOW-03**: get_smtp_connectors — full inventory of send and receive connectors with auth and TLS configuration
+- [x] **FLOW-01**: check_mail_flow — traces routing path between sender and recipient, connector resolution, TLS requirements
+- [x] **FLOW-02**: get_transport_queues — returns queue depths across all transport servers, flags backlogs over threshold
+- [x] **FLOW-03**: get_smtp_connectors — full inventory of send and receive connectors with auth and TLS configuration
 
 ### Security Tools
 
-- [ ] **SECU-01**: get_dkim_config — DKIM signing configuration per domain, selector names, CNAME records
-- [ ] **SECU-02**: get_dmarc_status — live DNS lookup of DMARC, SPF records with parsed policy values
-- [ ] **SECU-03**: check_mobile_devices — ActiveSync device partnerships, access state, last sync, wipe history
+- [x] **SECU-01**: get_dkim_config — DKIM signing configuration per domain, selector names, CNAME records
+- [x] **SECU-02**: get_dmarc_status — live DNS lookup of DMARC, SPF records with parsed policy values
+- [x] **SECU-03**: check_mobile_devices — ActiveSync device partnerships, access state, last sync, wipe history
 
 ### Hybrid Tools
 
@@ -137,12 +137,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DAGD-01 | Phase 4 | Complete |
 | DAGD-02 | Phase 4 | Complete |
 | DAGD-03 | Phase 4 | Complete |
-| FLOW-01 | Phase 5 | Pending |
-| FLOW-02 | Phase 5 | Pending |
-| FLOW-03 | Phase 5 | Pending |
-| SECU-01 | Phase 5 | Pending |
-| SECU-02 | Phase 5 | Pending |
-| SECU-03 | Phase 5 | Pending |
+| FLOW-01 | Phase 5 | Complete |
+| FLOW-02 | Phase 5 | Complete |
+| FLOW-03 | Phase 5 | Complete |
+| SECU-01 | Phase 5 | Complete |
+| SECU-02 | Phase 5 | Complete |
+| SECU-03 | Phase 5 | Complete |
 | HYBR-01 | Phase 6 | Pending |
 | HYBR-02 | Phase 6 | Pending |
 | HYBR-03 | Phase 6 | Pending |
