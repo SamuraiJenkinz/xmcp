@@ -1498,6 +1498,98 @@ async def _get_dkim_config_handler(
     }
 
 
+async def _get_dmarc_status_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return live-resolved DMARC and SPF policy for a domain via DNS."""
+    # client may be None -- this is a pure DNS tool, no Exchange dependency
+    domain = arguments.get("domain", "").strip().lower()
+    if not domain:
+        raise RuntimeError(
+            "domain is required. Provide the domain name to check "
+            "(e.g. 'contoso.com')."
+        )
+
+    try:
+        dmarc = await dns_utils.get_dmarc_record(domain)
+    except LookupError as exc:
+        raise RuntimeError(
+            f"DNS lookup failed for DMARC record of '{domain}': {exc}"
+        ) from None
+
+    try:
+        spf = await dns_utils.get_spf_record(domain)
+    except LookupError as exc:
+        raise RuntimeError(
+            f"DNS lookup failed for SPF record of '{domain}': {exc}"
+        ) from None
+
+    return {
+        "domain": domain,
+        "dmarc": dmarc,
+        "spf": spf,
+    }
+
+
+async def _check_mobile_devices_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return ActiveSync device partnerships for a user with wipe history."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    email = arguments.get("email_address", "").strip()
+    _validate_upn(email)
+    safe = _escape_ps_single_quote(email)
+
+    devices_cmdlet = (
+        f"Get-MobileDeviceStatistics -Mailbox '{safe}' | Select-Object "
+        "DeviceFriendlyName, DeviceModel, DeviceOS, DeviceUserAgent, "
+        "DeviceID, DeviceType, LastSyncAttemptTime, Status, DeviceAccessState, "
+        "DeviceWipeSentTime, DeviceWipeRequestTime, DeviceWipeAckTime, "
+        "LastDeviceWipeRequestor"
+    )
+
+    try:
+        raw = await client.run_cmdlet_with_retry(devices_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No mailbox found for '{email}'. "
+                "Check the email address and try again."
+            ) from None
+        raise
+
+    # Normalize: empty result is valid (user has no devices)
+    devices = raw if isinstance(raw, list) else (
+        [raw] if isinstance(raw, dict) and raw else []
+    )
+
+    return {
+        "email_address": email,
+        "device_count": len(devices),
+        "devices": [
+            {
+                "friendly_name": d.get("DeviceFriendlyName"),
+                "model": d.get("DeviceModel"),
+                "os": d.get("DeviceOS"),
+                "user_agent": d.get("DeviceUserAgent"),
+                "device_id": d.get("DeviceID"),
+                "device_type": d.get("DeviceType"),
+                "last_sync": d.get("LastSyncAttemptTime"),
+                "status": d.get("Status"),
+                "access_state": d.get("DeviceAccessState"),
+                "wipe_sent_time": d.get("DeviceWipeSentTime"),
+                "wipe_request_time": d.get("DeviceWipeRequestTime"),
+                "wipe_ack_time": d.get("DeviceWipeAckTime"),
+                "wipe_requestor": d.get("LastDeviceWipeRequestor"),
+            }
+            for d in devices
+        ],
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -1530,8 +1622,8 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_transport_queues": _get_transport_queues_handler,
     "get_smtp_connectors": _get_smtp_connectors_handler,
     "get_dkim_config": _get_dkim_config_handler,
-    "get_dmarc_status": _make_stub("get_dmarc_status"),
-    "check_mobile_devices": _make_stub("check_mobile_devices"),
+    "get_dmarc_status": _get_dmarc_status_handler,
+    "check_mobile_devices": _check_mobile_devices_handler,
     "get_hybrid_config": _make_stub("get_hybrid_config"),
     "get_migration_batches": _make_stub("get_migration_batches"),
     "get_connector_status": _make_stub("get_connector_status"),
