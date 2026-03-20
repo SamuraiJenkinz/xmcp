@@ -11,7 +11,7 @@ Tests cover:
     - server instance exists with correct name
     - all 16 tool definitions have corresponding dispatch entries
     - all tool descriptions are under 800 characters
-    - stub tools raise RuntimeError with "not yet implemented"
+    - remaining stub tools raise RuntimeError with "not yet implemented"
     - ping dispatch returns {"status": "pong"}
     - all tool schemas have required "type" and "properties" fields
 """
@@ -190,7 +190,10 @@ def test_tool_descriptions_under_800_chars() -> None:
 async def test_call_tool_not_implemented_raises() -> None:
     """handle_call_tool() with a stub Exchange tool must raise RuntimeError."""
     with pytest.raises(RuntimeError) as exc_info:
-        await handle_call_tool("get_mailbox_stats", {"email_address": "user@example.com"})
+        await handle_call_tool(
+            "search_mailboxes",
+            {"filter_type": "database", "filter_value": "DB01"},
+        )
 
     assert "not yet implemented" in str(exc_info.value).lower()
 
