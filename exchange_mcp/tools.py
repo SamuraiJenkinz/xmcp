@@ -15,6 +15,7 @@ implemented here.
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING, Any
 
 import mcp.types as types
@@ -383,6 +384,107 @@ TOOL_DEFINITIONS: list[types.Tool] = [
 
 
 # ---------------------------------------------------------------------------
+# Shared helpers (used by Phase 3-6 tool handlers)
+# ---------------------------------------------------------------------------
+
+_UPN_RE = re.compile(r"^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$")
+
+
+def _validate_upn(email: str) -> None:
+    """Raise RuntimeError if email does not match a basic UPN pattern."""
+    if not _UPN_RE.match(email):
+        raise RuntimeError(
+            f"'{email}' is not a valid email address. "
+            "Expected format: user@domain.com"
+        )
+
+
+def _escape_ps_single_quote(value: str) -> str:
+    """Escape single quotes for PowerShell string literals by doubling them."""
+    return value.replace("'", "''")
+
+
+def _format_size(byte_count: int | None) -> str | None:
+    """Convert raw byte count to human-friendly size string.
+
+    Returns None if byte_count is None (handles missing data from Exchange).
+    """
+    if byte_count is None:
+        return None
+    if byte_count >= 1_073_741_824:  # 1 GB
+        return f"{byte_count / 1_073_741_824:.1f} GB"
+    elif byte_count >= 1_048_576:  # 1 MB
+        return f"{byte_count / 1_048_576:.1f} MB"
+    elif byte_count >= 1_024:  # 1 KB
+        return f"{byte_count / 1_024:.1f} KB"
+    return f"{byte_count} B"
+
+
+# ---------------------------------------------------------------------------
+# Mailbox tool handlers (Phase 3)
+# ---------------------------------------------------------------------------
+
+async def _get_mailbox_stats_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return size, quota, last logon, and database for a single mailbox."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    email = arguments.get("email_address", "").strip()
+    _validate_upn(email)
+    safe = _escape_ps_single_quote(email)
+
+    # Call 1: size + logon stats (Get-MailboxStatistics)
+    stats_cmdlet = (
+        f"Get-MailboxStatistics -Identity '{safe}' | Select-Object "
+        "DisplayName, ItemCount, LastLogonTime, Database, "
+        "@{Name='TotalItemSizeBytes';Expression={"
+        "[long]($_.TotalItemSize.ToString().Split('(')[1].Split(' ')[0].Replace(',',''))"
+        "}}"
+    )
+
+    # Call 2: quota limits (Get-Mailbox)
+    quota_cmdlet = (
+        f"Get-Mailbox -Identity '{safe}' | Select-Object "
+        "PrimarySmtpAddress, RecipientTypeDetails, "
+        "ProhibitSendQuota, ProhibitSendReceiveQuota, IssueWarningQuota"
+    )
+
+    try:
+        stats_raw = await client.run_cmdlet_with_retry(stats_cmdlet)
+        quota_raw = await client.run_cmdlet_with_retry(quota_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No mailbox found for '{email}'. "
+                "Check the email address and try again."
+            ) from None
+        raise
+
+    # Normalize single-result dict vs list
+    stats = stats_raw if isinstance(stats_raw, dict) else (stats_raw[0] if stats_raw else {})
+    quota = quota_raw if isinstance(quota_raw, dict) else (quota_raw[0] if quota_raw else {})
+
+    return {
+        "email_address": email,
+        "display_name": stats.get("DisplayName"),
+        "mailbox_type": quota.get("RecipientTypeDetails"),
+        "database": stats.get("Database"),
+        "total_size": _format_size(stats.get("TotalItemSizeBytes")),
+        "total_size_bytes": stats.get("TotalItemSizeBytes"),
+        "item_count": stats.get("ItemCount"),
+        "last_logon": stats.get("LastLogonTime"),
+        "quotas": {
+            "issue_warning": str(quota.get("IssueWarningQuota") or ""),
+            "prohibit_send": str(quota.get("ProhibitSendQuota") or ""),
+            "prohibit_send_receive": str(quota.get("ProhibitSendReceiveQuota") or ""),
+        },
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -404,7 +506,7 @@ def _make_stub(tool_name: str):
 
 TOOL_DISPATCH: dict[str, Any] = {
     "ping": _ping_handler,
-    "get_mailbox_stats": _make_stub("get_mailbox_stats"),
+    "get_mailbox_stats": _get_mailbox_stats_handler,
     "search_mailboxes": _make_stub("search_mailboxes"),
     "get_shared_mailbox_owners": _make_stub("get_shared_mailbox_owners"),
     "list_dag_members": _make_stub("list_dag_members"),
