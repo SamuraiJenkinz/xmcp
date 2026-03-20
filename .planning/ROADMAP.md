@@ -83,12 +83,12 @@ Plans:
   2. get_dag_health returns a full replication health report including copy/replay queue lengths and content index state per copy
   3. get_database_copies returns all copies of a named database across DAG members with activation preferences
   4. All three tools return isError: true with a useful message when the DAG or database name is not found
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 04-01: Implement list_dag_members with server status and active database count
-- [ ] 04-02: Implement get_dag_health with full replication health output schema
-- [ ] 04-03: Implement get_database_copies with activation preference and copy status per member
+- [ ] 04-01-PLAN.md — Implement list_dag_members with DAG metadata, per-server enrichment (site, version), and active/passive database counts
+- [ ] 04-02-PLAN.md — Implement get_dag_health with per-server replication health and partial results for unreachable servers
+- [ ] 04-03-PLAN.md — Implement get_database_copies with authoritative activation preferences from Get-MailboxDatabase and database size
 
 ### Phase 5: Mail Flow and Security Tools
 **Goal**: All six mail flow and security tools are implemented and return accurate data — the security tools combining live DNS lookups with Exchange PowerShell data where needed
