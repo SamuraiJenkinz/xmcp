@@ -25,6 +25,19 @@ get_dag_health tests cover:
     - test_get_dag_health_content_index_failed: Failed content index passes through as-is
     - test_get_dag_health_all_servers_unreachable: all servers fail → result still returned
     - test_get_dag_health_single_member_string: string Members value normalised to list
+
+get_database_copies tests cover:
+    - test_get_database_copies_valid: two-copy database with activation prefs and size
+    - test_get_database_copies_not_found: non-existent database produces friendly error
+    - test_get_database_copies_empty_database_name: empty name raises before Exchange call
+    - test_get_database_copies_no_client: None client raises immediately
+    - test_get_database_copies_zero_copies: empty copies list raises RuntimeError
+    - test_get_database_copies_activation_pref_list_format: list-of-KV activation pref handled
+    - test_get_database_copies_single_copy_dict: single dict copy normalised to list
+    - test_get_database_copies_exchange_error_propagates: non-not-found errors propagate
+    - test_get_database_copies_db_info_not_found: DB info call not-found produces friendly error
+    - test_get_database_copies_null_activation_pref: None activation pref → copies with None pref
+    - test_get_database_copies_missing_database_name: missing key raises before Exchange call
 """
 
 from __future__ import annotations
@@ -33,7 +46,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from exchange_mcp.tools import _get_dag_health_handler, _list_dag_members_handler
+from exchange_mcp.tools import (
+    _get_dag_health_handler,
+    _get_database_copies_handler,
+    _list_dag_members_handler,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -681,3 +698,359 @@ async def test_get_dag_health_single_member_string(mock_client: MagicMock) -> No
     assert len(result["servers"]) == 1
     assert result["servers"][0]["server"] == "EX01"
     assert len(result["servers"][0]["copies"]) == 1
+
+
+# ===========================================================================
+# get_database_copies tests (Phase 4, Plan 03)
+# ===========================================================================
+
+
+# ---------------------------------------------------------------------------
+# 21. test_get_database_copies_valid
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_valid(mock_client: MagicMock) -> None:
+    """Two-copy database returns correct metadata, activation preferences, and size."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status for both copies
+        [
+            {
+                "Name": "DB01\\EX01",
+                "Status": "Mounted",
+                "CopyQueueLength": 0,
+                "ReplayQueueLength": 0,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": None,
+                "LastInspectedLogTime": "/Date(1708000000000)/",
+                "LastReplayedLogTime": None,
+                "MailboxServer": "EX01",
+            },
+            {
+                "Name": "DB01\\EX02",
+                "Status": "Healthy",
+                "CopyQueueLength": 5,
+                "ReplayQueueLength": 2,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": "/Date(1708000000000)/",
+                "LastInspectedLogTime": "/Date(1708000000000)/",
+                "LastReplayedLogTime": "/Date(1708000000000)/",
+                "MailboxServer": "EX02",
+            },
+        ],
+        # Call 2: DB info with authoritative activation preference
+        {
+            "Name": "DB01",
+            "Mounted": True,
+            "MountedOnServer": "EX01",
+            "DatabaseSizeBytes": 594718752768,
+            "DatabaseSize": "553.9 GB",
+            "ActivationPreference": {"EX01": 1, "EX02": 2},
+        },
+    ]
+
+    result = await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert result["database_name"] == "DB01"
+    assert result["copy_count"] == 2
+    assert result["mounted_on_server"] == "EX01"
+    assert result["database_size_bytes"] == 594718752768
+    # _format_size(594718752768) = 594718752768 / 1073741824 = 553.9... → "553.9 GB"
+    assert result["database_size"] == "553.9 GB"
+
+    c0 = result["copies"][0]
+    assert c0["is_mounted"] is True
+    assert c0["activation_preference"] == 1
+    assert c0["copy_queue_length"] == 0
+    assert c0["replay_queue_length"] == 0
+    assert c0["content_index_state"] == "Healthy"
+    assert c0["server"] == "EX01"
+
+    c1 = result["copies"][1]
+    assert c1["is_mounted"] is False
+    assert c1["activation_preference"] == 2
+    assert c1["copy_queue_length"] == 5
+    assert c1["replay_queue_length"] == 2
+    assert c1["server"] == "EX02"
+
+
+# ---------------------------------------------------------------------------
+# 22. test_get_database_copies_not_found
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_not_found(mock_client: MagicMock) -> None:
+    """Non-existent database name produces a friendly RuntimeError mentioning the name."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError(
+        "Couldn't find object 'BADDB'."
+    )
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": "BADDB"}, mock_client)
+
+    assert "No database found with name 'BADDB'" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 23. test_get_database_copies_empty_database_name
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_empty_database_name(mock_client: MagicMock) -> None:
+    """Empty database_name raises RuntimeError before any Exchange call."""
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": ""}, mock_client)
+
+    assert "database_name is required" in str(exc_info.value)
+    mock_client.run_cmdlet_with_retry.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# 24. test_get_database_copies_no_client
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_no_client() -> None:
+    """None client raises RuntimeError mentioning 'not available'."""
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": "DB01"}, None)
+
+    assert "not available" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# 25. test_get_database_copies_zero_copies
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_zero_copies(mock_client: MagicMock) -> None:
+    """Empty copies list raises RuntimeError about no copies found."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status — empty list
+        [],
+        # Call 2: DB info — valid
+        {
+            "Name": "DB01",
+            "Mounted": False,
+            "MountedOnServer": None,
+            "DatabaseSizeBytes": None,
+            "DatabaseSize": None,
+            "ActivationPreference": {},
+        },
+    ]
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert "No database copies found" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 26. test_get_database_copies_activation_pref_list_format
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_activation_pref_list_format(mock_client: MagicMock) -> None:
+    """ActivationPreference as list of Key/Value dicts is correctly mapped."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status — two copies
+        [
+            {
+                "Name": "DB01\\EX01",
+                "Status": "Mounted",
+                "CopyQueueLength": 0,
+                "ReplayQueueLength": 0,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": None,
+                "LastInspectedLogTime": None,
+                "LastReplayedLogTime": None,
+                "MailboxServer": "EX01",
+            },
+            {
+                "Name": "DB01\\EX02",
+                "Status": "Healthy",
+                "CopyQueueLength": 2,
+                "ReplayQueueLength": 1,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": None,
+                "LastInspectedLogTime": None,
+                "LastReplayedLogTime": None,
+                "MailboxServer": "EX02",
+            },
+        ],
+        # Call 2: DB info with activation pref as list-of-KV (Exchange Online serialization)
+        {
+            "Name": "DB01",
+            "Mounted": True,
+            "MountedOnServer": "EX01",
+            "DatabaseSizeBytes": 1073741824,
+            "DatabaseSize": "1.0 GB",
+            "ActivationPreference": [
+                {"Key": "EX01", "Value": 1},
+                {"Key": "EX02", "Value": 2},
+            ],
+        },
+    ]
+
+    result = await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert result["copy_count"] == 2
+    # EX01 copy should get activation preference 1
+    ex01_copy = next(c for c in result["copies"] if c["server"] == "EX01")
+    assert ex01_copy["activation_preference"] == 1
+    # EX02 copy should get activation preference 2
+    ex02_copy = next(c for c in result["copies"] if c["server"] == "EX02")
+    assert ex02_copy["activation_preference"] == 2
+
+
+# ---------------------------------------------------------------------------
+# 27. test_get_database_copies_single_copy_dict
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_single_copy_dict(mock_client: MagicMock) -> None:
+    """Single copy returned as a dict (not list) is normalised to a list of one copy."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status — single dict (not list)
+        {
+            "Name": "DB01\\EX01",
+            "Status": "Mounted",
+            "CopyQueueLength": 0,
+            "ReplayQueueLength": 0,
+            "ContentIndexState": "Healthy",
+            "LastCopiedLogTime": None,
+            "LastInspectedLogTime": None,
+            "LastReplayedLogTime": None,
+            "MailboxServer": "EX01",
+        },
+        # Call 2: DB info
+        {
+            "Name": "DB01",
+            "Mounted": True,
+            "MountedOnServer": "EX01",
+            "DatabaseSizeBytes": 1073741824,
+            "DatabaseSize": "1.0 GB",
+            "ActivationPreference": {"EX01": 1},
+        },
+    ]
+
+    result = await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert result["copy_count"] == 1
+    assert len(result["copies"]) == 1
+    assert result["copies"][0]["is_mounted"] is True
+    assert result["copies"][0]["activation_preference"] == 1
+
+
+# ---------------------------------------------------------------------------
+# 28. test_get_database_copies_exchange_error_propagates
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_exchange_error_propagates(mock_client: MagicMock) -> None:
+    """Non-not-found RuntimeError from copies call propagates unchanged."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError("connection timeout")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert "connection timeout" in str(exc_info.value)
+    assert "No database found" not in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 29. test_get_database_copies_db_info_not_found
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_db_info_not_found(mock_client: MagicMock) -> None:
+    """Not-found error from DB info call produces friendly error mentioning the name."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status — succeeds
+        [
+            {
+                "Name": "DB01\\EX01",
+                "Status": "Mounted",
+                "CopyQueueLength": 0,
+                "ReplayQueueLength": 0,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": None,
+                "LastInspectedLogTime": None,
+                "LastReplayedLogTime": None,
+                "MailboxServer": "EX01",
+            }
+        ],
+        # Call 2: DB info — not found
+        RuntimeError("Couldn't find object 'DB01'."),
+    ]
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert "No database found" in str(exc_info.value)
+
+
+# ---------------------------------------------------------------------------
+# 30. test_get_database_copies_null_activation_pref
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_null_activation_pref(mock_client: MagicMock) -> None:
+    """None ActivationPreference results in activation_preference == None for each copy."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Copy status
+        [
+            {
+                "Name": "DB01\\EX01",
+                "Status": "Mounted",
+                "CopyQueueLength": 0,
+                "ReplayQueueLength": 0,
+                "ContentIndexState": "Healthy",
+                "LastCopiedLogTime": None,
+                "LastInspectedLogTime": None,
+                "LastReplayedLogTime": None,
+                "MailboxServer": "EX01",
+            }
+        ],
+        # Call 2: DB info — ActivationPreference is None
+        {
+            "Name": "DB01",
+            "Mounted": True,
+            "MountedOnServer": "EX01",
+            "DatabaseSizeBytes": None,
+            "DatabaseSize": None,
+            "ActivationPreference": None,
+        },
+    ]
+
+    result = await _get_database_copies_handler({"database_name": "DB01"}, mock_client)
+
+    assert result["copy_count"] == 1
+    assert result["copies"][0]["activation_preference"] is None
+    assert result["database_size"] is None
+    assert result["database_size_bytes"] is None
+
+
+# ---------------------------------------------------------------------------
+# 31. test_get_database_copies_missing_database_name
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_database_copies_missing_database_name(mock_client: MagicMock) -> None:
+    """Missing database_name key raises RuntimeError before any Exchange call."""
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_database_copies_handler({}, mock_client)
+
+    assert "database_name is required" in str(exc_info.value)
+    mock_client.run_cmdlet_with_retry.assert_not_called()
