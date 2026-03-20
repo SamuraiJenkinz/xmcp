@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 3 complete — all 3 mailbox tools implemented; Phase 4 (DAG and Database Tools) next
+**Current focus:** Phase 4 in progress — list_dag_members handler complete; 2 more DAG/database tools to go
 
 ## Current Position
 
-Phase: 3 of 9 (Mailbox Tools) — Complete
-Plan: 3 of 3 in phase 3 complete
-Status: Phase complete — ready for Phase 4
-Last activity: 2026-03-20 — Completed 03-03-PLAN.md (get_shared_mailbox_owners handler, 41 tests passing in mailbox file, 97 total)
+Phase: 4 of 9 (DAG and Database Tools) — In progress
+Plan: 1 of 3 in phase 4 complete
+Status: In progress
+Last activity: 2026-03-20 — Completed 04-01-PLAN.md (list_dag_members handler, 10 new tests, 107 total)
 
-Progress: [████░░░░░░] 29% (10/35 plans complete)
+Progress: [████░░░░░░] 31% (11/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 9
-- Average duration: ~9 min
-- Total execution time: ~74 min
+- Total plans completed: 10
+- Average duration: ~8 min
+- Total execution time: ~77 min
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [████░░░░░░] 29% (10/35 plans complete)
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
+| 04-dag-and-database-tools | 1/3 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-03 (4 min), 03-01 (4 min), 03-02 (5 min), 03-03 (2 min)
+- Last 5 plans: 03-01 (4 min), 03-02 (5 min), 03-03 (2 min), 04-01 (3 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -79,6 +80,12 @@ Recent decisions affecting current work:
 - [03-03]: via_group always null — Get-MailboxPermission shows IsInherited but not which group caused it
 - [03-03]: SendAs display_name always null — Get-RecipientPermission has no display name field
 - [03-03]: GrantSendOnBehalfTo identity returned as-is (DN/UPN) — resolving would require N extra Get-Recipient calls
+- [04-01]: dag_name functionally required despite schema required:[] — raise RuntimeError before any Exchange call
+- [04-01]: Unreachable servers produce error entry with null fields — partial results pattern, not tool failure
+- [04-01]: @() wrapper on ForEach-Object projection forces array output for single-member DAGs
+- [04-01]: .ToString() on ADObjectId/ADSite/ServerVersion objects for plain string representation
+- [04-01]: Active DB count = Status=="Mounted"; everything else is passive
+- [04-01]: test_call_tool_not_implemented_raises updated to get_dag_health — list_dag_members is now real
 
 ### Pending Todos
 
@@ -92,6 +99,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20
-Stopped at: Completed 03-03-PLAN.md — get_shared_mailbox_owners handler, Phase 3 complete, 97 tests passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T14:20:46Z
+Stopped at: Completed 04-01-PLAN.md — list_dag_members handler, 10 new tests, 107 passing (3 pre-existing exchange integration failures)
 Resume file: None
