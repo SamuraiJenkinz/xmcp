@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 5 in progress — check_mail_flow + get_transport_queues + get_smtp_connectors handlers complete; 2 more mail flow + security tools remain
+**Current focus:** Phase 5 in progress — check_mail_flow + get_transport_queues + get_smtp_connectors + get_dkim_config handlers complete; 1 more security tool remains (get_dmarc_status)
 
 ## Current Position
 
 Phase: 5 of 9 (Mail Flow and Security Tools) — In progress
-Plan: 3 of 5 in phase 5 complete
+Plan: 4 of 5 in phase 5 complete
 Status: In progress
-Last activity: 2026-03-20 — Completed 05-03-PLAN.md — get_smtp_connectors handler, 8 new tests, 155 passing (3 pre-existing integration failures)
+Last activity: 2026-03-20 — Completed 05-04-PLAN.md — get_dkim_config handler + get_cname_record DNS util, 14 new tests, 162 passing (3 pre-existing integration failures)
 
-Progress: [████░░░░░░] 46% (16/35 plans complete)
+Progress: [████░░░░░░] 49% (17/35 plans complete)
 
 ## Performance Metrics
 
@@ -31,7 +31,7 @@ Progress: [████░░░░░░] 46% (16/35 plans complete)
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
-| 05-mail-flow-and-security-tools | 3/5 | 8 min | 3 min |
+| 05-mail-flow-and-security-tools | 4/5 | 13 min | 3 min |
 
 **Recent Trend:**
 - Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
@@ -111,6 +111,12 @@ Recent decisions affecting current work:
 - [05-03]: MaxMessageSize serialized as str(val) if val else None — ByteQuantifiedSize renders as "25 MB (26,214,400 bytes)"
 - [05-03]: Multi-valued Bindings/RemoteIPRanges use ForEach-Object { $_.ToString() } — same lesson as Phase 4 ActivationPreference
 - [05-03]: test_call_tool_not_implemented_raises updated to use get_dkim_config stub — get_smtp_connectors is now real
+- [05-04]: CNAME cache key prefix "CNAME:{name}" prevents collision with TXT cache entries in shared _cache dict
+- [05-04]: Sentinel object() per-call to distinguish DNS error (match=null) from NXDOMAIN/not-published (match=false)
+- [05-04]: Three-state DNS match: True (published==expected), False (mismatch or expected-but-missing), None (DNS error)
+- [05-04]: Expected-but-NXDOMAIN = False (definite failure); DNS LookupError = None (unknown — don't claim failure)
+- [05-04]: dns_utils imported at module level in tools.py to enable patch('exchange_mcp.tools.dns_utils.get_cname_record') in tests
+- [05-04]: test_call_tool_not_implemented_raises updated to use get_dmarc_status stub — get_dkim_config is now real
 
 ### Pending Todos
 
@@ -124,6 +130,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T18:52:40Z
-Stopped at: Completed 05-03-PLAN.md — get_smtp_connectors handler, 8 new tests, 155 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T18:59:52Z
+Stopped at: Completed 05-04-PLAN.md — get_dkim_config handler + get_cname_record DNS util, 14 new tests, 162 passing (3 pre-existing exchange integration failures)
 Resume file: None
