@@ -678,6 +678,125 @@ async def _search_mailboxes_handler(
 
 
 # ---------------------------------------------------------------------------
+# DAG and Database tool handlers (Phase 4)
+# ---------------------------------------------------------------------------
+
+async def _list_dag_members_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return DAG server inventory with operational status and database counts."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    dag_name = arguments.get("dag_name", "").strip()
+    if not dag_name:
+        raise RuntimeError(
+            "dag_name is required. Provide the name of the DAG to inspect."
+        )
+    safe = _escape_ps_single_quote(dag_name)
+
+    # Call 1: DAG metadata — member list, witness info, operational servers
+    # -Status switch required for OperationalServers and PrimaryActiveManager
+    # Servers property is ADObjectId collection — project via ForEach-Object { $_.Name }
+    dag_cmdlet = (
+        f"Get-DatabaseAvailabilityGroup -Identity '{safe}' -Status | Select-Object "
+        "Name, "
+        "@{Name='Members';Expression={@($_.Servers | ForEach-Object { $_.Name })}}, "
+        "WitnessServer, WitnessDirectory, "
+        "@{Name='OperationalServers';Expression={@($_.OperationalServers | ForEach-Object { $_.Name })}}, "
+        "@{Name='PrimaryActiveManager';Expression={$_.PrimaryActiveManager.ToString()}}"
+    )
+
+    try:
+        dag_raw = await client.run_cmdlet_with_retry(dag_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No DAG found with name '{dag_name}'. "
+                "Check the DAG name and try again."
+            ) from None
+        raise
+
+    # Normalize single-result dict
+    dag = dag_raw if isinstance(dag_raw, dict) else (dag_raw[0] if dag_raw else {})
+
+    members = dag.get("Members") or []
+    if isinstance(members, str):
+        members = [members]  # Single-member DAG returns a string
+    operational = dag.get("OperationalServers") or []
+    if isinstance(operational, str):
+        operational = [operational]
+    operational_set = set(operational)
+
+    # Call 2: Per-member enrichment — AD site, Exchange version
+    # Call 3: Per-member database counts — mounted vs passive copies
+    server_details = []
+    for member_name in members:
+        safe_member = _escape_ps_single_quote(member_name)
+
+        # Get-ExchangeServer for version and site
+        svr_cmdlet = (
+            f"Get-ExchangeServer -Identity '{safe_member}' | Select-Object "
+            "Name, "
+            "@{Name='AdminDisplayVersion';Expression={$_.AdminDisplayVersion.ToString()}}, "
+            "@{Name='Site';Expression={$_.Site.ToString()}}, "
+            "ServerRole"
+        )
+
+        # Get-MailboxDatabaseCopyStatus for database counts
+        db_count_cmdlet = (
+            f"Get-MailboxDatabaseCopyStatus -Server '{safe_member}' | Select-Object "
+            "Status"
+        )
+
+        try:
+            svr_raw = await client.run_cmdlet_with_retry(svr_cmdlet)
+            db_count_raw = await client.run_cmdlet_with_retry(db_count_cmdlet)
+        except RuntimeError:
+            # Unreachable server — include with error status per CONTEXT.md decision
+            server_details.append({
+                "name": member_name,
+                "operational": member_name in operational_set,
+                "site": None,
+                "exchange_version": None,
+                "server_role": None,
+                "active_database_count": None,
+                "passive_database_count": None,
+                "error": f"Unable to query server '{member_name}'",
+            })
+            continue
+
+        svr = svr_raw if isinstance(svr_raw, dict) else (svr_raw[0] if svr_raw else {})
+        db_copies = db_count_raw if isinstance(db_count_raw, list) else (
+            [db_count_raw] if isinstance(db_count_raw, dict) and db_count_raw else []
+        )
+
+        active_count = sum(1 for c in db_copies if c.get("Status") == "Mounted")
+        passive_count = len(db_copies) - active_count
+
+        server_details.append({
+            "name": member_name,
+            "operational": member_name in operational_set,
+            "site": svr.get("Site"),
+            "exchange_version": svr.get("AdminDisplayVersion"),
+            "server_role": svr.get("ServerRole"),
+            "active_database_count": active_count,
+            "passive_database_count": passive_count,
+            "error": None,
+        })
+
+    return {
+        "dag_name": dag.get("Name", dag_name),
+        "member_count": len(members),
+        "witness_server": dag.get("WitnessServer"),
+        "witness_directory": dag.get("WitnessDirectory"),
+        "primary_active_manager": dag.get("PrimaryActiveManager"),
+        "members": server_details,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -702,7 +821,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_mailbox_stats": _get_mailbox_stats_handler,
     "search_mailboxes": _search_mailboxes_handler,
     "get_shared_mailbox_owners": _get_shared_mailbox_owners_handler,
-    "list_dag_members": _make_stub("list_dag_members"),
+    "list_dag_members": _list_dag_members_handler,
     "get_dag_health": _make_stub("get_dag_health"),
     "get_database_copies": _make_stub("get_database_copies"),
     "check_mail_flow": _make_stub("check_mail_flow"),
