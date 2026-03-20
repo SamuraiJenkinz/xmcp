@@ -23,9 +23,9 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### Mailbox Tools
 
-- [ ] **MBOX-01**: get_mailbox_stats — returns size, quota, last logon, database placement for a single mailbox
-- [ ] **MBOX-02**: search_mailboxes — filters mailboxes by database, type, or display name
-- [ ] **MBOX-03**: get_shared_mailbox_owners — returns full access, send-as, and send-on-behalf delegates
+- [x] **MBOX-01**: get_mailbox_stats — returns size, quota, last logon, database placement for a single mailbox
+- [x] **MBOX-02**: search_mailboxes — filters mailboxes by database, type, or display name
+- [x] **MBOX-03**: get_shared_mailbox_owners — returns full access, send-as, and send-on-behalf delegates
 
 ### DAG / Database Tools
 
@@ -131,9 +131,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MCPS-02 | Phase 2 | Complete |
 | MCPS-03 | Phase 2 | Complete |
 | MCPS-04 | Phase 2 | Complete |
-| MBOX-01 | Phase 3 | Pending |
-| MBOX-02 | Phase 3 | Pending |
-| MBOX-03 | Phase 3 | Pending |
+| MBOX-01 | Phase 3 | Complete |
+| MBOX-02 | Phase 3 | Complete |
+| MBOX-03 | Phase 3 | Complete |
 | DAGD-01 | Phase 4 | Pending |
 | DAGD-02 | Phase 4 | Pending |
 | DAGD-03 | Phase 4 | Pending |

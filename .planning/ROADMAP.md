@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, interactive/CBA auth, DNS utilities, JSON output parsing
 - [x] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
-- [ ] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
+- [x] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [ ] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
 - [ ] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
 - [ ] **Phase 6: Hybrid Tools** - get_hybrid_config, get_migration_batches, get_connector_status
@@ -70,9 +70,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Implement get_mailbox_stats with shared helpers (_validate_upn, _format_size) and unit tests
-- [ ] 03-02-PLAN.md — Implement search_mailboxes with all filter modes, ResultSize cap, and truncation detection
-- [ ] 03-03-PLAN.md — Implement get_shared_mailbox_owners for all three delegate permission types
+- [x] 03-01-PLAN.md — Implement get_mailbox_stats with shared helpers (_validate_upn, _format_size) and unit tests
+- [x] 03-02-PLAN.md — Implement search_mailboxes with all filter modes, ResultSize cap, and truncation detection
+- [x] 03-03-PLAN.md — Implement get_shared_mailbox_owners for all three delegate permission types
 
 ### Phase 4: DAG and Database Tools
 **Goal**: The three DAG and database tools are fully implemented and return accurate replication health data through the MCP server
@@ -189,7 +189,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 |-------|----------------|--------|-----------|
 | 1. Exchange Client Foundation | 4/4 | ✓ Complete | 2026-03-19 |
 | 2. MCP Server Scaffold | 3/3 | ✓ Complete | 2026-03-19 |
-| 3. Mailbox Tools | 0/3 | Not started | - |
+| 3. Mailbox Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 4. DAG and Database Tools | 0/3 | Not started | - |
 | 5. Mail Flow and Security Tools | 0/5 | Not started | - |
 | 6. Hybrid Tools | 0/3 | Not started | - |
