@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 4 in progress — list_dag_members handler complete; 2 more DAG/database tools to go
+**Current focus:** Phase 4 in progress — get_dag_health handler complete; 1 more DAG/database tool to go
 
 ## Current Position
 
 Phase: 4 of 9 (DAG and Database Tools) — In progress
-Plan: 1 of 3 in phase 4 complete
+Plan: 2 of 3 in phase 4 complete
 Status: In progress
-Last activity: 2026-03-20 — Completed 04-01-PLAN.md (list_dag_members handler, 10 new tests, 107 total)
+Last activity: 2026-03-20 — Completed 04-02-PLAN.md (get_dag_health handler, 10 new tests, 117 total)
 
-Progress: [████░░░░░░] 31% (11/35 plans complete)
+Progress: [████░░░░░░] 34% (12/35 plans complete)
 
 ## Performance Metrics
 
@@ -30,10 +30,10 @@ Progress: [████░░░░░░] 31% (11/35 plans complete)
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
-| 04-dag-and-database-tools | 1/3 | 3 min | 3 min |
+| 04-dag-and-database-tools | 2/3 | ~8 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-01 (4 min), 03-02 (5 min), 03-03 (2 min), 04-01 (3 min)
+- Last 5 plans: 03-02 (5 min), 03-03 (2 min), 04-01 (3 min), 04-02 (5 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -86,6 +86,11 @@ Recent decisions affecting current work:
 - [04-01]: .ToString() on ADObjectId/ADSite/ServerVersion objects for plain string representation
 - [04-01]: Active DB count = Status=="Mounted"; everything else is passive
 - [04-01]: test_call_tool_not_implemented_raises updated to get_dag_health — list_dag_members is now real
+- [04-02]: No -Status flag on Get-DatabaseAvailabilityGroup in get_dag_health — only need member names, saves Exchange round-trip
+- [04-02]: is_mounted derived from Status == "Mounted" in handler — cleaner API, no raw status string interpretation needed by LLM
+- [04-02]: Queue lengths as raw integers, no threshold interpretation — context-dependent meaning, LLM interprets
+- [04-02]: Content index state passed as-is (Healthy/Crawling/Failed/etc.) — all values meaningful as strings
+- [04-02]: test_call_tool_not_implemented_raises updated to use get_database_copies — get_dag_health is now real
 
 ### Pending Todos
 
@@ -99,6 +104,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T14:20:46Z
-Stopped at: Completed 04-01-PLAN.md — list_dag_members handler, 10 new tests, 107 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T14:41:00Z
+Stopped at: Completed 04-02-PLAN.md — get_dag_health handler, 10 new tests, 117 passing (3 pre-existing exchange integration failures)
 Resume file: None
