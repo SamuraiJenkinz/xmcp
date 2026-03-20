@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 3 in progress — plans 01-02 complete (get_mailbox_stats, search_mailboxes)
+**Current focus:** Phase 3 complete — all 3 mailbox tools implemented; Phase 4 (DAG and Database Tools) next
 
 ## Current Position
 
-Phase: 3 of 9 (Mailbox Tools) — In progress
-Plan: 2 of 3 in phase 3 complete
-Status: In progress
-Last activity: 2026-03-20 — Completed 03-02-PLAN.md (search_mailboxes handler, 31 tests passing)
+Phase: 3 of 9 (Mailbox Tools) — Complete
+Plan: 3 of 3 in phase 3 complete
+Status: Phase complete — ready for Phase 4
+Last activity: 2026-03-20 — Completed 03-03-PLAN.md (get_shared_mailbox_owners handler, 41 tests passing in mailbox file, 97 total)
 
-Progress: [████░░░░░░] 26% (9/35 plans complete)
+Progress: [████░░░░░░] 29% (10/35 plans complete)
 
 ## Performance Metrics
 
@@ -29,10 +29,10 @@ Progress: [████░░░░░░] 26% (9/35 plans complete)
 |-------|-------|-------|----------|
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
-| 03-mailbox-tools | 2/3 | ~9 min | 5 min |
+| 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-02 (4 min), 02-03 (4 min), 03-01 (4 min), 03-02 (5 min)
+- Last 5 plans: 02-03 (4 min), 03-01 (4 min), 03-02 (5 min), 03-03 (2 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -75,6 +75,10 @@ Recent decisions affecting current work:
 - [03-02]: Database not-found returns empty result (not error) — search finding nothing is valid
 - [03-02]: RecipientTypeDetails passed unquoted — it is a PowerShell enum parameter
 - [03-02]: test_call_tool_not_implemented_raises updated to use list_dag_members stub — search_mailboxes is now real
+- [03-03]: System account filtering in PowerShell Where-Object, not Python — reduces data transferred
+- [03-03]: via_group always null — Get-MailboxPermission shows IsInherited but not which group caused it
+- [03-03]: SendAs display_name always null — Get-RecipientPermission has no display name field
+- [03-03]: GrantSendOnBehalfTo identity returned as-is (DN/UPN) — resolving would require N extra Get-Recipient calls
 
 ### Pending Todos
 
@@ -89,5 +93,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 03-02-PLAN.md — search_mailboxes handler, 87 tests passing (3 pre-existing exchange integration failures)
+Stopped at: Completed 03-03-PLAN.md — get_shared_mailbox_owners handler, Phase 3 complete, 97 tests passing (3 pre-existing exchange integration failures)
 Resume file: None
