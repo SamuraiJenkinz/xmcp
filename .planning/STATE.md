@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 5 in progress — check_mail_flow + get_transport_queues handlers complete; 3 more mail flow + security tools remain
+**Current focus:** Phase 5 in progress — check_mail_flow + get_transport_queues + get_smtp_connectors handlers complete; 2 more mail flow + security tools remain
 
 ## Current Position
 
 Phase: 5 of 9 (Mail Flow and Security Tools) — In progress
-Plan: 2 of 5 in phase 5 complete
+Plan: 3 of 5 in phase 5 complete
 Status: In progress
-Last activity: 2026-03-20 — Completed 05-02-PLAN.md — get_transport_queues handler, 9 new tests, 147 passing (3 pre-existing integration failures)
+Last activity: 2026-03-20 — Completed 05-03-PLAN.md — get_smtp_connectors handler, 8 new tests, 155 passing (3 pre-existing integration failures)
 
-Progress: [████░░░░░░] 43% (15/35 plans complete)
+Progress: [████░░░░░░] 46% (16/35 plans complete)
 
 ## Performance Metrics
 
@@ -31,7 +31,7 @@ Progress: [████░░░░░░] 43% (15/35 plans complete)
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
-| 05-mail-flow-and-security-tools | 2/5 | 6 min | 3 min |
+| 05-mail-flow-and-security-tools | 3/5 | 8 min | 3 min |
 
 **Recent Trend:**
 - Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
@@ -106,6 +106,11 @@ Recent decisions affecting current work:
 - [05-02]: Two-step query: Get-TransportService discovery then per-server Get-Queue -Server (no all-server mode in Get-Queue)
 - [05-02]: server_name shortcut skips Get-TransportService when caller targets specific server
 - [05-02]: test_call_tool_not_implemented_raises updated to get_smtp_connectors — get_transport_queues is now real
+- [05-03]: connector_type defaults to "all" — returns both send and receive, most informative for LLM
+- [05-03]: Invalid connector_type raises RuntimeError immediately before any Exchange call — fail fast
+- [05-03]: MaxMessageSize serialized as str(val) if val else None — ByteQuantifiedSize renders as "25 MB (26,214,400 bytes)"
+- [05-03]: Multi-valued Bindings/RemoteIPRanges use ForEach-Object { $_.ToString() } — same lesson as Phase 4 ActivationPreference
+- [05-03]: test_call_tool_not_implemented_raises updated to use get_dkim_config stub — get_smtp_connectors is now real
 
 ### Pending Todos
 
@@ -119,6 +124,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T18:48:10Z
-Stopped at: Completed 05-02-PLAN.md — get_transport_queues handler, 9 new tests, 147 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T18:52:40Z
+Stopped at: Completed 05-03-PLAN.md — get_smtp_connectors handler, 8 new tests, 155 passing (3 pre-existing exchange integration failures)
 Resume file: None
