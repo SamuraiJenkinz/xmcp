@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 3 in progress — plan 01 complete (get_mailbox_stats)
+**Current focus:** Phase 3 in progress — plans 01-02 complete (get_mailbox_stats, search_mailboxes)
 
 ## Current Position
 
 Phase: 3 of 9 (Mailbox Tools) — In progress
-Plan: 1 of 3 in phase 3 complete
+Plan: 2 of 3 in phase 3 complete
 Status: In progress
-Last activity: 2026-03-20 — Completed 03-01-PLAN.md (helpers + get_mailbox_stats handler, 19 tests passing)
+Last activity: 2026-03-20 — Completed 03-02-PLAN.md (search_mailboxes handler, 31 tests passing)
 
-Progress: [████░░░░░░] 23% (8/35 plans complete)
+Progress: [████░░░░░░] 26% (9/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
-- Average duration: ~10 min
-- Total execution time: ~69 min
+- Total plans completed: 9
+- Average duration: ~9 min
+- Total execution time: ~74 min
 
 **By Phase:**
 
@@ -29,10 +29,10 @@ Progress: [████░░░░░░] 23% (8/35 plans complete)
 |-------|-------|-------|----------|
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
-| 03-mailbox-tools | 1/3 | ~4 min | 4 min |
+| 03-mailbox-tools | 2/3 | ~9 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 02-01 (7 min), 02-02 (4 min), 02-03 (4 min), 03-01 (4 min)
+- Last 5 plans: 02-02 (4 min), 02-03 (4 min), 03-01 (4 min), 03-02 (5 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -71,6 +71,10 @@ Recent decisions affecting current work:
 - [03-01]: total_size_bytes included alongside human-friendly total_size — LLM needs raw bytes for quota % calculation
 - [03-01]: Quota values passed as strings (not parsed) — Exchange returns full natural language strings; no parsing needed
 - [03-01]: test_call_tool_not_implemented_raises updated to use search_mailboxes stub — get_mailbox_stats is now real
+- [03-02]: ANR trailing wildcard stripped before passing to -Anr — implicit prefix matching
+- [03-02]: Database not-found returns empty result (not error) — search finding nothing is valid
+- [03-02]: RecipientTypeDetails passed unquoted — it is a PowerShell enum parameter
+- [03-02]: test_call_tool_not_implemented_raises updated to use list_dag_members stub — search_mailboxes is now real
 
 ### Pending Todos
 
@@ -85,5 +89,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-20
-Stopped at: Completed 03-01-PLAN.md — helpers + get_mailbox_stats handler, 75 tests passing (3 pre-existing exchange integration failures)
+Stopped at: Completed 03-02-PLAN.md — search_mailboxes handler, 87 tests passing (3 pre-existing exchange integration failures)
 Resume file: None
