@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 5 in progress — check_mail_flow + get_transport_queues + get_smtp_connectors + get_dkim_config handlers complete; 1 more security tool remains (get_dmarc_status)
+**Current focus:** Phase 5 COMPLETE — all 6 tools implemented; Phase 6 hybrid tools next (get_hybrid_config, get_migration_batches, get_connector_status)
 
 ## Current Position
 
-Phase: 5 of 9 (Mail Flow and Security Tools) — In progress
-Plan: 4 of 5 in phase 5 complete
-Status: In progress
-Last activity: 2026-03-20 — Completed 05-04-PLAN.md — get_dkim_config handler + get_cname_record DNS util, 14 new tests, 162 passing (3 pre-existing integration failures)
+Phase: 5 of 9 (Mail Flow and Security Tools) — COMPLETE
+Plan: 5 of 5 in phase 5 complete
+Status: Phase 5 complete — Phase 6 ready to start
+Last activity: 2026-03-20 — Completed 05-05-PLAN.md — get_dmarc_status handler (pure DNS) + check_mobile_devices handler (Exchange), 13 new tests, 182 passing (3 pre-existing integration failures)
 
-Progress: [████░░░░░░] 49% (17/35 plans complete)
+Progress: [█████░░░░░] 51% (18/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 18
 - Average duration: ~6 min
 - Total execution time: ~80 min
 
@@ -31,7 +31,7 @@ Progress: [████░░░░░░] 49% (17/35 plans complete)
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
-| 05-mail-flow-and-security-tools | 4/5 | 13 min | 3 min |
+| 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
 
 **Recent Trend:**
 - Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
@@ -117,6 +117,11 @@ Recent decisions affecting current work:
 - [05-04]: Expected-but-NXDOMAIN = False (definite failure); DNS LookupError = None (unknown — don't claim failure)
 - [05-04]: dns_utils imported at module level in tools.py to enable patch('exchange_mcp.tools.dns_utils.get_cname_record') in tests
 - [05-04]: test_call_tool_not_implemented_raises updated to use get_dmarc_status stub — get_dkim_config is now real
+- [05-05]: get_dmarc_status does NOT check client is None — pure DNS tool works without Exchange connection
+- [05-05]: get_dmarc_status raises RuntimeError on LookupError — DNS errors surface as user-readable errors
+- [05-05]: check_mobile_devices returns ALL devices including stale partnerships — LLM/user decides relevance
+- [05-05]: Empty device list is valid result (not an error) — user simply has no mobile partnerships
+- [05-05]: test_call_tool_not_implemented_raises updated to get_hybrid_config (Phase 6 stub)
 
 ### Pending Todos
 
@@ -130,6 +135,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T18:59:52Z
-Stopped at: Completed 05-04-PLAN.md — get_dkim_config handler + get_cname_record DNS util, 14 new tests, 162 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T19:05:47Z
+Stopped at: Completed 05-05-PLAN.md — get_dmarc_status handler (pure DNS) + check_mobile_devices handler (Exchange), 13 new tests, 182 passing; Phase 5 complete
 Resume file: None
