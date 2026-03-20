@@ -484,6 +484,105 @@ async def _get_mailbox_stats_handler(
     }
 
 
+async def _get_shared_mailbox_owners_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return full access, send-as, and send-on-behalf delegates for a mailbox."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    email = arguments.get("email_address", "").strip()
+    _validate_upn(email)
+    safe = _escape_ps_single_quote(email)
+
+    # Query 1: Full Access permissions
+    # -IncludeUserWithDisplayName adds UserDisplayName field (Exchange Online)
+    # Where-Object filters: FullAccess only, no Deny entries, no system accounts
+    fa_cmdlet = (
+        f"Get-MailboxPermission -Identity '{safe}' -IncludeUserWithDisplayName | "
+        "Where-Object { $_.AccessRights -contains 'FullAccess' -and "
+        "$_.Deny -eq $false -and "
+        "$_.User -notlike 'NT AUTHORITY\\*' -and "
+        "$_.User -notlike 'S-1-5-*' -and "
+        "$_.User -ne 'SELF' } | "
+        "Select-Object User, UserDisplayName, IsInherited"
+    )
+
+    # Query 2: Send As permissions
+    sa_cmdlet = (
+        f"Get-RecipientPermission -Identity '{safe}' -AccessRights SendAs | "
+        "Where-Object { $_.Trustee -notlike 'NT AUTHORITY\\*' -and "
+        "$_.Trustee -ne 'SELF' } | "
+        "Select-Object Trustee, IsInherited"
+    )
+
+    # Query 3: Send on Behalf — from the mailbox object itself
+    sob_cmdlet = (
+        f"Get-Mailbox -Identity '{safe}' | Select-Object GrantSendOnBehalfTo"
+    )
+
+    try:
+        fa_raw = await client.run_cmdlet_with_retry(fa_cmdlet)
+        sa_raw = await client.run_cmdlet_with_retry(sa_cmdlet)
+        sob_raw = await client.run_cmdlet_with_retry(sob_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No mailbox found for '{email}'. "
+                "Check the email address and try again."
+            ) from None
+        raise
+
+    # Normalize single-result dict vs list for FullAccess and SendAs
+    fa_list = fa_raw if isinstance(fa_raw, list) else ([fa_raw] if isinstance(fa_raw, dict) and fa_raw else [])
+    sa_list = sa_raw if isinstance(sa_raw, list) else ([sa_raw] if isinstance(sa_raw, dict) and sa_raw else [])
+
+    # SendOnBehalf is a single mailbox object with GrantSendOnBehalfTo property
+    sob_data = sob_raw if isinstance(sob_raw, dict) else (sob_raw[0] if sob_raw else {})
+    sob_raw_list = sob_data.get("GrantSendOnBehalfTo") or []
+    # GrantSendOnBehalfTo can be a single string or a list
+    sob_entries = sob_raw_list if isinstance(sob_raw_list, list) else [sob_raw_list]
+
+    def _fa_entry(r: dict) -> dict:
+        return {
+            "display_name": r.get("UserDisplayName"),
+            "identity": str(r.get("User", "")),
+            "inherited": bool(r.get("IsInherited", False)),
+            "via_group": None,  # Exchange does not expose source group
+        }
+
+    def _sa_entry(r: dict) -> dict:
+        return {
+            "display_name": None,  # Get-RecipientPermission has no display name field
+            "identity": str(r.get("Trustee", "")),
+            "inherited": bool(r.get("IsInherited", False)),
+            "via_group": None,
+        }
+
+    def _sob_entry(dn: str) -> dict:
+        return {
+            "display_name": None,  # DN/UPN value; would need Get-Recipient to resolve
+            "identity": dn,
+            "inherited": False,  # GrantSendOnBehalfTo has no inheritance concept
+            "via_group": None,
+        }
+
+    full_access = [_fa_entry(r) for r in fa_list]
+    send_as = [_sa_entry(r) for r in sa_list]
+    send_on_behalf = [_sob_entry(dn) for dn in sob_entries if dn]
+
+    return {
+        "mailbox": email,
+        "full_access": full_access,
+        "full_access_count": len(full_access),
+        "send_as": send_as,
+        "send_as_count": len(send_as),
+        "send_on_behalf": send_on_behalf,
+        "send_on_behalf_count": len(send_on_behalf),
+    }
+
+
 async def _search_mailboxes_handler(
     arguments: dict[str, Any], client: ExchangeClient | None
 ) -> dict[str, Any]:
@@ -602,7 +701,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "ping": _ping_handler,
     "get_mailbox_stats": _get_mailbox_stats_handler,
     "search_mailboxes": _search_mailboxes_handler,
-    "get_shared_mailbox_owners": _make_stub("get_shared_mailbox_owners"),
+    "get_shared_mailbox_owners": _get_shared_mailbox_owners_handler,
     "list_dag_members": _make_stub("list_dag_members"),
     "get_dag_health": _make_stub("get_dag_health"),
     "get_database_copies": _make_stub("get_database_copies"),
