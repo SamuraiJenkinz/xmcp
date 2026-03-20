@@ -12,6 +12,9 @@ Tests cover:
     - _search_mailboxes_handler: all three filter modes, empty results, truncation
       detection, invalid filter type, empty filter value, single-result normalization,
       no client, wildcard stripping, not-found as empty result, default max_results
+    - _get_shared_mailbox_owners_handler: all three permission types, no delegates,
+      inherited permissions, invalid email, not-found, single-result dict normalization,
+      single SOB string, no client, multiple full-access delegates, error propagation
 """
 
 from __future__ import annotations
@@ -24,6 +27,7 @@ from exchange_mcp.tools import (
     _escape_ps_single_quote,
     _format_size,
     _get_mailbox_stats_handler,
+    _get_shared_mailbox_owners_handler,
     _search_mailboxes_handler,
     _validate_upn,
 )
@@ -433,3 +437,173 @@ async def test_search_mailboxes_default_max_results(mock_client: MagicMock) -> N
     call_args = mock_client.run_cmdlet_with_retry.call_args
     cmdlet_str = call_args[0][0]
     assert "-ResultSize 101" in cmdlet_str
+
+
+# ---------------------------------------------------------------------------
+# _get_shared_mailbox_owners_handler tests
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_all_permission_types(mock_client: MagicMock) -> None:
+    """All three permission types are returned with correct structure."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        [{"User": "alice@contoso.com", "UserDisplayName": "Alice Smith", "IsInherited": False}],
+        [{"Trustee": "bob@contoso.com", "IsInherited": False}],
+        {"GrantSendOnBehalfTo": ["carol@contoso.com"]},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["mailbox"] == "shared@contoso.com"
+    assert result["full_access_count"] == 1
+    assert result["full_access"][0]["identity"] == "alice@contoso.com"
+    assert result["full_access"][0]["display_name"] == "Alice Smith"
+    assert result["send_as_count"] == 1
+    assert result["send_as"][0]["identity"] == "bob@contoso.com"
+    assert result["send_as"][0]["display_name"] is None
+    assert result["send_on_behalf_count"] == 1
+    assert result["send_on_behalf"][0]["identity"] == "carol@contoso.com"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_no_delegates(mock_client: MagicMock) -> None:
+    """When all three permission lists are empty, all counts are 0."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        [],
+        [],
+        {"GrantSendOnBehalfTo": None},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["full_access"] == []
+    assert result["full_access_count"] == 0
+    assert result["send_as"] == []
+    assert result["send_as_count"] == 0
+    assert result["send_on_behalf"] == []
+    assert result["send_on_behalf_count"] == 0
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_inherited_permission(mock_client: MagicMock) -> None:
+    """Inherited FullAccess entry has inherited=True and via_group=None."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        [{"User": "inherited@contoso.com", "UserDisplayName": "Inherited User", "IsInherited": True}],
+        [],
+        {"GrantSendOnBehalfTo": None},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["full_access"][0]["inherited"] is True
+    assert result["full_access"][0]["via_group"] is None
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_invalid_email(mock_client: MagicMock) -> None:
+    """Invalid email raises RuntimeError before calling Exchange."""
+    with pytest.raises(RuntimeError, match="not a valid email address"):
+        await _get_shared_mailbox_owners_handler(
+            {"email_address": "bad"}, mock_client
+        )
+    mock_client.run_cmdlet_with_retry.assert_not_called()
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_not_found(mock_client: MagicMock) -> None:
+    """Exchange 'not found' error is intercepted and re-raised with friendly message."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError(
+        "Couldn't find the object 'gone@contoso.com'."
+    )
+
+    with pytest.raises(RuntimeError, match="No mailbox found for 'gone@contoso.com'"):
+        await _get_shared_mailbox_owners_handler(
+            {"email_address": "gone@contoso.com"}, mock_client
+        )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_single_result_dict(mock_client: MagicMock) -> None:
+    """Single dict result for FullAccess (not a list) is normalized to a list of 1."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        {"User": "alice@contoso.com", "UserDisplayName": "Alice Smith", "IsInherited": False},
+        [],
+        {"GrantSendOnBehalfTo": None},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["full_access_count"] == 1
+    assert isinstance(result["full_access"], list)
+    assert len(result["full_access"]) == 1
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_sob_single_string(mock_client: MagicMock) -> None:
+    """GrantSendOnBehalfTo as a single string (not list) is normalised to 1 entry."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        [],
+        [],
+        {"GrantSendOnBehalfTo": "single@contoso.com"},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["send_on_behalf_count"] == 1
+    assert result["send_on_behalf"][0]["identity"] == "single@contoso.com"
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_no_client() -> None:
+    """client=None raises RuntimeError mentioning 'not available'."""
+    with pytest.raises(RuntimeError, match="not available"):
+        await _get_shared_mailbox_owners_handler(
+            {"email_address": "shared@contoso.com"}, None
+        )
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_multiple_full_access(mock_client: MagicMock) -> None:
+    """Multiple FullAccess entries all have consistent shape."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        [
+            {"User": "alice@contoso.com", "UserDisplayName": "Alice", "IsInherited": False},
+            {"User": "bob@contoso.com", "UserDisplayName": "Bob", "IsInherited": False},
+            {"User": "carol@contoso.com", "UserDisplayName": "Carol", "IsInherited": True},
+        ],
+        [],
+        {"GrantSendOnBehalfTo": None},
+    ]
+
+    result = await _get_shared_mailbox_owners_handler(
+        {"email_address": "shared@contoso.com"}, mock_client
+    )
+
+    assert result["full_access_count"] == 3
+    for entry in result["full_access"]:
+        assert "display_name" in entry
+        assert "identity" in entry
+        assert "inherited" in entry
+        assert "via_group" in entry
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_shared_mailbox_owners_exchange_error_propagates(mock_client: MagicMock) -> None:
+    """Non-not-found RuntimeErrors are not intercepted and propagate unchanged."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError("connection timeout")
+
+    with pytest.raises(RuntimeError, match="connection timeout"):
+        await _get_shared_mailbox_owners_handler(
+            {"email_address": "shared@contoso.com"}, mock_client
+        )
