@@ -1276,6 +1276,112 @@ async def _get_transport_queues_handler(
     }
 
 
+async def _get_smtp_connectors_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return send and/or receive connector inventory with auth and TLS config."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    connector_type = (arguments.get("connector_type") or "all").strip().lower()
+    if connector_type not in ("send", "receive", "all"):
+        raise RuntimeError(
+            f"Invalid connector_type '{connector_type}'. "
+            "Valid values are: send, receive, all"
+        )
+
+    send_connectors = []
+    receive_connectors = []
+
+    if connector_type in ("send", "all"):
+        send_cmdlet = (
+            "Get-SendConnector | Select-Object "
+            "Name, Enabled, "
+            "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
+            "DNSRoutingEnabled, "
+            "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}, "
+            "RequireTLS, TlsDomain, TlsCertificateName, Fqdn, MaxMessageSize, "
+            "@{Name='SourceTransportServers';Expression={@($_.SourceTransportServers | ForEach-Object { $_.Name })}}, "
+            "CloudServicesMailEnabled, UseExternalDNSServersEnabled"
+        )
+
+        try:
+            send_raw = await client.run_cmdlet_with_retry(send_cmdlet)
+        except RuntimeError:
+            raise
+
+        send_list = send_raw if isinstance(send_raw, list) else (
+            [send_raw] if isinstance(send_raw, dict) and send_raw else []
+        )
+
+        send_connectors = [
+            {
+                "name": c.get("Name"),
+                "enabled": c.get("Enabled"),
+                "address_spaces": c.get("AddressSpaces"),
+                "dns_routing_enabled": c.get("DNSRoutingEnabled"),
+                "smart_hosts": c.get("SmartHosts"),
+                "require_tls": c.get("RequireTLS"),
+                "tls_domain": c.get("TlsDomain"),
+                "tls_certificate_name": c.get("TlsCertificateName"),
+                "fqdn": c.get("Fqdn"),
+                "max_message_size": str(c.get("MaxMessageSize") or "") if c.get("MaxMessageSize") else None,
+                "source_transport_servers": c.get("SourceTransportServers"),
+                "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
+                "use_external_dns": c.get("UseExternalDNSServersEnabled"),
+            }
+            for c in send_list
+        ]
+
+    if connector_type in ("receive", "all"):
+        recv_cmdlet = (
+            "Get-ReceiveConnector | Select-Object "
+            "Name, Enabled, "
+            "@{Name='Bindings';Expression={@($_.Bindings | ForEach-Object { $_.ToString() })}}, "
+            "@{Name='RemoteIPRanges';Expression={@($_.RemoteIPRanges | ForEach-Object { $_.ToString() })}}, "
+            "AuthMechanism, PermissionGroups, RequireTLS, TlsCertificateName, "
+            "TransportRole, Server, Fqdn, MaxMessageSize, MaxRecipientsPerMessage"
+        )
+
+        try:
+            recv_raw = await client.run_cmdlet_with_retry(recv_cmdlet)
+        except RuntimeError:
+            raise
+
+        recv_list = recv_raw if isinstance(recv_raw, list) else (
+            [recv_raw] if isinstance(recv_raw, dict) and recv_raw else []
+        )
+
+        receive_connectors = [
+            {
+                "name": c.get("Name"),
+                "enabled": c.get("Enabled"),
+                "bindings": c.get("Bindings"),
+                "remote_ip_ranges": c.get("RemoteIPRanges"),
+                "auth_mechanism": c.get("AuthMechanism"),
+                "permission_groups": c.get("PermissionGroups"),
+                "require_tls": c.get("RequireTLS"),
+                "tls_certificate_name": c.get("TlsCertificateName"),
+                "transport_role": c.get("TransportRole"),
+                "server": c.get("Server"),
+                "fqdn": c.get("Fqdn"),
+                "max_message_size": str(c.get("MaxMessageSize") or "") if c.get("MaxMessageSize") else None,
+                "max_recipients_per_message": c.get("MaxRecipientsPerMessage"),
+            }
+            for c in recv_list
+        ]
+
+    result: dict[str, Any] = {"connector_type_filter": connector_type}
+    if connector_type in ("send", "all"):
+        result["send_connectors"] = send_connectors
+        result["send_connector_count"] = len(send_connectors)
+    if connector_type in ("receive", "all"):
+        result["receive_connectors"] = receive_connectors
+        result["receive_connector_count"] = len(receive_connectors)
+
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -1306,7 +1412,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_database_copies": _get_database_copies_handler,
     "check_mail_flow": _check_mail_flow_handler,
     "get_transport_queues": _get_transport_queues_handler,
-    "get_smtp_connectors": _make_stub("get_smtp_connectors"),
+    "get_smtp_connectors": _get_smtp_connectors_handler,
     "get_dkim_config": _make_stub("get_dkim_config"),
     "get_dmarc_status": _make_stub("get_dmarc_status"),
     "check_mobile_devices": _make_stub("check_mobile_devices"),
