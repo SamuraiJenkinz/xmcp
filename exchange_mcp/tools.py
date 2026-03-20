@@ -233,7 +233,8 @@ TOOL_DEFINITIONS: list[types.Tool] = [
                 "backlog_threshold": {
                     "type": "integer",
                     "description": (
-                        "Only return queues with message count above this number. "
+                        "Message count threshold for backlog flagging. "
+                        "Queues above this count are flagged with over_threshold: true. "
                         "Default is 100."
                     ),
                 },
@@ -1163,6 +1164,118 @@ async def _check_mail_flow_handler(
     }
 
 
+async def _get_transport_queues_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return transport queue depths across all servers with backlog flagging."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    server_name = arguments.get("server_name", "").strip()
+    threshold = int(arguments.get("backlog_threshold") or 100)
+
+    if server_name:
+        # Query single server
+        server_names = [server_name]
+    else:
+        # Discover all transport servers
+        ts_cmdlet = "Get-TransportService | Select-Object Name"
+        try:
+            ts_raw = await client.run_cmdlet_with_retry(ts_cmdlet)
+        except RuntimeError:
+            raise
+
+        ts_list = ts_raw if isinstance(ts_raw, list) else (
+            [ts_raw] if isinstance(ts_raw, dict) and ts_raw else []
+        )
+        server_names = [s.get("Name") for s in ts_list if s.get("Name")]
+
+    if not server_names:
+        return {
+            "servers": [],
+            "server_count": 0,
+            "total_queue_count": 0,
+            "total_message_count": 0,
+            "backlog_threshold": threshold,
+            "servers_with_backlog": [],
+        }
+
+    # Per-server queue query (partial results pattern)
+    server_results = []
+    total_queues = 0
+    total_messages = 0
+    servers_with_backlog = []
+
+    for sname in server_names:
+        safe_server = _escape_ps_single_quote(sname)
+        queue_cmdlet = (
+            f"Get-Queue -Server '{safe_server}' -ResultSize Unlimited | Select-Object "
+            "Identity, MessageCount, DeliveryType, NextHopDomain, "
+            "NextHopCategory, Status, LastError, Velocity"
+        )
+
+        try:
+            q_raw = await client.run_cmdlet_with_retry(queue_cmdlet)
+        except RuntimeError as exc:
+            server_results.append({
+                "server": sname,
+                "queues": [],
+                "queue_count": 0,
+                "total_messages": 0,
+                "has_backlog": False,
+                "error": f"Unable to query queues on '{sname}': {exc}",
+            })
+            continue
+
+        queues = q_raw if isinstance(q_raw, list) else (
+            [q_raw] if isinstance(q_raw, dict) and q_raw else []
+        )
+
+        queue_entries = []
+        server_total = 0
+        server_has_backlog = False
+        for q in queues:
+            count = int(q.get("MessageCount") or 0)
+            over = count > threshold
+            if over:
+                server_has_backlog = True
+            server_total += count
+            queue_entries.append({
+                "identity": q.get("Identity"),
+                "message_count": count,
+                "over_threshold": over,
+                "delivery_type": q.get("DeliveryType"),
+                "next_hop_domain": q.get("NextHopDomain"),
+                "next_hop_category": q.get("NextHopCategory"),
+                "status": q.get("Status"),
+                "last_error": q.get("LastError"),
+                "velocity": q.get("Velocity"),
+            })
+
+        total_queues += len(queue_entries)
+        total_messages += server_total
+        if server_has_backlog:
+            servers_with_backlog.append(sname)
+
+        server_results.append({
+            "server": sname,
+            "queues": queue_entries,
+            "queue_count": len(queue_entries),
+            "total_messages": server_total,
+            "has_backlog": server_has_backlog,
+            "error": None,
+        })
+
+    return {
+        "servers": server_results,
+        "server_count": len(server_results),
+        "total_queue_count": total_queues,
+        "total_message_count": total_messages,
+        "backlog_threshold": threshold,
+        "servers_with_backlog": servers_with_backlog,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -1192,7 +1305,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_dag_health": _get_dag_health_handler,
     "get_database_copies": _get_database_copies_handler,
     "check_mail_flow": _check_mail_flow_handler,
-    "get_transport_queues": _make_stub("get_transport_queues"),
+    "get_transport_queues": _get_transport_queues_handler,
     "get_smtp_connectors": _make_stub("get_smtp_connectors"),
     "get_dkim_config": _make_stub("get_dkim_config"),
     "get_dmarc_status": _make_stub("get_dmarc_status"),
