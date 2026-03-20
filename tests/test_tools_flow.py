@@ -21,7 +21,11 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from exchange_mcp.tools import _check_mail_flow_handler, _get_transport_queues_handler
+from exchange_mcp.tools import (
+    _check_mail_flow_handler,
+    _get_smtp_connectors_handler,
+    _get_transport_queues_handler,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -617,5 +621,210 @@ async def test_get_transport_queues_exchange_error_propagates(mock_client: Magic
 
     with pytest.raises(RuntimeError) as exc_info:
         await _get_transport_queues_handler({}, mock_client)
+
+    assert "connection timeout" in str(exc_info.value)
+
+
+# ===========================================================================
+# get_smtp_connectors tests
+# ===========================================================================
+
+_SEND_CONNECTOR_FULL = {
+    "Name": "Internet Outbound",
+    "Enabled": True,
+    "AddressSpaces": ["SMTP:*;1"],
+    "DNSRoutingEnabled": True,
+    "SmartHosts": [],
+    "RequireTLS": True,
+    "TlsDomain": None,
+    "TlsCertificateName": None,
+    "Fqdn": "mail.contoso.com",
+    "MaxMessageSize": "25 MB (26,214,400 bytes)",
+    "SourceTransportServers": ["EX01"],
+    "CloudServicesMailEnabled": False,
+    "UseExternalDNSServersEnabled": False,
+}
+
+_RECV_CONNECTOR_FULL = {
+    "Name": "Default Frontend EX01",
+    "Enabled": True,
+    "Bindings": ["0.0.0.0:25"],
+    "RemoteIPRanges": ["0.0.0.0-255.255.255.255"],
+    "AuthMechanism": "Tls, Integrated",
+    "PermissionGroups": "AnonymousUsers",
+    "RequireTLS": False,
+    "TlsCertificateName": None,
+    "TransportRole": "FrontendTransport",
+    "Server": "EX01",
+    "Fqdn": "mail.contoso.com",
+    "MaxMessageSize": "36 MB (37,748,736 bytes)",
+    "MaxRecipientsPerMessage": 5000,
+}
+
+
+# ---------------------------------------------------------------------------
+# 1. test_get_smtp_connectors_all
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_all(mock_client: MagicMock) -> None:
+    """Default connector_type=all returns both send and receive connectors."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Get-SendConnector
+        [_SEND_CONNECTOR_FULL],
+        # Call 2: Get-ReceiveConnector
+        [_RECV_CONNECTOR_FULL],
+    ]
+
+    result = await _get_smtp_connectors_handler({}, mock_client)
+
+    assert result["connector_type_filter"] == "all"
+    assert result["send_connector_count"] == 1
+    assert result["receive_connector_count"] == 1
+
+    send = result["send_connectors"][0]
+    assert send["name"] == "Internet Outbound"
+    assert send["enabled"] is True
+    assert send["address_spaces"] == ["SMTP:*;1"]
+    assert send["require_tls"] is True
+    assert send["max_message_size"] == "25 MB (26,214,400 bytes)"
+
+    recv = result["receive_connectors"][0]
+    assert recv["name"] == "Default Frontend EX01"
+    assert recv["bindings"] == ["0.0.0.0:25"]
+    assert recv["auth_mechanism"] == "Tls, Integrated"
+    assert recv["server"] == "EX01"
+
+
+# ---------------------------------------------------------------------------
+# 2. test_get_smtp_connectors_send_only
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_send_only(mock_client: MagicMock) -> None:
+    """connector_type=send returns only send connectors; no receive connector call made."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Only one call: Get-SendConnector
+        [_SEND_CONNECTOR_FULL],
+    ]
+
+    result = await _get_smtp_connectors_handler({"connector_type": "send"}, mock_client)
+
+    assert "send_connectors" in result
+    assert "receive_connectors" not in result
+    assert result["send_connector_count"] == 1
+    mock_client.run_cmdlet_with_retry.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# 3. test_get_smtp_connectors_receive_only
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_receive_only(mock_client: MagicMock) -> None:
+    """connector_type=receive returns only receive connectors; no send connector call made."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Only one call: Get-ReceiveConnector
+        [_RECV_CONNECTOR_FULL],
+    ]
+
+    result = await _get_smtp_connectors_handler({"connector_type": "receive"}, mock_client)
+
+    assert "receive_connectors" in result
+    assert "send_connectors" not in result
+    assert result["receive_connector_count"] == 1
+    mock_client.run_cmdlet_with_retry.assert_called_once()
+
+
+# ---------------------------------------------------------------------------
+# 4. test_get_smtp_connectors_invalid_type
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_invalid_type(mock_client: MagicMock) -> None:
+    """Invalid connector_type raises RuntimeError immediately without Exchange call."""
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_smtp_connectors_handler({"connector_type": "invalid"}, mock_client)
+
+    assert "Invalid connector_type" in str(exc_info.value)
+    mock_client.run_cmdlet_with_retry.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# 5. test_get_smtp_connectors_no_client
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_no_client() -> None:
+    """None client raises RuntimeError mentioning 'not available'."""
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_smtp_connectors_handler({}, None)
+
+    assert "not available" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# 6. test_get_smtp_connectors_empty_results
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_empty_results(mock_client: MagicMock) -> None:
+    """Empty Exchange results produce zero-count summaries for both connector types."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Get-SendConnector returns empty list
+        [],
+        # Call 2: Get-ReceiveConnector returns empty list
+        [],
+    ]
+
+    result = await _get_smtp_connectors_handler({}, mock_client)
+
+    assert result["send_connector_count"] == 0
+    assert result["receive_connector_count"] == 0
+    assert result["send_connectors"] == []
+    assert result["receive_connectors"] == []
+
+
+# ---------------------------------------------------------------------------
+# 7. test_get_smtp_connectors_single_dict_normalized
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_single_dict_normalized(mock_client: MagicMock) -> None:
+    """Single connector returned as dict (not list) is normalized to a list."""
+    mock_client.run_cmdlet_with_retry.side_effect = [
+        # Call 1: Get-SendConnector returns a single dict (Exchange single-result quirk)
+        _SEND_CONNECTOR_FULL,
+        # Call 2: Get-ReceiveConnector returns empty list
+        [],
+    ]
+
+    result = await _get_smtp_connectors_handler({}, mock_client)
+
+    assert result["send_connector_count"] == 1
+    assert result["send_connectors"][0]["name"] == "Internet Outbound"
+
+
+# ---------------------------------------------------------------------------
+# 8. test_get_smtp_connectors_exchange_error_propagates
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio(loop_scope="function")
+async def test_get_smtp_connectors_exchange_error_propagates(mock_client: MagicMock) -> None:
+    """RuntimeError from Get-SendConnector propagates unchanged."""
+    mock_client.run_cmdlet_with_retry.side_effect = RuntimeError("connection timeout")
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await _get_smtp_connectors_handler({}, mock_client)
+
+    assert "connection timeout" in str(exc_info.value)
 
     assert "connection timeout" in str(exc_info.value)
