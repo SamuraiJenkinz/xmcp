@@ -1,11 +1,12 @@
-"""DNS TXT record resolver with TTL-respecting cache, DMARC parser, and SPF parser.
+"""DNS TXT/CNAME record resolver with TTL-respecting cache, DMARC parser, and SPF parser.
 
-Provides async lookups for DMARC (RFC 7489) and SPF (RFC 7208) records using
+Provides async lookups for DMARC (RFC 7489), SPF (RFC 7208), and CNAME records using
 the system default DNS resolver. Results are cached per-name for the duration
 of the record TTL, then evicted.
 
 Exports:
     get_txt_records  - Low-level async TXT record resolver with TTL cache
+    get_cname_record - Async CNAME record resolver with TTL cache
     get_dmarc_record - Async DMARC record lookup and parser
     get_spf_record   - Async SPF record lookup and parser
     parse_dmarc      - Pure-function DMARC tag-value parser
@@ -85,6 +86,48 @@ async def get_txt_records(name: str) -> list[str]:
     except dns.exception.DNSException as exc:
         raise LookupError(
             f"DNS lookup failed for '{name}': {type(exc).__name__}: {exc}"
+        ) from exc
+
+
+async def get_cname_record(name: str) -> str | None:
+    """Resolve a DNS CNAME record, returning the target or None if not found.
+
+    Results are cached for the duration of the record TTL so that repeated
+    calls within the same process avoid redundant network round-trips.
+    NXDOMAIN and NoAnswer results are negative-cached for 300 seconds.
+
+    Args:
+        name: Fully-qualified hostname to resolve CNAME for
+              (e.g. "selector1._domainkey.contoso.com").
+
+    Returns:
+        CNAME target string (trailing dot stripped) or None if no CNAME exists.
+
+    Raises:
+        LookupError: On unexpected DNS failures (network errors, SERVFAIL).
+    """
+    now = time.monotonic()
+    cache_key = f"CNAME:{name}"
+
+    if cache_key in _cache:
+        records, expiry = _cache[cache_key]
+        if now < expiry:
+            return records[0] if records else None
+
+    try:
+        answer = await dns.asyncresolver.resolve(name, dns.rdatatype.CNAME)
+        target = str(answer[0].target).rstrip(".")
+        ttl = int(answer.rrset.ttl) if answer.rrset else _DEFAULT_TTL
+        _cache[cache_key] = ([target], now + ttl)
+        return target
+
+    except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer):
+        _cache[cache_key] = ([], now + _DEFAULT_NEGATIVE_TTL)
+        return None
+
+    except dns.exception.DNSException as exc:
+        raise LookupError(
+            f"CNAME lookup failed for '{name}': {type(exc).__name__}: {exc}"
         ) from exc
 
 

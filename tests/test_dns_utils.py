@@ -1,4 +1,4 @@
-"""Tests for exchange_mcp.dns_utils — DMARC/SPF parsing and DNS resolution.
+"""Tests for exchange_mcp.dns_utils — DMARC/SPF/CNAME parsing and DNS resolution.
 
 Two test categories:
 
@@ -15,12 +15,26 @@ Two test categories:
    - test_get_dmarc_not_found
    - test_cache_returns_same_result
    - test_clear_cache
+
+3. CNAME unit tests (mocked, no network access):
+   - test_get_cname_record_found
+   - test_get_cname_record_nxdomain
+   - test_get_cname_record_no_answer
+   - test_get_cname_record_dns_error
+   - test_get_cname_record_cache_hit
 """
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import dns.exception
+import dns.rdatatype
+import dns.resolver
 import pytest
 
+from exchange_mcp import dns_utils
 from exchange_mcp.dns_utils import (
     clear_cache,
+    get_cname_record,
     get_dmarc_record,
     get_spf_record,
     get_txt_records,
@@ -198,3 +212,91 @@ async def test_clear_cache(fresh_cache):
     # Clear and verify eviction
     clear_cache()
     assert len(_module._cache) == 0, f"Cache should be empty after clear_cache(), got: {_module._cache}"
+
+
+# ===========================================================================
+# CNAME unit tests — mocked, no network required
+# ===========================================================================
+
+
+def _make_cname_answer(target: str, ttl: int = 300):
+    """Build a minimal mock answer object for CNAME resolution."""
+    rdata = MagicMock()
+    rdata.target = MagicMock()
+    rdata.target.__str__ = MagicMock(return_value=target)
+
+    rrset = MagicMock()
+    rrset.ttl = ttl
+
+    answer = MagicMock()
+    answer.__getitem__ = MagicMock(return_value=rdata)
+    answer.rrset = rrset
+    return answer
+
+
+@pytest.mark.asyncio
+async def test_get_cname_record_found(fresh_cache):
+    """get_cname_record returns target string with trailing dot stripped."""
+    target_with_dot = "selector1-contoso-com._domainkey.contoso.onmicrosoft.com."
+    expected_target = "selector1-contoso-com._domainkey.contoso.onmicrosoft.com"
+
+    mock_answer = _make_cname_answer(target_with_dot)
+
+    with patch("dns.asyncresolver.resolve", new=AsyncMock(return_value=mock_answer)):
+        result = await get_cname_record("selector1._domainkey.contoso.com")
+
+    assert result == expected_target
+
+
+@pytest.mark.asyncio
+async def test_get_cname_record_nxdomain(fresh_cache):
+    """get_cname_record returns None when NXDOMAIN is raised."""
+    with patch(
+        "dns.asyncresolver.resolve",
+        new=AsyncMock(side_effect=dns.resolver.NXDOMAIN()),
+    ):
+        result = await get_cname_record("selector1._domainkey.nonexistent.example")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_cname_record_no_answer(fresh_cache):
+    """get_cname_record returns None when NoAnswer is raised."""
+    with patch(
+        "dns.asyncresolver.resolve",
+        new=AsyncMock(side_effect=dns.resolver.NoAnswer()),
+    ):
+        result = await get_cname_record("selector1._domainkey.noanswer.example")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_get_cname_record_dns_error(fresh_cache):
+    """get_cname_record raises LookupError with 'CNAME lookup failed' on DNS failures."""
+    with patch(
+        "dns.asyncresolver.resolve",
+        new=AsyncMock(side_effect=dns.exception.DNSException("timeout")),
+    ):
+        with pytest.raises(LookupError, match="CNAME lookup failed"):
+            await get_cname_record("selector1._domainkey.error.example")
+
+
+@pytest.mark.asyncio
+async def test_get_cname_record_cache_hit(fresh_cache):
+    """get_cname_record uses cache on second call — resolve called only once."""
+    target = "selector1-contoso-com._domainkey.contoso.onmicrosoft.com."
+    mock_answer = _make_cname_answer(target)
+
+    with patch(
+        "dns.asyncresolver.resolve",
+        new=AsyncMock(return_value=mock_answer),
+    ) as mock_resolve:
+        first = await get_cname_record("selector1._domainkey.contoso.com")
+        second = await get_cname_record("selector1._domainkey.contoso.com")
+
+    assert first == second
+    assert mock_resolve.call_count == 1, (
+        f"Expected 1 DNS call (cache hit on second), got {mock_resolve.call_count}"
+    )
