@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 4 in progress — get_dag_health handler complete; 1 more DAG/database tool to go
+**Current focus:** Phase 4 complete — all 3 DAG/database tools implemented; Phase 5 (mail flow tools) next
 
 ## Current Position
 
-Phase: 4 of 9 (DAG and Database Tools) — In progress
-Plan: 2 of 3 in phase 4 complete
-Status: In progress
-Last activity: 2026-03-20 — Completed 04-02-PLAN.md (get_dag_health handler, 10 new tests, 117 total)
+Phase: 4 of 9 (DAG and Database Tools) — Complete
+Plan: 3 of 3 in phase 4 complete
+Status: Phase complete
+Last activity: 2026-03-20 — Completed 04-03-PLAN.md (get_database_copies handler, 11 new tests, 128 total)
 
-Progress: [████░░░░░░] 34% (12/35 plans complete)
+Progress: [████░░░░░░] 37% (13/35 plans complete)
 
 ## Performance Metrics
 
@@ -30,10 +30,10 @@ Progress: [████░░░░░░] 34% (12/35 plans complete)
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
-| 04-dag-and-database-tools | 2/3 | ~8 min | 4 min |
+| 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-02 (5 min), 03-03 (2 min), 04-01 (3 min), 04-02 (5 min)
+- Last 5 plans: 03-03 (2 min), 04-01 (3 min), 04-02 (5 min), 04-03 (6 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -91,6 +91,10 @@ Recent decisions affecting current work:
 - [04-02]: Queue lengths as raw integers, no threshold interpretation — context-dependent meaning, LLM interprets
 - [04-02]: Content index state passed as-is (Healthy/Crawling/Failed/etc.) — all values meaningful as strings
 - [04-02]: test_call_tool_not_implemented_raises updated to use get_database_copies — get_dag_health is now real
+- [04-03]: Activation preference from Get-MailboxDatabase (authoritative), not Get-MailboxDatabaseCopyStatus (known bug)
+- [04-03]: Both dict and list ActivationPreference serialization formats handled (Exchange version-dependent)
+- [04-03]: Zero copies raises RuntimeError (abnormal database state, not valid empty result)
+- [04-03]: test_call_tool_not_implemented_raises updated to use check_mail_flow — get_database_copies is now real
 
 ### Pending Todos
 
@@ -104,6 +108,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T14:41:00Z
-Stopped at: Completed 04-02-PLAN.md — get_dag_health handler, 10 new tests, 117 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T14:49:49Z
+Stopped at: Completed 04-03-PLAN.md — get_database_copies handler, 11 new tests, 128 passing (3 pre-existing exchange integration failures)
 Resume file: None
