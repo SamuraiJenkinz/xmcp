@@ -1001,6 +1001,169 @@ async def _get_dag_health_handler(
 
 
 # ---------------------------------------------------------------------------
+# Mail flow and security tool handlers (Phase 5)
+# ---------------------------------------------------------------------------
+
+
+async def _check_mail_flow_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Trace routing path between sender and recipient via connector config."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    sender = arguments.get("sender", "").strip()
+    recipient = arguments.get("recipient", "").strip()
+    if not sender:
+        raise RuntimeError(
+            "sender is required. Provide the sender's email address."
+        )
+    if not recipient:
+        raise RuntimeError(
+            "recipient is required. Provide the recipient's email address."
+        )
+    _validate_upn(sender)
+    _validate_upn(recipient)
+
+    recipient_domain = recipient.split("@")[1].lower()
+    sender_domain = sender.split("@")[1].lower()
+
+    # Call 1: Check accepted domains to detect internal routing
+    accepted_cmdlet = "Get-AcceptedDomain | Select-Object DomainName, DomainType, Default"
+
+    # Call 2: Send connectors for outbound route matching
+    # AddressSpaces, SmartHosts, SourceTransportServers are multi-valued collections
+    # -- must use ForEach-Object { $_.ToString() } projection
+    send_cmdlet = (
+        "Get-SendConnector | Select-Object "
+        "Name, Enabled, "
+        "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
+        "DNSRoutingEnabled, "
+        "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}, "
+        "RequireTLS, TlsDomain, Fqdn, "
+        "@{Name='SourceTransportServers';Expression={@($_.SourceTransportServers | ForEach-Object { $_.Name })}}"
+    )
+
+    # Call 3: Receive connectors for inbound context
+    recv_cmdlet = (
+        "Get-ReceiveConnector | Select-Object "
+        "Name, Enabled, AuthMechanism, PermissionGroups, RequireTLS, "
+        "TransportRole, Server, Fqdn"
+    )
+
+    try:
+        accepted_raw = await client.run_cmdlet_with_retry(accepted_cmdlet)
+        send_raw = await client.run_cmdlet_with_retry(send_cmdlet)
+        recv_raw = await client.run_cmdlet_with_retry(recv_cmdlet)
+    except RuntimeError:
+        raise
+
+    # Normalize results
+    accepted_list = accepted_raw if isinstance(accepted_raw, list) else (
+        [accepted_raw] if isinstance(accepted_raw, dict) and accepted_raw else []
+    )
+    send_list = send_raw if isinstance(send_raw, list) else (
+        [send_raw] if isinstance(send_raw, dict) and send_raw else []
+    )
+    recv_list = recv_raw if isinstance(recv_raw, list) else (
+        [recv_raw] if isinstance(recv_raw, dict) and recv_raw else []
+    )
+
+    # Check if recipient domain is an accepted domain (internal routing)
+    accepted_domains = {
+        (d.get("DomainName") or "").lower() for d in accepted_list
+    }
+    is_internal = recipient_domain in accepted_domains
+    sender_is_internal = sender_domain in accepted_domains
+
+    # Match send connectors for the recipient domain
+    matching_connectors = []
+    for conn in send_list:
+        if not conn.get("Enabled"):
+            continue
+        for addr_space in (conn.get("AddressSpaces") or []):
+            # AddressSpaces are strings like "SMTP:contoso.com;1" or "SMTP:*;1"
+            addr_lower = addr_space.lower()
+            # Extract domain portion (before semicolon cost separator)
+            addr_domain = addr_lower.split(";")[0]
+            # Strip "smtp:" prefix if present
+            if ":" in addr_domain:
+                addr_domain = addr_domain.split(":", 1)[1]
+            addr_domain = addr_domain.strip()
+
+            if (addr_domain == recipient_domain or
+                    addr_domain == "*" or
+                    (addr_domain.startswith("*.") and
+                     recipient_domain.endswith(addr_domain[1:]))):
+                matching_connectors.append({
+                    "name": conn.get("Name"),
+                    "address_spaces": conn.get("AddressSpaces"),
+                    "dns_routing_enabled": conn.get("DNSRoutingEnabled"),
+                    "smart_hosts": conn.get("SmartHosts"),
+                    "require_tls": conn.get("RequireTLS"),
+                    "tls_domain": conn.get("TlsDomain"),
+                    "fqdn": conn.get("Fqdn"),
+                    "source_transport_servers": conn.get("SourceTransportServers"),
+                })
+                break
+
+    # Build routing summary
+    if is_internal:
+        routing_type = "internal"
+        routing_description = (
+            f"Internal delivery: '{recipient_domain}' is an accepted domain. "
+            "Mail routes directly to the recipient's mailbox database via SmtpDeliveryToMailbox."
+        )
+    elif matching_connectors:
+        primary = matching_connectors[0]
+        if primary.get("smart_hosts"):
+            next_hop = f"Smart host(s): {', '.join(primary['smart_hosts'])}"
+        elif primary.get("dns_routing_enabled"):
+            next_hop = f"DNS routing to {recipient_domain}"
+        else:
+            next_hop = "Unknown next hop"
+        routing_type = "external"
+        routing_description = (
+            f"Outbound via send connector '{primary['name']}'. "
+            f"Next hop: {next_hop}. "
+            f"TLS required: {primary.get('require_tls', False)}."
+        )
+    else:
+        routing_type = "unroutable"
+        routing_description = (
+            f"No send connector matches domain '{recipient_domain}'. "
+            "Mail to this domain may be undeliverable."
+        )
+
+    return {
+        "sender": sender,
+        "recipient": recipient,
+        "recipient_domain": recipient_domain,
+        "sender_domain": sender_domain,
+        "sender_is_internal": sender_is_internal,
+        "recipient_is_internal": is_internal,
+        "routing_type": routing_type,
+        "routing_description": routing_description,
+        "matching_send_connectors": matching_connectors,
+        "matching_connector_count": len(matching_connectors),
+        "receive_connectors": [
+            {
+                "name": r.get("Name"),
+                "enabled": r.get("Enabled"),
+                "auth_mechanism": r.get("AuthMechanism"),
+                "permission_groups": r.get("PermissionGroups"),
+                "require_tls": r.get("RequireTLS"),
+                "transport_role": r.get("TransportRole"),
+                "server": r.get("Server"),
+                "fqdn": r.get("Fqdn"),
+            }
+            for r in recv_list
+        ],
+        "accepted_domains": sorted(accepted_domains),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -1028,7 +1191,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "list_dag_members": _list_dag_members_handler,
     "get_dag_health": _get_dag_health_handler,
     "get_database_copies": _get_database_copies_handler,
-    "check_mail_flow": _make_stub("check_mail_flow"),
+    "check_mail_flow": _check_mail_flow_handler,
     "get_transport_queues": _make_stub("get_transport_queues"),
     "get_smtp_connectors": _make_stub("get_smtp_connectors"),
     "get_dkim_config": _make_stub("get_dkim_config"),
