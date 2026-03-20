@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 4 complete and verified — all 3 DAG/database tools implemented; Phase 5 (Mail Flow and Security Tools) next
+**Current focus:** Phase 5 in progress — check_mail_flow handler complete; 4 more mail flow + security tools remain
 
 ## Current Position
 
-Phase: 4 of 9 (DAG and Database Tools) — Complete
-Plan: 3 of 3 in phase 4 complete
-Status: Phase complete — verified (4/4 must-haves passed)
-Last activity: 2026-03-20 — Phase 4 verified, 128 tests passing (3 pre-existing integration failures)
+Phase: 5 of 9 (Mail Flow and Security Tools) — In progress
+Plan: 1 of 5 in phase 5 complete
+Status: In progress
+Last activity: 2026-03-20 — Completed 05-01-PLAN.md — check_mail_flow handler, 10 new tests, 138 passing (3 pre-existing integration failures)
 
-Progress: [████░░░░░░] 37% (13/35 plans complete)
+Progress: [████░░░░░░] 40% (14/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
-- Average duration: ~8 min
-- Total execution time: ~77 min
+- Total plans completed: 14
+- Average duration: ~6 min
+- Total execution time: ~80 min
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [████░░░░░░] 37% (13/35 plans complete)
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
+| 05-mail-flow-and-security-tools | 1/5 | 3 min | 3 min |
 
 **Recent Trend:**
-- Last 5 plans: 03-03 (2 min), 04-01 (3 min), 04-02 (5 min), 04-03 (6 min)
+- Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -95,6 +96,12 @@ Recent decisions affecting current work:
 - [04-03]: Both dict and list ActivationPreference serialization formats handled (Exchange version-dependent)
 - [04-03]: Zero copies raises RuntimeError (abnormal database state, not valid empty result)
 - [04-03]: test_call_tool_not_implemented_raises updated to use check_mail_flow — get_database_copies is now real
+- [05-01]: check_mail_flow is config-based route analysis only — no test messages sent, safe for production use
+- [05-01]: Internal routing check uses accepted domains set membership; wildcard/subdomain connectors not checked for internal
+- [05-01]: AddressSpace parsing: strip "SMTP:" prefix and ";cost" suffix before domain comparison
+- [05-01]: Enabled-only connector filtering before domain matching — Enabled:False connectors skipped
+- [05-01]: routing_type=internal takes precedence over connector matching when recipient domain is accepted
+- [05-01]: test_call_tool_not_implemented_raises updated to get_transport_queues — check_mail_flow is now real
 
 ### Pending Todos
 
@@ -108,6 +115,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T14:49:49Z
-Stopped at: Completed 04-03-PLAN.md — get_database_copies handler, 11 new tests, 128 passing (3 pre-existing exchange integration failures)
+Last session: 2026-03-20T17:49:22Z
+Stopped at: Completed 05-01-PLAN.md — check_mail_flow handler, 10 new tests, 138 passing (3 pre-existing exchange integration failures)
 Resume file: None
