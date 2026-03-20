@@ -484,6 +484,100 @@ async def _get_mailbox_stats_handler(
     }
 
 
+async def _search_mailboxes_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Search for mailboxes by database, type, or display name pattern."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    filter_type = arguments.get("filter_type", "")
+    filter_value = arguments.get("filter_value", "").strip()
+    max_results = int(arguments.get("max_results") or 100)
+
+    if not filter_value:
+        raise RuntimeError(
+            "filter_value is required. Provide a database name, mailbox type, or display name to search for."
+        )
+
+    safe_val = _escape_ps_single_quote(filter_value)
+    select_fields = "DisplayName, PrimarySmtpAddress, RecipientTypeDetails, Database"
+
+    # Request one extra to detect truncation
+    result_size = max_results + 1
+
+    if filter_type == "database":
+        cmdlet = (
+            f"Get-Mailbox -Database '{safe_val}' -ResultSize {result_size} "
+            f"| Select-Object {select_fields}"
+        )
+    elif filter_type == "type":
+        cmdlet = (
+            f"Get-Mailbox -RecipientTypeDetails {safe_val} -ResultSize {result_size} "
+            f"| Select-Object {select_fields}"
+        )
+    elif filter_type == "name":
+        # Strip trailing wildcard — ANR is already a prefix match
+        anr_val = safe_val.rstrip("*")
+        cmdlet = (
+            f"Get-Mailbox -Anr '{anr_val}' -ResultSize {result_size} "
+            f"| Select-Object {select_fields}"
+        )
+    else:
+        raise RuntimeError(
+            f"Unknown filter_type '{filter_type}'. "
+            "Valid values are: database, type, name"
+        )
+
+    try:
+        raw = await client.run_cmdlet_with_retry(cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            return {
+                "results": [],
+                "count": 0,
+                "truncated": False,
+                "message": f"No mailboxes matched the filter '{filter_value}'.",
+            }
+        raise
+
+    # Normalize single-result dict vs list
+    results = raw if isinstance(raw, list) else ([raw] if isinstance(raw, dict) and raw else [])
+
+    truncated = len(results) > max_results
+    results = results[:max_results]
+
+    if not results:
+        return {
+            "results": [],
+            "count": 0,
+            "truncated": False,
+            "message": f"No mailboxes matched the filter '{filter_value}'.",
+        }
+
+    mailboxes = [
+        {
+            "display_name": r.get("DisplayName"),
+            "email_address": r.get("PrimarySmtpAddress"),
+            "mailbox_type": r.get("RecipientTypeDetails"),
+            "database": r.get("Database"),
+        }
+        for r in results
+    ]
+
+    result_dict: dict[str, Any] = {
+        "results": mailboxes,
+        "count": len(mailboxes),
+        "truncated": truncated,
+    }
+    if truncated:
+        result_dict["message"] = (
+            f"Results capped at {max_results}. Narrow your search to see all matches."
+        )
+    return result_dict
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -507,7 +601,7 @@ def _make_stub(tool_name: str):
 TOOL_DISPATCH: dict[str, Any] = {
     "ping": _ping_handler,
     "get_mailbox_stats": _get_mailbox_stats_handler,
-    "search_mailboxes": _make_stub("search_mailboxes"),
+    "search_mailboxes": _search_mailboxes_handler,
     "get_shared_mailbox_owners": _make_stub("get_shared_mailbox_owners"),
     "list_dag_members": _make_stub("list_dag_members"),
     "get_dag_health": _make_stub("get_dag_health"),
