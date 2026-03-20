@@ -796,6 +796,118 @@ async def _list_dag_members_handler(
     }
 
 
+async def _get_database_copies_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return all copies of a named database with activation preferences and size."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    database_name = arguments.get("database_name", "").strip()
+    if not database_name:
+        raise RuntimeError(
+            "database_name is required. Provide the name of the mailbox database to inspect."
+        )
+    safe = _escape_ps_single_quote(database_name)
+
+    # Call 1: Copy status for all copies of the database
+    copies_cmdlet = (
+        f"Get-MailboxDatabaseCopyStatus -Identity '{safe}' | Select-Object "
+        "Name, Status, CopyQueueLength, ReplayQueueLength, "
+        "ContentIndexState, LastCopiedLogTime, LastInspectedLogTime, "
+        "LastReplayedLogTime, MailboxServer"
+    )
+
+    # Call 2: Authoritative activation preferences + database size + mounted info
+    # ActivationPreference from Get-MailboxDatabaseCopyStatus is UNRELIABLE (known bug)
+    # Get-MailboxDatabase returns ActivationPreference as a dictionary: {ServerName: Preference}
+    # -Status switch required for DatabaseSize and Mounted fields
+    # ByteQuantifiedSize requires extraction: "553.9 GB (594,718,752,768 bytes)"
+    db_cmdlet = (
+        f"Get-MailboxDatabase -Identity '{safe}' -Status | Select-Object "
+        "Name, Mounted, MountedOnServer, "
+        "@{Name='DatabaseSizeBytes';Expression={"
+        "[long]($_.DatabaseSize.ToString().Split('(')[1].Split(' ')[0].Replace(',',''))"
+        "}}, "
+        "@{Name='DatabaseSize';Expression={$_.DatabaseSize.ToString().Split('(')[0].Trim()}}, "
+        "ActivationPreference"
+    )
+
+    try:
+        copies_raw = await client.run_cmdlet_with_retry(copies_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No database found with name '{database_name}'. "
+                "Check the database name and try again."
+            ) from None
+        raise
+
+    try:
+        db_raw = await client.run_cmdlet_with_retry(db_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No database found with name '{database_name}'. "
+                "Check the database name and try again."
+            ) from None
+        raise
+
+    # Normalize
+    copies = copies_raw if isinstance(copies_raw, list) else (
+        [copies_raw] if isinstance(copies_raw, dict) and copies_raw else []
+    )
+    db_info = db_raw if isinstance(db_raw, dict) else (db_raw[0] if db_raw else {})
+
+    if not copies:
+        raise RuntimeError(
+            f"No database copies found for '{database_name}'. "
+            "The database may not exist or has no copies configured."
+        )
+
+    # Build activation preference lookup from Get-MailboxDatabase
+    # ActivationPreference serializes as a dict {ServerName: int} or list of key-value pairs
+    act_pref_raw = db_info.get("ActivationPreference") or {}
+    act_pref_map: dict[str, int] = {}
+    if isinstance(act_pref_raw, dict):
+        # Direct dict: {"EX01": 1, "EX02": 2}
+        act_pref_map = {k: int(v) for k, v in act_pref_raw.items()}
+    elif isinstance(act_pref_raw, list):
+        # List of dicts: [{"Key": "EX01", "Value": 1}, ...]
+        for entry in act_pref_raw:
+            if isinstance(entry, dict) and "Key" in entry and "Value" in entry:
+                act_pref_map[str(entry["Key"])] = int(entry["Value"])
+
+    copy_details = []
+    for c in copies:
+        status = c.get("Status", "")
+        server = c.get("MailboxServer", "")
+        copy_details.append({
+            "name": c.get("Name"),
+            "server": server,
+            "status": status,
+            "is_mounted": status == "Mounted",
+            "activation_preference": act_pref_map.get(server),
+            "copy_queue_length": c.get("CopyQueueLength"),
+            "replay_queue_length": c.get("ReplayQueueLength"),
+            "content_index_state": c.get("ContentIndexState"),
+            "last_copied_log_time": c.get("LastCopiedLogTime"),
+            "last_inspected_log_time": c.get("LastInspectedLogTime"),
+            "last_replayed_log_time": c.get("LastReplayedLogTime"),
+        })
+
+    return {
+        "database_name": db_info.get("Name", database_name),
+        "database_size": _format_size(db_info.get("DatabaseSizeBytes")),
+        "database_size_bytes": db_info.get("DatabaseSizeBytes"),
+        "mounted_on_server": db_info.get("MountedOnServer"),
+        "copy_count": len(copy_details),
+        "copies": copy_details,
+    }
+
+
 async def _get_dag_health_handler(
     arguments: dict[str, Any], client: ExchangeClient | None
 ) -> dict[str, Any]:
@@ -915,7 +1027,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_shared_mailbox_owners": _get_shared_mailbox_owners_handler,
     "list_dag_members": _list_dag_members_handler,
     "get_dag_health": _get_dag_health_handler,
-    "get_database_copies": _make_stub("get_database_copies"),
+    "get_database_copies": _get_database_copies_handler,
     "check_mail_flow": _make_stub("check_mail_flow"),
     "get_transport_queues": _make_stub("get_transport_queues"),
     "get_smtp_connectors": _make_stub("get_smtp_connectors"),
