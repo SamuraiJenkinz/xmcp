@@ -191,7 +191,7 @@ async def test_call_tool_not_implemented_raises() -> None:
     """handle_call_tool() with a stub Exchange tool must raise RuntimeError."""
     with pytest.raises(RuntimeError) as exc_info:
         await handle_call_tool(
-            "get_dkim_config",
+            "get_dmarc_status",
             {},
         )
 

@@ -20,6 +20,8 @@ from typing import TYPE_CHECKING, Any
 
 import mcp.types as types
 
+from exchange_mcp import dns_utils
+
 if TYPE_CHECKING:
     from exchange_mcp.exchange_client import ExchangeClient
 
@@ -274,10 +276,11 @@ TOOL_DEFINITIONS: list[types.Tool] = [
         name="get_dkim_config",
         description=(
             "Returns the DKIM (DomainKeys Identified Mail) signing configuration from "
-            "Exchange for a domain: whether signing is enabled, selector names, and the "
-            "CNAME records needed in DNS. "
+            "Exchange for a domain: whether signing is enabled, selector names, the "
+            "CNAME records needed in DNS, and whether those CNAMEs are correctly published. "
             "Use when asked about DKIM signing setup: 'Is DKIM enabled for contoso.com?', "
             "'What are the DKIM selectors?', 'Show DKIM signing config'. "
+            "If omitted, returns configuration for all domains. "
             "Does NOT check DMARC policy or SPF — use get_dmarc_status for that."
         ),
         inputSchema={
@@ -285,10 +288,13 @@ TOOL_DEFINITIONS: list[types.Tool] = [
             "properties": {
                 "domain": {
                     "type": "string",
-                    "description": "The domain name to check DKIM configuration for.",
+                    "description": (
+                        "The domain name to check DKIM configuration for. "
+                        "If omitted, returns configuration for all domains."
+                    ),
                 }
             },
-            "required": ["domain"],
+            "required": [],
         },
     ),
     types.Tool(
@@ -1382,6 +1388,116 @@ async def _get_smtp_connectors_handler(
     return result
 
 
+async def _get_dkim_config_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return DKIM signing config with live DNS CNAME validation."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    domain = arguments.get("domain", "").strip().lower()
+
+    if domain:
+        safe = _escape_ps_single_quote(domain)
+        dkim_cmdlet = (
+            f"Get-DkimSigningConfig -Identity '{safe}' | Select-Object "
+            "Name, Enabled, Status, Selector1CNAME, Selector2CNAME, "
+            "KeyCreationTime, RotateOnDate"
+        )
+    else:
+        dkim_cmdlet = (
+            "Get-DkimSigningConfig | Select-Object "
+            "Name, Enabled, Status, Selector1CNAME, Selector2CNAME, "
+            "KeyCreationTime, RotateOnDate"
+        )
+
+    try:
+        raw = await client.run_cmdlet_with_retry(dkim_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if domain and ("couldn't find" in msg or "could not find" in msg or "object not found" in msg):
+            raise RuntimeError(
+                f"No DKIM signing configuration found for domain '{domain}'."
+            ) from None
+        raise
+
+    configs = raw if isinstance(raw, list) else (
+        [raw] if isinstance(raw, dict) and raw else []
+    )
+
+    results = []
+    for cfg in configs:
+        cfg_domain = (cfg.get("Name") or "").lower()
+        sel1_expected = cfg.get("Selector1CNAME")
+        sel2_expected = cfg.get("Selector2CNAME")
+
+        # DNS CNAME validation
+        # _SENTINEL distinguishes "DNS error (unknown)" from "NXDOMAIN/NoAnswer (not published)"
+        _SENTINEL = object()
+        sel1_published = None
+        sel2_published = None
+        sel1_match = None
+        sel2_match = None
+
+        if cfg_domain:
+            sel1_result = _SENTINEL
+            sel2_result = _SENTINEL
+
+            try:
+                sel1_result = await dns_utils.get_cname_record(
+                    f"selector1._domainkey.{cfg_domain}"
+                )
+            except LookupError:
+                pass  # DNS error — leave match as None (unknown)
+
+            try:
+                sel2_result = await dns_utils.get_cname_record(
+                    f"selector2._domainkey.{cfg_domain}"
+                )
+            except LookupError:
+                pass
+
+            # Only update published/match when DNS call succeeded (not sentinel)
+            if sel1_result is not _SENTINEL:
+                sel1_published = sel1_result
+                if sel1_published is not None and sel1_expected is not None:
+                    sel1_match = (
+                        sel1_published.lower().rstrip(".")
+                        == sel1_expected.lower().rstrip(".")
+                    )
+                elif sel1_published is None and sel1_expected is not None:
+                    sel1_match = False  # Expected but not published
+
+            if sel2_result is not _SENTINEL:
+                sel2_published = sel2_result
+                if sel2_published is not None and sel2_expected is not None:
+                    sel2_match = (
+                        sel2_published.lower().rstrip(".")
+                        == sel2_expected.lower().rstrip(".")
+                    )
+                elif sel2_published is None and sel2_expected is not None:
+                    sel2_match = False  # Expected but not published
+
+        results.append({
+            "domain": cfg_domain,
+            "enabled": cfg.get("Enabled"),
+            "status": cfg.get("Status"),
+            "selector1_cname_expected": sel1_expected,
+            "selector1_cname_published": sel1_published,
+            "selector1_dns_match": sel1_match,
+            "selector2_cname_expected": sel2_expected,
+            "selector2_cname_published": sel2_published,
+            "selector2_dns_match": sel2_match,
+            "key_creation_time": cfg.get("KeyCreationTime"),
+            "rotate_on_date": cfg.get("RotateOnDate"),
+        })
+
+    return {
+        "domains": results,
+        "domain_count": len(results),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -1413,7 +1529,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "check_mail_flow": _check_mail_flow_handler,
     "get_transport_queues": _get_transport_queues_handler,
     "get_smtp_connectors": _get_smtp_connectors_handler,
-    "get_dkim_config": _make_stub("get_dkim_config"),
+    "get_dkim_config": _get_dkim_config_handler,
     "get_dmarc_status": _make_stub("get_dmarc_status"),
     "check_mobile_devices": _make_stub("check_mobile_devices"),
     "get_hybrid_config": _make_stub("get_hybrid_config"),
