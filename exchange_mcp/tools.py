@@ -796,6 +796,98 @@ async def _list_dag_members_handler(
     }
 
 
+async def _get_dag_health_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return replication health report for all database copies in a DAG."""
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    dag_name = arguments.get("dag_name", "").strip()
+    if not dag_name:
+        raise RuntimeError(
+            "dag_name is required. Provide the name of the DAG to check."
+        )
+    safe = _escape_ps_single_quote(dag_name)
+
+    # Step 1: Get DAG member list
+    # Only need member names — use minimal Select-Object
+    dag_cmdlet = (
+        f"Get-DatabaseAvailabilityGroup -Identity '{safe}' | Select-Object "
+        "@{Name='Members';Expression={@($_.Servers | ForEach-Object { $_.Name })}}"
+    )
+
+    try:
+        dag_raw = await client.run_cmdlet_with_retry(dag_cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "couldn't find" in msg or "could not find" in msg or "object not found" in msg:
+            raise RuntimeError(
+                f"No DAG found with name '{dag_name}'. "
+                "Check the DAG name and try again."
+            ) from None
+        raise
+
+    dag = dag_raw if isinstance(dag_raw, dict) else (dag_raw[0] if dag_raw else {})
+    members = dag.get("Members") or []
+    if isinstance(members, str):
+        members = [members]
+
+    # Step 2: Per-server replication health (partial results pattern)
+    # Each server call is isolated — failures produce error entries, not tool failure
+    server_results = []
+    for member_name in members:
+        safe_member = _escape_ps_single_quote(member_name)
+
+        health_cmdlet = (
+            f"Get-MailboxDatabaseCopyStatus -Server '{safe_member}' | Select-Object "
+            "Name, Status, CopyQueueLength, ReplayQueueLength, "
+            "ContentIndexState, LastCopiedLogTime, LastInspectedLogTime, "
+            "LastReplayedLogTime, MailboxServer"
+        )
+
+        try:
+            health_raw = await client.run_cmdlet_with_retry(health_cmdlet)
+        except RuntimeError as exc:
+            server_results.append({
+                "server": member_name,
+                "copies": [],
+                "error": f"Unable to query server '{member_name}': {exc}",
+            })
+            continue
+
+        copies = health_raw if isinstance(health_raw, list) else (
+            [health_raw] if isinstance(health_raw, dict) and health_raw else []
+        )
+
+        copy_details = []
+        for c in copies:
+            status = c.get("Status", "")
+            copy_details.append({
+                "name": c.get("Name"),
+                "status": status,
+                "is_mounted": status == "Mounted",
+                "copy_queue_length": c.get("CopyQueueLength"),
+                "replay_queue_length": c.get("ReplayQueueLength"),
+                "content_index_state": c.get("ContentIndexState"),
+                "last_copied_log_time": c.get("LastCopiedLogTime"),
+                "last_inspected_log_time": c.get("LastInspectedLogTime"),
+                "last_replayed_log_time": c.get("LastReplayedLogTime"),
+            })
+
+        server_results.append({
+            "server": member_name,
+            "copies": copy_details,
+            "error": None,
+        })
+
+    return {
+        "dag_name": dag_name,
+        "member_count": len(members),
+        "servers": server_results,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -822,7 +914,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "search_mailboxes": _search_mailboxes_handler,
     "get_shared_mailbox_owners": _get_shared_mailbox_owners_handler,
     "list_dag_members": _list_dag_members_handler,
-    "get_dag_health": _make_stub("get_dag_health"),
+    "get_dag_health": _get_dag_health_handler,
     "get_database_copies": _make_stub("get_database_copies"),
     "check_mail_flow": _make_stub("check_mail_flow"),
     "get_transport_queues": _make_stub("get_transport_queues"),
