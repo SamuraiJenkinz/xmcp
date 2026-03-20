@@ -101,14 +101,14 @@ Plans:
   4. get_dkim_config returns DKIM signing configuration and CNAME record data per domain
   5. get_dmarc_status returns a live-resolved DMARC and SPF policy without relying on PowerShell
   6. check_mobile_devices returns ActiveSync device partnerships with access state, last sync, and wipe history
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 05-01: Implement check_mail_flow and get_transport_queues with configurable backlog threshold
-- [ ] 05-02: Implement get_smtp_connectors with full connector inventory schema
-- [ ] 05-03: Implement get_dkim_config pulling Exchange DKIM signing settings
-- [ ] 05-04: Implement get_dmarc_status using dnspython DNS resolver (no PowerShell dependency)
-- [ ] 05-05: Implement check_mobile_devices with all ActiveSync partnership fields
+- [ ] 05-01-PLAN.md — Implement check_mail_flow with config-based route inference and accepted domain detection
+- [ ] 05-02-PLAN.md — Implement get_transport_queues with per-server iteration and backlog threshold flagging
+- [ ] 05-03-PLAN.md — Implement get_smtp_connectors with send/receive filter and multi-valued property projection
+- [ ] 05-04-PLAN.md — Add get_cname_record to dns_utils and implement get_dkim_config with DNS CNAME validation
+- [ ] 05-05-PLAN.md — Implement get_dmarc_status (pure DNS) and check_mobile_devices (Exchange with wipe history)
 
 ### Phase 6: Hybrid Tools
 **Goal**: All three hybrid tools are implemented and validate the live Exchange Online connector health — completing the full 15-tool MCP server
