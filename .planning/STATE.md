@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 2 complete, verified — ready for Phase 3
+**Current focus:** Phase 3 in progress — plan 01 complete (get_mailbox_stats)
 
 ## Current Position
 
-Phase: 2 of 9 (MCP Server Scaffold) — COMPLETE
-Plan: 3 of 3 in phase 2 (all complete)
-Status: Phase 2 verified and complete
-Last activity: 2026-03-19 — Phase 2 execution complete (3 plans, 56 tests passing, verification passed 4/4)
+Phase: 3 of 9 (Mailbox Tools) — In progress
+Plan: 1 of 3 in phase 3 complete
+Status: In progress
+Last activity: 2026-03-20 — Completed 03-01-PLAN.md (helpers + get_mailbox_stats handler, 19 tests passing)
 
-Progress: [███░░░░░░░] 20% (7/35 plans complete)
+Progress: [████░░░░░░] 23% (8/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
-- Average duration: 10 min
-- Total execution time: ~65 min
+- Total plans completed: 8
+- Average duration: ~10 min
+- Total execution time: ~69 min
 
 **By Phase:**
 
@@ -29,10 +29,11 @@ Progress: [███░░░░░░░] 20% (7/35 plans complete)
 |-------|-------|-------|----------|
 | 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
 | 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
+| 03-mailbox-tools | 1/3 | ~4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 01-04 (5 min), 02-01 (7 min), 02-02 (4 min), 02-03 (4 min)
-- Trend: Tool registration/description plans very fast; well-scoped single-concern work
+- Last 5 plans: 02-01 (7 min), 02-02 (4 min), 02-03 (4 min), 03-01 (4 min)
+- Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
 
@@ -66,6 +67,10 @@ Recent decisions affecting current work:
 - [02-03]: Does NOT clause cross-references sibling tool by name — makes disambiguation machine-readable
 - [02-03]: Single-quoted example queries in descriptions as LLM trigger phrase convention
 - [02-03]: "PowerShell" forbidden in tool descriptions — descriptions are user-facing, not admin-facing — avoids circular import; client passed at call time
+- [03-01]: last_logon passed through as-is from Exchange — no date parsing; LLM reads /Date(ms)/ format
+- [03-01]: total_size_bytes included alongside human-friendly total_size — LLM needs raw bytes for quota % calculation
+- [03-01]: Quota values passed as strings (not parsed) — Exchange returns full natural language strings; no parsing needed
+- [03-01]: test_call_tool_not_implemented_raises updated to use search_mailboxes stub — get_mailbox_stats is now real
 
 ### Pending Todos
 
@@ -79,6 +84,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-19
-Stopped at: Phase 2 complete — all 3 plans executed, 56 tests passing, verification passed 4/4
+Last session: 2026-03-20
+Stopped at: Completed 03-01-PLAN.md — helpers + get_mailbox_stats handler, 75 tests passing (3 pre-existing exchange integration failures)
 Resume file: None
