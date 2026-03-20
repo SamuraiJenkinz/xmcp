@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Exchange Client Foundation** - Async PowerShell subprocess runner, interactive/CBA auth, DNS utilities, JSON output parsing
 - [x] **Phase 2: MCP Server Scaffold** - stdio transport, tool registration infrastructure, stderr discipline, error handling
 - [x] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
-- [ ] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
+- [x] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
 - [ ] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
 - [ ] **Phase 6: Hybrid Tools** - get_hybrid_config, get_migration_batches, get_connector_status
 - [ ] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
@@ -86,9 +86,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Implement list_dag_members with DAG metadata, per-server enrichment (site, version), and active/passive database counts
-- [ ] 04-02-PLAN.md — Implement get_dag_health with per-server replication health and partial results for unreachable servers
-- [ ] 04-03-PLAN.md — Implement get_database_copies with authoritative activation preferences from Get-MailboxDatabase and database size
+- [x] 04-01-PLAN.md — Implement list_dag_members with DAG metadata, per-server enrichment (site, version), and active/passive database counts
+- [x] 04-02-PLAN.md — Implement get_dag_health with per-server replication health and partial results for unreachable servers
+- [x] 04-03-PLAN.md — Implement get_database_copies with authoritative activation preferences from Get-MailboxDatabase and database size
 
 ### Phase 5: Mail Flow and Security Tools
 **Goal**: All six mail flow and security tools are implemented and return accurate data — the security tools combining live DNS lookups with Exchange PowerShell data where needed
@@ -190,7 +190,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 1. Exchange Client Foundation | 4/4 | ✓ Complete | 2026-03-19 |
 | 2. MCP Server Scaffold | 3/3 | ✓ Complete | 2026-03-19 |
 | 3. Mailbox Tools | 3/3 | ✓ Complete | 2026-03-20 |
-| 4. DAG and Database Tools | 0/3 | Not started | - |
+| 4. DAG and Database Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 5. Mail Flow and Security Tools | 0/5 | Not started | - |
 | 6. Hybrid Tools | 0/3 | Not started | - |
 | 7. Chat App Core | 0/6 | Not started | - |

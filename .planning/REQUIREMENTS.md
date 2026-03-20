@@ -29,9 +29,9 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### DAG / Database Tools
 
-- [ ] **DAGD-01**: list_dag_members — lists DAG member servers with operational status and active database count
-- [ ] **DAGD-02**: get_dag_health — full replication health report including copy/replay queue lengths and content index
-- [ ] **DAGD-03**: get_database_copies — returns all copies of a database across DAG members with activation preferences
+- [x] **DAGD-01**: list_dag_members — lists DAG member servers with operational status and active database count
+- [x] **DAGD-02**: get_dag_health — full replication health report including copy/replay queue lengths and content index
+- [x] **DAGD-03**: get_database_copies — returns all copies of a database across DAG members with activation preferences
 
 ### Mail Flow Tools
 
@@ -134,9 +134,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | MBOX-01 | Phase 3 | Complete |
 | MBOX-02 | Phase 3 | Complete |
 | MBOX-03 | Phase 3 | Complete |
-| DAGD-01 | Phase 4 | Pending |
-| DAGD-02 | Phase 4 | Pending |
-| DAGD-03 | Phase 4 | Pending |
+| DAGD-01 | Phase 4 | Complete |
+| DAGD-02 | Phase 4 | Complete |
+| DAGD-03 | Phase 4 | Complete |
 | FLOW-01 | Phase 5 | Pending |
 | FLOW-02 | Phase 5 | Pending |
 | FLOW-03 | Phase 5 | Pending |
