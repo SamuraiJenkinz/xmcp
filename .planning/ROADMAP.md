@@ -67,12 +67,12 @@ Plans:
   2. search_mailboxes returns a filtered list when queried by database, type, or display name with ResultSize capped
   3. get_shared_mailbox_owners returns full access, send-as, and send-on-behalf delegates for a shared mailbox
   4. All three tools return isError: true with a useful message when given an invalid mailbox identity
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: Implement get_mailbox_stats with explicit Select-Object schema and integration test
-- [ ] 03-02: Implement search_mailboxes with all filter modes and ResultSize cap
-- [ ] 03-03: Implement get_shared_mailbox_owners for all three delegate permission types
+- [ ] 03-01-PLAN.md — Implement get_mailbox_stats with shared helpers (_validate_upn, _format_size) and unit tests
+- [ ] 03-02-PLAN.md — Implement search_mailboxes with all filter modes, ResultSize cap, and truncation detection
+- [ ] 03-03-PLAN.md — Implement get_shared_mailbox_owners for all three delegate permission types
 
 ### Phase 4: DAG and Database Tools
 **Goal**: The three DAG and database tools are fully implemented and return accurate replication health data through the MCP server
