@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 7 Chat App Core — In progress (4/6 plans complete)
+**Current focus:** Phase 7 Chat App Core — In progress (5/6 plans complete)
 
 ## Current Position
 
 Phase: 7 of 9 (Chat App Core) — In progress
-Plan: 4 of 6 in phase 7 complete
+Plan: 5 of 6 in phase 7 complete
 Status: In progress
-Last activity: 2026-03-21 — Completed 07-04-PLAN.md: MCP client async bridge with subprocess lifecycle and OpenAI schema conversion
+Last activity: 2026-03-21 — Completed 07-05-PLAN.md: Tool-calling loop bridging OpenAI and MCP, Flask startup wiring, /api/health endpoint
 
-Progress: [█████░░░░░] 66% (23/35 plans complete)
+Progress: [█████░░░░░] 69% (24/35 plans complete)
 
 ## Performance Metrics
 
@@ -33,7 +33,7 @@ Progress: [█████░░░░░] 66% (23/35 plans complete)
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 | 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
 | 06-hybrid-tools | 2/2 | 50 min | 25 min |
-| 07-chat-app-core | 4/6 | 11 min | 3 min |
+| 07-chat-app-core | 5/6 | 13 min | 3 min |
 
 **Recent Trend:**
 - Last 5 plans: 05-01 (3 min), 06-01 (25 min), 06-02 (25 min), 07-01 (4 min), 07-03 (2 min)
@@ -155,6 +155,11 @@ Recent decisions affecting current work:
 - [07-04]: threading.Lock wraps every call_mcp_tool() — MCP stdio is single JSON-RPC stream, concurrent calls corrupt it
 - [07-04]: init_mcp() timeout 120s — Exchange MCP server does auth at startup, cold start can be slow
 - [07-04]: Module import is side-effect-free — subprocess only spawned when init_mcp() called explicitly
+- [07-05]: json.loads(tc.function.arguments) with fallback to {} on JSONDecodeError — arguments may be empty string from gateway
+- [07-05]: _use_tools_param module flag persists fallback across all requests after first gateway rejection — avoids repeated rejections
+- [07-05]: tool_events list ({name, status}) returned alongside messages — caller decides what to stream to UI
+- [07-05]: init_openai and init_mcp wrapped in try/except in create_app — app starts in degraded mode if either unavailable
+- [07-05]: /api/health returns tools_count via len(get_openai_tools()) — reflects actual cached tool count
 
 ### Pending Todos
 
@@ -164,11 +169,10 @@ None.
 
 - [Phase 1]: Verify Exchange throttling policy for service account before Phase 3 tool testing
 - [Phase 7]: Flask vs FastAPI resolved as Flask — scaffold is live and working
-- [Phase 7]: API_VERSION=2023-05-15 may not support `tools` parameter — verify with MMC CTS before 07-05 tool-call loop
-- [General]: MMC Azure OpenAI gateway API version pinned at 2023-05-15 — verify with MMC CTS before upgrade
+- [General]: MMC Azure OpenAI gateway API version pinned at 2023-05-15 — _use_tools_param fallback now handles this automatically; still worth verifying with CTS
 
 ## Session Continuity
 
-Last session: 2026-03-21T19:12:49Z
-Stopped at: Completed 07-04-PLAN.md — MCP client async bridge spawning exchange_mcp.server, caching 15 tools as OpenAI schemas, threading.Lock serialised call_mcp_tool
+Last session: 2026-03-21T19:17:45Z
+Stopped at: Completed 07-05-PLAN.md — run_tool_loop with max-5-iteration guard and tools/functions fallback, Flask startup wiring, /api/health
 Resume file: None
