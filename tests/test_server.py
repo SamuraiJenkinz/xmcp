@@ -11,7 +11,7 @@ Tests cover:
     - server instance exists with correct name
     - all 15 tool definitions have corresponding dispatch entries
     - all tool descriptions are under 800 characters
-    - remaining stub tools raise RuntimeError with "not yet implemented"
+    - unknown tool raises RuntimeError with "Unknown tool"
     - ping dispatch returns {"status": "pong"}
     - all tool schemas have required "type" and "properties" fields
 """
@@ -188,14 +188,14 @@ def test_tool_descriptions_under_800_chars() -> None:
 
 @pytest.mark.asyncio(loop_scope="function")
 async def test_call_tool_not_implemented_raises() -> None:
-    """handle_call_tool() with a stub Exchange tool must raise RuntimeError."""
-    with pytest.raises(RuntimeError) as exc_info:
+    """handle_call_tool() with an unknown tool must raise RuntimeError."""
+    with pytest.raises((ValueError, RuntimeError)) as exc_info:
         await handle_call_tool(
-            "get_connector_status",
+            "nonexistent_tool",
             {},
         )
 
-    assert "not yet implemented" in str(exc_info.value).lower()
+    assert "Unknown tool" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------

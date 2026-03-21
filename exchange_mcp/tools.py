@@ -1668,6 +1668,174 @@ async def _get_hybrid_config_handler(
     }
 
 
+async def _lookup_cert_for_fqdn(
+    client: ExchangeClient, fqdn: str
+) -> dict[str, Any] | None:
+    """Look up the Exchange certificate for a given FQDN.
+
+    Returns a dict with cert fields, or None if lookup fails.
+    Get-ExchangeCertificate is on-premises only — returns None
+    if the cmdlet is not available (pure Exchange Online environments).
+    """
+    safe_fqdn = _escape_ps_single_quote(fqdn)
+    cert_cmdlet = (
+        f"Get-ExchangeCertificate -DomainName '{safe_fqdn}' | Select-Object -First 1 "
+        "Thumbprint, Subject, Issuer, NotAfter, NotBefore, Status, IsSelfSigned, HasPrivateKey, "
+        "@{Name='CertificateDomains';Expression={@($_.CertificateDomains | ForEach-Object { $_.ToString() })}}"
+    )
+    try:
+        raw = await client.run_cmdlet_with_retry(cert_cmdlet)
+    except RuntimeError:
+        return None  # cmdlet not available or lookup failed — not an error
+
+    if not raw:
+        return None
+    r = raw if isinstance(raw, dict) else (raw[0] if isinstance(raw, list) and raw else None)
+    if not r:
+        return None
+    return {
+        "thumbprint": r.get("Thumbprint"),
+        "subject": r.get("Subject"),
+        "issuer": r.get("Issuer"),
+        "not_after": r.get("NotAfter"),
+        "not_before": r.get("NotBefore"),
+        "status": r.get("Status"),
+        "is_self_signed": r.get("IsSelfSigned"),
+        "has_private_key": r.get("HasPrivateKey"),
+        "certificate_domains": r.get("CertificateDomains"),
+    }
+
+
+def _assess_connector_health(
+    connector: dict[str, Any], cert: dict[str, Any] | None
+) -> tuple[bool, str | None]:
+    """Return (healthy, error_message) for a connector.
+
+    A connector is healthy when it is enabled, requires TLS, and its
+    certificate (if available) has ``Status == "Valid"``.  When the
+    certificate lookup is unavailable the connector is still considered
+    healthy if it is enabled and TLS-configured.
+    """
+    if not connector.get("Enabled"):
+        return False, "Connector is disabled"
+    if not connector.get("RequireTLS"):
+        return False, "RequireTLS is not set — TLS not enforced on hybrid connector"
+    if cert is None:
+        # cert lookup unavailable — cannot fully verify, treat as healthy
+        return True, None
+    status = cert.get("status")
+    if status != "Valid":
+        return False, f"TLS certificate status is '{status}' (expected 'Valid')"
+    return True, None
+
+
+async def _get_connector_status_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return hybrid connector health with per-connector status and certificate details.
+
+    Fetches hybrid send connectors (CloudServicesMailEnabled) and receive
+    connectors (TlsCertificateName non-empty), then per-connector resolves
+    the TLS certificate via Get-ExchangeCertificate.  Each connector gets
+    a healthy/unhealthy boolean and an error message if unhealthy.
+    """
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    # --- Hybrid send connectors ---
+    send_cmdlet = (
+        "Get-SendConnector | Where-Object { $_.CloudServicesMailEnabled -eq $true } | Select-Object "
+        "Name, Enabled, CloudServicesMailEnabled, RequireTLS, TlsCertificateName, TlsDomain, Fqdn, MaxMessageSize, "
+        "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
+        "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}"
+    )
+    try:
+        send_raw = await client.run_cmdlet_with_retry(send_cmdlet)
+    except RuntimeError:
+        raise
+
+    send_list = send_raw if isinstance(send_raw, list) else (
+        [send_raw] if isinstance(send_raw, dict) and send_raw else []
+    )
+
+    send_results = []
+    for c in send_list:
+        fqdn = c.get("Fqdn") or ""
+        cert = None
+        if fqdn:
+            cert = await _lookup_cert_for_fqdn(client, fqdn)
+
+        healthy, error_msg = _assess_connector_health(c, cert)
+        send_results.append({
+            "name": c.get("Name"),
+            "type": "send",
+            "enabled": c.get("Enabled"),
+            "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
+            "require_tls": c.get("RequireTLS"),
+            "tls_certificate_name": c.get("TlsCertificateName"),
+            "tls_domain": c.get("TlsDomain"),
+            "fqdn": fqdn or None,
+            "max_message_size": c.get("MaxMessageSize"),
+            "address_spaces": c.get("AddressSpaces"),
+            "smart_hosts": c.get("SmartHosts"),
+            "certificate": cert,
+            "healthy": healthy,
+            "error": error_msg,
+        })
+
+    # --- Hybrid receive connectors (TlsCertificateName non-empty) ---
+    recv_cmdlet = (
+        "Get-ReceiveConnector | Where-Object { $_.TlsCertificateName -ne $null -and $_.TlsCertificateName -ne '' } | Select-Object "
+        "Name, Enabled, RequireTLS, TlsCertificateName, Fqdn, "
+        "@{Name='Bindings';Expression={@($_.Bindings | ForEach-Object { $_.ToString() })}}, "
+        "@{Name='RemoteIPRanges';Expression={@($_.RemoteIPRanges | ForEach-Object { $_.ToString() })}}, "
+        "AuthMechanism, PermissionGroups, TransportRole, Server"
+    )
+    try:
+        recv_raw = await client.run_cmdlet_with_retry(recv_cmdlet)
+    except RuntimeError:
+        raise
+
+    recv_list = recv_raw if isinstance(recv_raw, list) else (
+        [recv_raw] if isinstance(recv_raw, dict) and recv_raw else []
+    )
+
+    recv_results = []
+    for c in recv_list:
+        fqdn = c.get("Fqdn") or ""
+        cert = None
+        if fqdn:
+            cert = await _lookup_cert_for_fqdn(client, fqdn)
+
+        healthy, error_msg = _assess_connector_health(c, cert)
+        recv_results.append({
+            "name": c.get("Name"),
+            "type": "receive",
+            "enabled": c.get("Enabled"),
+            "require_tls": c.get("RequireTLS"),
+            "tls_certificate_name": c.get("TlsCertificateName"),
+            "fqdn": fqdn or None,
+            "bindings": c.get("Bindings"),
+            "remote_ip_ranges": c.get("RemoteIPRanges"),
+            "auth_mechanism": c.get("AuthMechanism"),
+            "permission_groups": c.get("PermissionGroups"),
+            "transport_role": c.get("TransportRole"),
+            "server": c.get("Server"),
+            "certificate": cert,
+            "healthy": healthy,
+            "error": error_msg,
+        })
+
+    all_connectors = send_results + recv_results
+    return {
+        "send_connectors": send_results,
+        "send_connector_count": len(send_results),
+        "receive_connectors": recv_results,
+        "receive_connector_count": len(recv_results),
+        "all_healthy": all(c["healthy"] for c in all_connectors) if all_connectors else True,
+    }
+
+
 # ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
@@ -1703,5 +1871,5 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_dmarc_status": _get_dmarc_status_handler,
     "check_mobile_devices": _check_mobile_devices_handler,
     "get_hybrid_config": _get_hybrid_config_handler,
-    "get_connector_status": _make_stub("get_connector_status"),
+    "get_connector_status": _get_connector_status_handler,
 }
