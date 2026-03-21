@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 import os
 
-from flask import Flask, redirect, render_template, session, url_for
+from flask import Flask, jsonify, redirect, render_template, session, url_for
 from flask_session import Session
 
 from chat_app.auth import auth_bp, login_required
 from chat_app.config import Config
+from chat_app.mcp_client import get_openai_tools, init_mcp, is_connected
+from chat_app.openai_client import init_openai
 from chat_app.secrets import load_secrets
 
 logger = logging.getLogger(__name__)
@@ -34,6 +36,20 @@ def create_app() -> Flask:
     # Register auth blueprint (provides /login, /auth/callback, /logout)
     app.register_blueprint(auth_bp)
 
+    # --- Initialize OpenAI client ---
+    # Graceful degradation: log error but allow app to start for development.
+    try:
+        init_openai()
+    except Exception as exc:
+        logger.error("OpenAI client initialization failed (degraded mode): %s", exc)
+
+    # --- Initialize MCP client (spawns exchange_mcp.server subprocess) ---
+    # Graceful degradation: chat works without tools if MCP is unavailable.
+    try:
+        init_mcp(app)
+    except Exception as exc:
+        logger.error("MCP client initialization failed (degraded mode — no tools): %s", exc)
+
     # --- Root route ---
     @app.route("/")
     def index():
@@ -48,6 +64,20 @@ def create_app() -> Flask:
         user = session.get("user")
         display_name = user.get("name", "Colleague")
         return render_template("chat.html", user=user, display_name=display_name)
+
+    # --- Health endpoint ---
+    @app.route("/api/health")
+    def health():
+        """Report application health including MCP connectivity and tool count."""
+        mcp_connected = is_connected()
+        tools = get_openai_tools()
+        return jsonify(
+            {
+                "status": "ok",
+                "mcp_connected": mcp_connected,
+                "tools_count": len(tools),
+            }
+        )
 
     logger.info("Flask app created successfully")
     return app
