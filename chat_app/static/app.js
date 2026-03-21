@@ -130,7 +130,7 @@
                     assistantMsg.markToolDone(activeChip);
                     activeChip = null;
                 }
-                assistantMsg.appendText(event.content || '');
+                assistantMsg.appendText(event.delta || '');
             } else if (event.type === 'done') {
                 if (activeChip) {
                     assistantMsg.markToolDone(activeChip);
