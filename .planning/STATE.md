@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 5 COMPLETE — all 6 tools implemented; Phase 6 hybrid tools next (get_hybrid_config, get_migration_batches, get_connector_status)
+**Current focus:** Phase 6 in progress — get_hybrid_config implemented (plan 1/2); get_connector_status next (plan 2/2)
 
 ## Current Position
 
-Phase: 5 of 9 (Mail Flow and Security Tools) — COMPLETE
-Plan: 5 of 5 in phase 5 complete
-Status: Phase complete — verified (6/6 must-haves passed)
-Last activity: 2026-03-20 — Phase 5 verified, 182 tests passing (3 pre-existing integration failures)
+Phase: 6 of 9 (Hybrid Tools) — In progress
+Plan: 1 of 2 in phase 6 complete
+Status: In progress
+Last activity: 2026-03-20 — Completed 06-01-PLAN.md — removed get_migration_batches, implemented get_hybrid_config, 189 tests passing
 
-Progress: [█████░░░░░] 51% (18/35 plans complete)
+Progress: [█████░░░░░] 54% (19/35 plans complete)
 
 ## Performance Metrics
 
@@ -32,6 +32,7 @@ Progress: [█████░░░░░] 51% (18/35 plans complete)
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 | 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
+| 06-hybrid-tools | 1/2 | 12 min | 12 min |
 
 **Recent Trend:**
 - Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
@@ -122,6 +123,12 @@ Recent decisions affecting current work:
 - [05-05]: check_mobile_devices returns ALL devices including stale partnerships — LLM/user decides relevance
 - [05-05]: Empty device list is valid result (not an error) — user simply has no mobile partnerships
 - [05-05]: test_call_tool_not_implemented_raises updated to get_hybrid_config (Phase 6 stub)
+- [06-01]: get_migration_batches removed — out of MMC scope; tool count now 15 (14 Exchange + ping)
+- [06-01]: get_hybrid_config composite handler: 5 sequential cmdlets (org rel, fed trust, intra-org, avail addr, hybrid send)
+- [06-01]: Per-section independent error handling — partial Exchange failure yields {"error": "..."} for that section only
+- [06-01]: FederationTrust X509Certificate2 projected to scalar strings in PowerShell (Thumbprint, Subject, NotAfter ISO-8601)
+- [06-01]: MultiValuedProperty fields projected with ForEach-Object ToString() — same pattern as Phase 4/5
+- [06-01]: test_call_tool_not_implemented_raises updated to get_connector_status (last remaining stub)
 
 ### Pending Todos
 
@@ -135,6 +142,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T19:05:47Z
-Stopped at: Completed 05-05-PLAN.md — get_dmarc_status handler (pure DNS) + check_mobile_devices handler (Exchange), 13 new tests, 182 passing; Phase 5 complete
+Last session: 2026-03-20T23:20:00Z
+Stopped at: Completed 06-01-PLAN.md — removed get_migration_batches, implemented get_hybrid_config (5-cmdlet composite), 7 new tests, 189 passing
 Resume file: None
