@@ -154,12 +154,12 @@ Plans:
   2. A colleague can create a new conversation thread, switch between existing threads, and delete a thread from the sidebar
   3. Conversations are automatically named from the first query text — no manual naming required
   4. Conversation history is scoped to the authenticated user — one colleague cannot see another's threads
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Design and implement SQLite schema for threads and messages with tool call metadata fields
-- [ ] 08-02: Implement conversation CRUD routes and sidebar navigation with create/switch/delete
-- [ ] 08-03: Implement conversation auto-naming from first query text with fallback to timestamp
+- [ ] 08-01-PLAN.md — SQLite database layer (db.py, schema.sql) and thread CRUD API blueprint (conversations.py)
+- [ ] 08-02-PLAN.md — Migrate chat_stream from Flask session to SQLite with thread_id routing and auto-naming
+- [ ] 08-03-PLAN.md — Sidebar UI with thread list, create/switch/delete/rename, and thread_id integration
 
 ### Phase 9: UI Polish
 **Goal**: The chat interface feels like a polished internal tool — colleagues can inspect what Exchange data was used, export answers for tickets, and work efficiently with keyboard and visual preferences
