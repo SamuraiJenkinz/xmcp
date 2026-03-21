@@ -135,15 +135,15 @@ Plans:
   3. The AI response streams to the browser in real-time — partial text appears before the full response is ready
   4. A conversation that would exceed the 128K context window is pruned automatically without crashing or producing an error
   5. The Azure AD token is validated server-side before any protected endpoint is accessible
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- [ ] 07-01: Scaffold Flask app with Waitress, session management, and environment/secrets loading from AWS Secrets Manager
-- [ ] 07-02: Implement Azure AD / Entra ID SSO via MSAL auth code flow with SerializableTokenCache and Conditional Access handler
-- [ ] 07-03: Implement Azure OpenAI connectivity to MMC stg1 endpoint and basic chat completions without tool calling
-- [ ] 07-04: Implement MCP client integration — spawn server.py on startup, tools/list, inject tools into OpenAI requests as function schemas
-- [ ] 07-05: Implement tool-calling loop — detect tool_calls, route to MCP, append messages in correct order, second completion call
-- [ ] 07-06: Implement SSE streaming of final response and tiktoken context window management with conversation pruning
+- [ ] 07-01-PLAN.md — Scaffold Flask app with Waitress, session management, and environment/secrets loading from AWS Secrets Manager
+- [ ] 07-02-PLAN.md — Implement Azure AD / Entra ID SSO via MSAL auth code flow with SerializableTokenCache and Conditional Access handler
+- [ ] 07-03-PLAN.md — Implement Azure OpenAI connectivity to MMC stg1 endpoint and basic chat completions without tool calling
+- [ ] 07-04-PLAN.md — Implement MCP client integration — spawn server.py on startup, tools/list, inject tools into OpenAI requests as function schemas
+- [ ] 07-05-PLAN.md — Implement tool-calling loop — detect tool_calls, route to MCP, append messages in correct order, second completion call
+- [ ] 07-06-PLAN.md — Implement SSE streaming of final response and tiktoken context window management with conversation pruning
 
 ### Phase 8: Conversation Persistence
 **Goal**: A colleague can return to the app the next day and find their previous conversations intact, navigate between threads, and have new conversations named automatically
