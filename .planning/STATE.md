@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 6 in progress — get_hybrid_config implemented (plan 1/2); get_connector_status next (plan 2/2)
+**Current focus:** Phase 6 complete — all 15 Exchange MCP tools fully implemented; next is Phase 7 HTTP Layer
 
 ## Current Position
 
-Phase: 6 of 9 (Hybrid Tools) — In progress
-Plan: 1 of 2 in phase 6 complete
-Status: In progress
-Last activity: 2026-03-20 — Completed 06-01-PLAN.md — removed get_migration_batches, implemented get_hybrid_config, 189 tests passing
+Phase: 6 of 9 (Hybrid Tools) — Complete
+Plan: 2 of 2 in phase 6 complete
+Status: Phase complete
+Last activity: 2026-03-21 — Completed 06-02-PLAN.md — get_connector_status with TLS cert validation, 0 stubs remain, 199 tests passing
 
-Progress: [█████░░░░░] 54% (19/35 plans complete)
+Progress: [█████░░░░░] 57% (20/35 plans complete)
 
 ## Performance Metrics
 
@@ -32,7 +32,7 @@ Progress: [█████░░░░░] 54% (19/35 plans complete)
 | 03-mailbox-tools | 3/3 | ~11 min | 4 min |
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 | 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
-| 06-hybrid-tools | 1/2 | 12 min | 12 min |
+| 06-hybrid-tools | 2/2 | 50 min | 25 min |
 
 **Recent Trend:**
 - Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
@@ -129,6 +129,12 @@ Recent decisions affecting current work:
 - [06-01]: FederationTrust X509Certificate2 projected to scalar strings in PowerShell (Thumbprint, Subject, NotAfter ISO-8601)
 - [06-01]: MultiValuedProperty fields projected with ForEach-Object ToString() — same pattern as Phase 4/5
 - [06-01]: test_call_tool_not_implemented_raises updated to get_connector_status (last remaining stub)
+- [06-02]: get_connector_status identifies hybrid send connectors by CloudServicesMailEnabled eq true
+- [06-02]: get_connector_status identifies hybrid receive connectors by TlsCertificateName non-empty
+- [06-02]: Per-connector TLS cert lookup via Get-ExchangeCertificate -DomainName returns None gracefully if cmdlet unavailable (Exchange Online)
+- [06-02]: None cert treated as healthy — cannot fully verify but connector is still TLS-configured
+- [06-02]: all_healthy=True for empty connector list — no connectors is not an unhealthy state
+- [06-02]: test_call_tool_not_implemented_raises updated to use nonexistent_tool — zero stubs remain in TOOL_DISPATCH
 
 ### Pending Todos
 
@@ -142,6 +148,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-20T23:20:00Z
-Stopped at: Completed 06-01-PLAN.md — removed get_migration_batches, implemented get_hybrid_config (5-cmdlet composite), 7 new tests, 189 passing
+Last session: 2026-03-21T02:40:20Z
+Stopped at: Completed 06-02-PLAN.md — get_connector_status with TLS cert helpers, 10 new tests, 199 total passing, Phase 6 complete
 Resume file: None
