@@ -2,14 +2,14 @@
 
 All tests mock ExchangeClient to avoid any live Exchange Online connection.
 Tests cover:
-    - list_tools returns all 16 registered tools (15 Exchange + ping)
+    - list_tools returns all 15 registered tools (14 Exchange + ping)
     - call_tool ping returns JSON-encoded pong result
     - call_tool unknown tool raises ValueError/RuntimeError
     - _sanitize_error strips PowerShell stderr sections
     - _sanitize_error adds transient retry hint for transient errors
     - _sanitize_error does NOT add hint for non-transient errors
     - server instance exists with correct name
-    - all 16 tool definitions have corresponding dispatch entries
+    - all 15 tool definitions have corresponding dispatch entries
     - all tool descriptions are under 800 characters
     - remaining stub tools raise RuntimeError with "not yet implemented"
     - ping dispatch returns {"status": "pong"}
@@ -143,16 +143,16 @@ def test_server_instance_exists() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. test_list_tools_returns_all_16
+# 8. test_list_tools_returns_all_15
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_list_tools_returns_all_16() -> None:
-    """handle_list_tools() must return exactly 16 tools (15 Exchange + ping)."""
+async def test_list_tools_returns_all_15() -> None:
+    """handle_list_tools() must return exactly 15 tools (14 Exchange + ping)."""
     tools = await handle_list_tools()
 
-    assert len(tools) == 16
+    assert len(tools) == 15
 
 
 # ---------------------------------------------------------------------------

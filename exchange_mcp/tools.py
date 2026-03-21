@@ -1,15 +1,15 @@
 """Tool definitions and dispatch table for the Exchange MCP server.
 
 Provides:
-    TOOL_DEFINITIONS  -- list of all 16 mcp.types.Tool objects (15 Exchange + ping)
+    TOOL_DEFINITIONS  -- list of all 15 mcp.types.Tool objects (14 Exchange + ping)
     TOOL_DISPATCH     -- dict mapping tool name to async handler callable
 
 The dispatch table is the single point of truth for routing:
     handler = TOOL_DISPATCH[name]
     result  = await handler(arguments, client)
 
-All 15 Exchange tool handlers are stubs that raise NotImplementedError until
-the Phase 3-6 implementations replace them.  The ping handler is fully
+Remaining Exchange tool handler stubs raise NotImplementedError until
+the Phase 6 implementation replaces them.  The ping handler is fully
 implemented here.
 """
 
@@ -350,30 +350,6 @@ TOOL_DEFINITIONS: list[types.Tool] = [
             "Does NOT test whether hybrid connectors are currently working — use get_connector_status for that."
         ),
         inputSchema={"type": "object", "properties": {}, "required": []},
-    ),
-    types.Tool(
-        name="get_migration_batches",
-        description=(
-            "Returns mailbox migration batches: their names, status, progress percentage, "
-            "number of mailboxes completed, and any per-mailbox errors. "
-            "Use when asked about mailbox migrations: 'How many users have been migrated?', "
-            "'Is the Wave2 migration batch still running?', 'Which migrations failed?', "
-            "'Show all active migration batches'."
-        ),
-        inputSchema={
-            "type": "object",
-            "properties": {
-                "status_filter": {
-                    "type": "string",
-                    "enum": ["active", "completed", "failed", "all"],
-                    "description": (
-                        "Filter batches by status: 'active', 'completed', 'failed', "
-                        "or 'all'. Default is 'all'."
-                    ),
-                }
-            },
-            "required": [],
-        },
     ),
     types.Tool(
         name="get_connector_status",
@@ -1625,6 +1601,5 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_dmarc_status": _get_dmarc_status_handler,
     "check_mobile_devices": _check_mobile_devices_handler,
     "get_hybrid_config": _make_stub("get_hybrid_config"),
-    "get_migration_batches": _make_stub("get_migration_batches"),
     "get_connector_status": _make_stub("get_connector_status"),
 }
