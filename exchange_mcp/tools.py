@@ -1567,6 +1567,108 @@ async def _check_mobile_devices_handler(
 
 
 # ---------------------------------------------------------------------------
+# Phase 6: Hybrid tool handlers
+# ---------------------------------------------------------------------------
+
+
+async def _get_hybrid_config_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Return the full Exchange hybrid topology in a single call.
+
+    Assembles five independent Exchange cmdlet results into one structured
+    response.  Each sub-call has its own error handling — a failure in one
+    section produces an ``{"error": "..."}`` value for that section rather
+    than failing the whole response.
+    """
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    # --- 1. Organization relationships ---
+    org_rel_cmdlet = (
+        "Get-OrganizationRelationship | Select-Object "
+        "Name, Enabled, "
+        "@{Name='DomainNames';Expression={@($_.DomainNames | ForEach-Object { $_.ToString() })}}, "
+        "FreeBusyAccessEnabled, FreeBusyAccessLevel, "
+        "MailboxMoveEnabled, DeliveryReportEnabled, MailTipsAccessEnabled, MailTipsAccessLevel, "
+        "TargetApplicationUri, TargetAutodiscoverEpr, TargetSharingEpr, TargetOwaURL, "
+        "OrganizationContact, ArchiveAccessEnabled, PhotosEnabled"
+    )
+    try:
+        org_raw = await client.run_cmdlet_with_retry(org_rel_cmdlet)
+    except RuntimeError as exc:
+        org_raw = {"error": str(exc)}
+
+    # --- 2. Federation trust ---
+    fed_cmdlet = (
+        "Get-FederationTrust | Select-Object "
+        "Name, ApplicationUri, "
+        "@{Name='TokenIssuerUri';Expression={if ($_.TokenIssuerUri) { $_.TokenIssuerUri.AbsoluteUri } else { $null }}}, "
+        "TokenIssuerMetadataEpr, "
+        "@{Name='OrgCertThumbprint';Expression={if ($_.OrgCertificate) { $_.OrgCertificate.Thumbprint } else { $null }}}, "
+        "@{Name='OrgCertSubject';Expression={if ($_.OrgCertificate) { $_.OrgCertificate.Subject } else { $null }}}, "
+        "@{Name='OrgCertNotAfter';Expression={if ($_.OrgCertificate) { $_.OrgCertificate.NotAfter.ToString('o') } else { $null }}}, "
+        "@{Name='TokenIssuerCertThumbprint';Expression={if ($_.TokenIssuerCertificate) { $_.TokenIssuerCertificate.Thumbprint } else { $null }}}"
+    )
+    try:
+        fed_raw = await client.run_cmdlet_with_retry(fed_cmdlet)
+    except RuntimeError as exc:
+        fed_raw = {"error": str(exc)}
+
+    # --- 3. Intra-organization connectors ---
+    ioc_cmdlet = (
+        "Get-IntraOrganizationConnector | Select-Object "
+        "Name, Enabled, DiscoveryEndpoint, "
+        "@{Name='TargetAddressDomains';Expression={@($_.TargetAddressDomains | ForEach-Object { $_.ToString() })}}, "
+        "TargetSharingEpr"
+    )
+    try:
+        ioc_raw = await client.run_cmdlet_with_retry(ioc_cmdlet)
+    except RuntimeError as exc:
+        ioc_raw = {"error": str(exc)}
+
+    # --- 4. Availability address spaces (free/busy sharing) ---
+    avail_cmdlet = (
+        "Get-AvailabilityAddressSpace | Select-Object "
+        "Name, ForestName, UserName, AccessMethod, ProxyUrl, UseServiceAccount"
+    )
+    try:
+        avail_raw = await client.run_cmdlet_with_retry(avail_cmdlet)
+    except RuntimeError as exc:
+        avail_raw = {"error": str(exc)}
+
+    # --- 5. Hybrid mail flow send connectors (inline) ---
+    hybrid_send_cmdlet = (
+        "Get-SendConnector | Where-Object { $_.CloudServicesMailEnabled -eq $true } | Select-Object "
+        "Name, Enabled, CloudServicesMailEnabled, RequireTLS, TlsCertificateName, TlsDomain, Fqdn, "
+        "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
+        "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}"
+    )
+    try:
+        hybrid_send_raw = await client.run_cmdlet_with_retry(hybrid_send_cmdlet)
+    except RuntimeError as exc:
+        hybrid_send_raw = {"error": str(exc)}
+
+    def _normalize(raw: Any) -> Any:
+        """Normalize Exchange result to list, preserving error dicts."""
+        if isinstance(raw, dict) and "error" in raw:
+            return raw
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, dict) and raw:
+            return [raw]
+        return []
+
+    return {
+        "organization_relationships": _normalize(org_raw),
+        "federation_trust": _normalize(fed_raw),
+        "intra_organization_connectors": _normalize(ioc_raw),
+        "availability_address_spaces": _normalize(avail_raw),
+        "hybrid_send_connectors": _normalize(hybrid_send_raw),
+    }
+
+
+# ---------------------------------------------------------------------------
 # Dispatch table
 # ---------------------------------------------------------------------------
 
@@ -1600,6 +1702,6 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_dkim_config": _get_dkim_config_handler,
     "get_dmarc_status": _get_dmarc_status_handler,
     "check_mobile_devices": _check_mobile_devices_handler,
-    "get_hybrid_config": _make_stub("get_hybrid_config"),
+    "get_hybrid_config": _get_hybrid_config_handler,
     "get_connector_status": _make_stub("get_connector_status"),
 }
