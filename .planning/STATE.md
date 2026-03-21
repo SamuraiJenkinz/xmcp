@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 7 Chat App Core — In progress (5/6 plans complete)
+**Current focus:** Phase 7 Chat App Core — Complete (6/6 plans complete)
 
 ## Current Position
 
-Phase: 7 of 9 (Chat App Core) — In progress
-Plan: 5 of 6 in phase 7 complete
-Status: In progress
-Last activity: 2026-03-21 — Completed 07-05-PLAN.md: Tool-calling loop bridging OpenAI and MCP, Flask startup wiring, /api/health endpoint
+Phase: 7 of 9 (Chat App Core) — Phase complete
+Plan: 6 of 6 in phase 7 complete
+Status: Phase complete — ready for Phase 8
+Last activity: 2026-03-21 — Completed 07-06-PLAN.md: SSE streaming endpoint and tiktoken context window management
 
-Progress: [█████░░░░░] 69% (24/35 plans complete)
+Progress: [██████░░░░] 71% (25/35 plans complete)
 
 ## Performance Metrics
 
@@ -33,7 +33,7 @@ Progress: [█████░░░░░] 69% (24/35 plans complete)
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 | 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
 | 06-hybrid-tools | 2/2 | 50 min | 25 min |
-| 07-chat-app-core | 5/6 | 13 min | 3 min |
+| 07-chat-app-core | 6/6 | 21 min | 4 min |
 
 **Recent Trend:**
 - Last 5 plans: 05-01 (3 min), 06-01 (25 min), 06-02 (25 min), 07-01 (4 min), 07-03 (2 min)
@@ -160,6 +160,10 @@ Recent decisions affecting current work:
 - [07-05]: tool_events list ({name, status}) returned alongside messages — caller decides what to stream to UI
 - [07-05]: init_openai and init_mcp wrapped in try/except in create_app — app starts in degraded mode if either unavailable
 - [07-05]: /api/health returns tools_count via len(get_openai_tools()) — reflects actual cached tool count
+- [07-06]: Session data read BEFORE generator entry in chat_stream — stream_with_context carries context but pre-reading avoids session backend issues in generators
+- [07-06]: run_tool_loop final assistant message stripped before streaming — remove non-streamed answer, re-request via streaming completions so users see partial text
+- [07-06]: _EFFECTIVE_LIMIT = 123904 (128000 - 4096) using o200k_base encoding for gpt-4o-mini
+- [07-06]: X-Accel-Buffering: no header on SSE response — disables Nginx proxy buffering
 
 ### Pending Todos
 
@@ -173,6 +177,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-21T19:17:45Z
-Stopped at: Completed 07-05-PLAN.md — run_tool_loop with max-5-iteration guard and tools/functions fallback, Flask startup wiring, /api/health
+Last session: 2026-03-21T19:29:00Z
+Stopped at: Completed 07-06-PLAN.md — SSE streaming chat endpoint, tiktoken context management, Phase 7 complete
 Resume file: None
