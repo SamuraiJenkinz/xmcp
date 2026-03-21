@@ -8,13 +8,28 @@ SDK appends it automatically.
 
 from __future__ import annotations
 
+import json
 import logging
+from typing import Any
 
 from openai import OpenAI
 
 from chat_app.config import Config
+from chat_app.mcp_client import call_mcp_tool, get_openai_tools
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Tool-call loop constants
+# ---------------------------------------------------------------------------
+
+#: Maximum number of tool-calling iterations before forcing a final answer.
+_MAX_TOOL_ITERATIONS: int = 5
+
+#: Controls which OpenAI tools parameter format is used.
+#: True  → use 'tools' / 'tool_choice'  (current spec)
+#: False → use deprecated 'functions' / 'function_call' (fallback for older gateways)
+_use_tools_param: bool = True
 
 SYSTEM_PROMPT = """You are Atlas, MMC's Exchange infrastructure assistant built by Colleague Tech Services.
 
@@ -137,3 +152,181 @@ def build_system_message(user_name: str = "Colleague") -> dict:
         "role": "system",
         "content": SYSTEM_PROMPT,
     }
+
+
+def run_tool_loop(
+    messages: list[dict],
+    tools: list[dict] | None = None,
+) -> tuple[list[dict], list[dict[str, Any]]]:
+    """Run the OpenAI chat-completion + MCP tool-calling loop.
+
+    Repeatedly calls the OpenAI completion API.  When the model returns
+    ``tool_calls`` (or legacy ``function_call``), each tool is dispatched
+    sequentially to MCP via ``call_mcp_tool`` and the results are appended as
+    ``role=tool`` (or ``role=function``) messages.  Looping continues until the
+    model produces a response with no pending tool calls or until
+    ``_MAX_TOOL_ITERATIONS`` iterations have been consumed.
+
+    Falls back from the current ``tools`` / ``tool_choice`` parameter format to
+    the deprecated ``functions`` / ``function_call`` format if the MMC gateway
+    rejects the request (e.g. API version 2023-05-15 may not support ``tools``).
+    The fallback state is stored in the module-level ``_use_tools_param`` flag so
+    all subsequent calls within the same process use the compatible format.
+
+    Args:
+        messages: Conversation history as plain dicts (mutated in-place by
+                  appending assistant and tool messages).
+        tools:    Optional list of OpenAI tool schemas.  If ``None`` the cached
+                  schemas from ``get_openai_tools()`` are used.
+
+    Returns:
+        Tuple of ``(messages, tool_events)`` where:
+        - ``messages`` is the updated conversation history (all plain dicts).
+        - ``tool_events`` is a list of ``{"name": str, "status": str}`` dicts
+          for each tool invocation, suitable for streaming to the UI.
+    """
+    global _use_tools_param  # noqa: PLW0603
+
+    client = get_client()
+    if tools is None:
+        tools = get_openai_tools()
+
+    tool_events: list[dict[str, Any]] = []
+
+    for _iteration in range(_MAX_TOOL_ITERATIONS):
+        # Build completion kwargs depending on which parameter format to use.
+        if _use_tools_param:
+            kwargs: dict[str, Any] = {
+                "model": Config.OPENAI_MODEL,
+                "messages": messages,
+            }
+            if tools:
+                kwargs["tools"] = tools
+                kwargs["tool_choice"] = "auto"
+        else:
+            # Deprecated 'functions' format for older gateway API versions
+            kwargs = {
+                "model": Config.OPENAI_MODEL,
+                "messages": messages,
+            }
+            if tools:
+                # Convert from OpenAI tools schema to legacy functions schema
+                functions = [t["function"] for t in tools]
+                kwargs["functions"] = functions
+                kwargs["function_call"] = "auto"
+
+        # Call the completion API; detect 'tools' rejection and retry with fallback.
+        try:
+            response = client.chat.completions.create(**kwargs)
+        except Exception as exc:
+            exc_str = str(exc)
+            if _use_tools_param and (
+                "tools" in exc_str.lower()
+                or "unrecognized" in exc_str.lower()
+                or "unsupported" in exc_str.lower()
+            ):
+                logger.warning(
+                    "Gateway rejected 'tools' parameter (%s); switching to deprecated 'functions' format",
+                    exc_str,
+                )
+                _use_tools_param = False
+                # Retry immediately with functions format
+                functions = [t["function"] for t in tools] if tools else []
+                retry_kwargs: dict[str, Any] = {
+                    "model": Config.OPENAI_MODEL,
+                    "messages": messages,
+                }
+                if functions:
+                    retry_kwargs["functions"] = functions
+                    retry_kwargs["function_call"] = "auto"
+                response = client.chat.completions.create(**retry_kwargs)
+            else:
+                raise
+
+        choice = response.choices[0]
+        assistant_msg = _message_to_dict(choice.message)
+        messages.append(assistant_msg)
+
+        # --- Handle current tool_calls format ---
+        if choice.message.tool_calls:
+            for tc in choice.message.tool_calls:
+                tool_name = tc.function.name
+                try:
+                    arguments = json.loads(tc.function.arguments) if tc.function.arguments else {}
+                except json.JSONDecodeError:
+                    arguments = {}
+                logger.info("Dispatching MCP tool: %s(%s)", tool_name, arguments)
+                try:
+                    result_text = call_mcp_tool(tool_name, arguments)
+                    tool_events.append({"name": tool_name, "status": "success"})
+                except Exception as exc:
+                    result_text = f"Tool error: {exc}"
+                    tool_events.append({"name": tool_name, "status": "error"})
+                    logger.warning("MCP tool %s failed: %s", tool_name, exc)
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tc.id,
+                        "name": tool_name,
+                        "content": result_text,
+                    }
+                )
+            # Continue looping — send tool results back to the model
+            continue
+
+        # --- Handle legacy function_call format ---
+        if choice.message.function_call:
+            fc = choice.message.function_call
+            tool_name = fc.name
+            try:
+                arguments = json.loads(fc.arguments) if fc.arguments else {}
+            except json.JSONDecodeError:
+                arguments = {}
+            logger.info("Dispatching MCP tool (legacy function_call): %s(%s)", tool_name, arguments)
+            try:
+                result_text = call_mcp_tool(tool_name, arguments)
+                tool_events.append({"name": tool_name, "status": "success"})
+            except Exception as exc:
+                result_text = f"Tool error: {exc}"
+                tool_events.append({"name": tool_name, "status": "error"})
+                logger.warning("MCP tool %s failed: %s", tool_name, exc)
+            messages.append(
+                {
+                    "role": "function",
+                    "name": tool_name,
+                    "content": result_text,
+                }
+            )
+            # Continue looping — send function result back to the model
+            continue
+
+        # No tool calls — model produced a final text response; exit loop
+        break
+
+    else:
+        logger.warning(
+            "Tool-calling loop hit maximum iterations (%d) without reaching a final response",
+            _MAX_TOOL_ITERATIONS,
+        )
+
+    return messages, tool_events
+
+
+def chat_with_tools(
+    messages: list[dict],
+    user_message: str,
+) -> tuple[list[dict], list[dict[str, Any]]]:
+    """Append a user message and run the full tool-calling loop.
+
+    Convenience wrapper that combines appending the user turn with
+    ``run_tool_loop``.  Suitable for use from Flask request handlers.
+
+    Args:
+        messages:     Conversation history as plain dicts (mutated in-place).
+        user_message: The user's new message text.
+
+    Returns:
+        Tuple of ``(messages, tool_events)`` — see ``run_tool_loop`` for detail.
+    """
+    messages.append({"role": "user", "content": user_message})
+    return run_tool_loop(messages)
