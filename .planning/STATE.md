@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 6 COMPLETE — all 14 Exchange tools + ping fully implemented (zero stubs); Phase 7 Chat App Core next
+**Current focus:** Phase 7 Chat App Core — In progress (1/6 plans complete)
 
 ## Current Position
 
-Phase: 6 of 9 (Hybrid Tools) — Complete
-Plan: 2 of 2 in phase 6 complete
-Status: Phase complete — verified (4/4 must-haves passed)
-Last activity: 2026-03-20 — Phase 6 verified, 199 tests passing, zero stubs, MCP server tool inventory complete
+Phase: 7 of 9 (Chat App Core) — In progress
+Plan: 1 of 6 in phase 7 complete
+Status: In progress
+Last activity: 2026-03-21 — Completed 07-01-PLAN.md: Flask scaffold with sessions, secrets, templates, static files
 
-Progress: [█████░░░░░] 57% (20/35 plans complete)
+Progress: [█████░░░░░] 60% (21/35 plans complete)
 
 ## Performance Metrics
 
@@ -33,9 +33,10 @@ Progress: [█████░░░░░] 57% (20/35 plans complete)
 | 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
 | 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
 | 06-hybrid-tools | 2/2 | 50 min | 25 min |
+| 07-chat-app-core | 1/6 | 4 min | 4 min |
 
 **Recent Trend:**
-- Last 5 plans: 04-01 (3 min), 04-02 (5 min), 04-03 (6 min), 05-01 (3 min)
+- Last 5 plans: 04-03 (6 min), 05-01 (3 min), 06-01 (25 min), 06-02 (25 min), 07-01 (4 min)
 - Trend: Well-scoped implementation plans executing very fast
 
 *Updated after each plan completion*
@@ -135,6 +136,10 @@ Recent decisions affecting current work:
 - [06-02]: None cert treated as healthy — cannot fully verify but connector is still TLS-configured
 - [06-02]: all_healthy=True for empty connector list — no connectors is not an unhealthy state
 - [06-02]: test_call_tool_not_implemented_raises updated to use nonexistent_tool — zero stubs remain in TOOL_DISPATCH
+- [07-01]: Stub login/logout routes in app.py prevent url_for BuildError before MSAL auth is wired in 07-02
+- [07-01]: fetch-based SSE (not native EventSource) — /chat/stream requires POST body with user message payload
+- [07-01]: SESSION_FILE_DIR defaults to /tmp/flask-sessions; created with os.makedirs(exist_ok=True) at startup
+- [07-01]: Static Config class with update_from_secrets classmethod — simpler than dataclass for this startup pattern
 
 ### Pending Todos
 
@@ -143,11 +148,12 @@ None.
 ### Blockers/Concerns
 
 - [Phase 1]: Verify Exchange throttling policy for service account before Phase 3 tool testing
-- [Phase 7]: Flask vs FastAPI decision is documented as resolved (Flask + thread executor) — confirm before Phase 7
+- [Phase 7]: Flask vs FastAPI resolved as Flask — scaffold is live and working
+- [Phase 7]: API_VERSION=2023-05-15 may not support `tools` parameter — verify in 07-03 before tool-call loop
 - [General]: MMC Azure OpenAI gateway API version pinned at 2023-05-15 — verify with MMC CTS before upgrade
 
 ## Session Continuity
 
-Last session: 2026-03-21T02:40:20Z
-Stopped at: Completed 06-02-PLAN.md — get_connector_status with TLS cert helpers, 10 new tests, 199 total passing, Phase 6 complete
+Last session: 2026-03-21T19:00:06Z
+Stopped at: Completed 07-01-PLAN.md — Flask scaffold with filesystem sessions, AWS Secrets Manager loader, Atlas chat UI templates and static files
 Resume file: None
