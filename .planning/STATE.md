@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 7 COMPLETE — Chat App Core fully implemented (SSO, OpenAI, MCP bridge, tool loop, SSE streaming); Phase 8 Conversation Persistence next
+**Current focus:** Phase 8 — Conversation Persistence (SQLite layer + thread CRUD complete, chat_stream integration and sidebar next)
 
 ## Current Position
 
-Phase: 7 of 9 (Chat App Core) — Complete
-Plan: 6 of 6 in phase 7 complete
-Status: Phase complete — verified (5/5 must-haves passed after SSE fix)
-Last activity: 2026-03-21 — Phase 7 verified, all 6 plans executed, SSE field mismatch fixed
+Phase: 8 of 9 (Conversation Persistence) — In Progress
+Plan: 1 of 3 in phase 8 complete
+Status: In progress — 08-01 complete (SQLite module, schema, CRUD blueprint)
+Last activity: 2026-03-21 — Completed 08-01-PLAN.md: db.py, schema.sql, conversations.py, config.py, app.py
 
-Progress: [███████░░░] 74% (26/35 plans complete)
+Progress: [███████░░░] 77% (27/35 plans complete)
 
 ## Performance Metrics
 
@@ -164,6 +164,11 @@ Recent decisions affecting current work:
 - [07-06]: run_tool_loop final assistant message stripped before streaming — remove non-streamed answer, re-request via streaming completions so users see partial text
 - [07-06]: _EFFECTIVE_LIMIT = 123904 (128000 - 4096) using o200k_base encoding for gpt-4o-mini
 - [07-06]: X-Accel-Buffering: no header on SSE response — disables Nginx proxy buffering
+- [08-01]: Auto-bootstrap schema in get_db() on first open — app self-starts without manual flask init-db
+- [08-01]: 1:1 messages row per thread (not per-message rows) — matches existing list[dict] structure, one-query load
+- [08-01]: user_id stored as TEXT (Azure AD OID UUID) — no users table; session["user"]["oid"] is authoritative
+- [08-01]: rename_thread PATCH does NOT update updated_at — renaming should not re-order threads in sidebar
+- [08-01]: strftime('%Y-%m-%dT%H:%M:%SZ','now') not CURRENT_TIMESTAMP — consistent ISO 8601 with Z suffix
 
 ### Pending Todos
 
@@ -177,6 +182,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-21T20:00:00Z
-Stopped at: Phase 7 complete — all 6 plans executed, verified (5/5 must-haves), SSE delta field fix committed
+Last session: 2026-03-21T23:18:51Z
+Stopped at: Completed 08-01-PLAN.md — db.py, schema.sql, conversations_bp, DATABASE config, app.py registration
 Resume file: None
