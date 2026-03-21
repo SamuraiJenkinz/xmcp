@@ -9,6 +9,7 @@ from flask import Flask, jsonify, redirect, render_template, session, url_for
 from flask_session import Session
 
 from chat_app.auth import auth_bp, login_required
+from chat_app.chat import chat_bp
 from chat_app.config import Config
 from chat_app.mcp_client import get_openai_tools, init_mcp, is_connected
 from chat_app.openai_client import init_openai
@@ -35,6 +36,9 @@ def create_app() -> Flask:
 
     # Register auth blueprint (provides /login, /auth/callback, /logout)
     app.register_blueprint(auth_bp)
+
+    # Register chat blueprint (provides /chat/stream, /chat/clear)
+    app.register_blueprint(chat_bp)
 
     # --- Initialize OpenAI client ---
     # Graceful degradation: log error but allow app to start for development.
