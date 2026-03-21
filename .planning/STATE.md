@@ -140,6 +140,11 @@ Recent decisions affecting current work:
 - [07-01]: fetch-based SSE (not native EventSource) — /chat/stream requires POST body with user message payload
 - [07-01]: SESSION_FILE_DIR defaults to /tmp/flask-sessions; created with os.makedirs(exist_ok=True) at startup
 - [07-01]: Static Config class with update_from_secrets classmethod — simpler than dataclass for this startup pattern
+- [07-02]: Conditional Access interaction_required redirects to /login (not error page) — MSAL includes required claims in next auth request
+- [07-02]: ValueError on acquire_token_by_auth_code_flow catches CSRF/state mismatch — redirect to /login, not 400 error
+- [07-02]: get_token_silently() exposed as module-level helper — 07-03 chat endpoint uses this for API calls
+- [07-02]: login_required checks session['user'], redirects to url_for('index') — splash page is unauthenticated landing
+- [07-02]: auth_callback redirects to url_for('chat') on success — /chat registered in same app factory
 - [07-03]: Use openai.OpenAI (not AzureOpenAI) — MMC gateway URL format does not match Azure SDK auto-routing
 - [07-03]: Strip /chat/completions suffix in _get_base_url() — SDK appends it automatically; double-append would 404
 - [07-03]: Set api-key default header alongside api_key param — MMC gateway may require header-based auth
