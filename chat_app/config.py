@@ -14,6 +14,10 @@ class Config:
     SESSION_FILE_DIR: str = os.environ.get("SESSION_FILE_DIR", "/tmp/flask-sessions")
     SESSION_PERMANENT: bool = False
     SESSION_USE_SIGNER: bool = True
+    DATABASE: str = os.environ.get(
+        "CHAT_DB_PATH",
+        os.path.join(os.path.dirname(__file__), "..", "chat.db"),
+    )
 
     # Azure AD / Entra ID
     AZURE_CLIENT_ID: str = os.environ.get("AZURE_CLIENT_ID", "")
