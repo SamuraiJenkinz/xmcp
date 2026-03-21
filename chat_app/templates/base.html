@@ -16,7 +16,7 @@
             {% if session.get('user') %}
             <span class="status-indicator connected" id="status-indicator" title="Connected">&#9679;</span>
             <span class="user-name">{{ session['user'].get('name', 'User') }}</span>
-            <a href="{{ url_for('logout') }}" class="logout-link">Sign out</a>
+            <a href="{{ url_for('auth.logout') }}" class="logout-link">Sign out</a>
             {% endif %}
         </div>
     </header>

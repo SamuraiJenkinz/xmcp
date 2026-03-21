@@ -8,6 +8,7 @@ import os
 from flask import Flask, redirect, render_template, session, url_for
 from flask_session import Session
 
+from chat_app.auth import auth_bp, login_required
 from chat_app.config import Config
 from chat_app.secrets import load_secrets
 
@@ -30,6 +31,9 @@ def create_app() -> Flask:
     # Initialize server-side sessions (filesystem)
     Session(app)
 
+    # Register auth blueprint (provides /login, /auth/callback, /logout)
+    app.register_blueprint(auth_bp)
+
     # --- Root route ---
     @app.route("/")
     def index():
@@ -37,29 +41,13 @@ def create_app() -> Flask:
             return redirect(url_for("chat"))
         return render_template("splash.html")
 
-    # --- Chat route (protected — auth check; auth routes added in 07-02) ---
+    # --- Chat route (protected) ---
     @app.route("/chat")
+    @login_required
     def chat():
         user = session.get("user")
-        if not user:
-            return redirect(url_for("index"))
         display_name = user.get("name", "Colleague")
         return render_template("chat.html", user=user, display_name=display_name)
-
-    # --- Placeholder routes for auth (registered in 07-02) ---
-    # login and logout routes are registered by auth blueprint in 07-02.
-    # Stub them here so templates that reference url_for('login') / url_for('logout')
-    # do not raise BuildError before 07-02 is wired up.
-    @app.route("/login")
-    def login():
-        """Stub — replaced by MSAL auth flow in 07-02."""
-        return redirect(url_for("index"))
-
-    @app.route("/logout")
-    def logout():
-        """Stub — replaced by MSAL logout in 07-02."""
-        session.clear()
-        return redirect(url_for("index"))
 
     logger.info("Flask app created successfully")
     return app
