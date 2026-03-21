@@ -8,6 +8,12 @@ dependencies = [
     "mcp>=1.0.0",
     "flask>=3.0",
     "waitress>=3.0",
+    "msal>=1.35.1",
+    "openai>=2.29.0",
+    "tiktoken>=0.12.0",
+    "flask-session>=0.8.0",
+    "boto3>=1.42.73",
+    "python-dotenv>=1.2.2",
 ]
 
 [build-system]
