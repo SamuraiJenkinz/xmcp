@@ -18,7 +18,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
 - [x] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
 - [x] **Phase 6: Hybrid Tools** - get_hybrid_config, get_connector_status (get_migration_batches removed — out of MMC scope)
-- [ ] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
+- [x] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
 - [ ] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
 - [ ] **Phase 9: UI Polish** - Tool visibility panel, copy/export, loading indicators, keyboard shortcuts, dark mode
 
@@ -138,12 +138,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [ ] 07-01-PLAN.md — Scaffold Flask app with Waitress, session management, and environment/secrets loading from AWS Secrets Manager
-- [ ] 07-02-PLAN.md — Implement Azure AD / Entra ID SSO via MSAL auth code flow with SerializableTokenCache and Conditional Access handler
-- [ ] 07-03-PLAN.md — Implement Azure OpenAI connectivity to MMC stg1 endpoint and basic chat completions without tool calling
-- [ ] 07-04-PLAN.md — Implement MCP client integration — spawn server.py on startup, tools/list, inject tools into OpenAI requests as function schemas
-- [ ] 07-05-PLAN.md — Implement tool-calling loop — detect tool_calls, route to MCP, append messages in correct order, second completion call
-- [ ] 07-06-PLAN.md — Implement SSE streaming of final response and tiktoken context window management with conversation pruning
+- [x] 07-01-PLAN.md — Scaffold Flask app with Waitress, session management, and environment/secrets loading from AWS Secrets Manager
+- [x] 07-02-PLAN.md — Implement Azure AD / Entra ID SSO via MSAL auth code flow with SerializableTokenCache and Conditional Access handler
+- [x] 07-03-PLAN.md — Implement Azure OpenAI connectivity to MMC stg1 endpoint and basic chat completions without tool calling
+- [x] 07-04-PLAN.md — Implement MCP client integration — spawn server.py on startup, tools/list, inject tools into OpenAI requests as function schemas
+- [x] 07-05-PLAN.md — Implement tool-calling loop — detect tool_calls, route to MCP, append messages in correct order, second completion call
+- [x] 07-06-PLAN.md — Implement SSE streaming of final response and tiktoken context window management with conversation pruning
 
 ### Phase 8: Conversation Persistence
 **Goal**: A colleague can return to the app the next day and find their previous conversations intact, navigate between threads, and have new conversations named automatically
@@ -192,6 +192,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 4. DAG and Database Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 5. Mail Flow and Security Tools | 5/5 | ✓ Complete | 2026-03-20 |
 | 6. Hybrid Tools | 2/2 | ✓ Complete | 2026-03-20 |
-| 7. Chat App Core | 0/6 | Not started | - |
+| 7. Chat App Core | 6/6 | ✓ Complete | 2026-03-21 |
 | 8. Conversation Persistence | 0/3 | Not started | - |
 | 9. UI Polish | 0/4 | Not started | - |

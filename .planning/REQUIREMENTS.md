@@ -53,10 +53,10 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### Chat Application
 
-- [ ] **CHAT-01**: Azure AD / Entra ID SSO via MSAL auth code flow (corporate identity login)
-- [ ] **CHAT-02**: Azure OpenAI tool-calling loop — detect tool_calls, route to MCP server, append results, second completion call
-- [ ] **CHAT-03**: SSE streaming of final AI response to browser in real-time
-- [ ] **CHAT-04**: Context window management — tiktoken token counting, conversation pruning within 128K token limit
+- [x] **CHAT-01**: Azure AD / Entra ID SSO via MSAL auth code flow (corporate identity login)
+- [x] **CHAT-02**: Azure OpenAI tool-calling loop — detect tool_calls, route to MCP server, append results, second completion call
+- [x] **CHAT-03**: SSE streaming of final AI response to browser in real-time
+- [x] **CHAT-04**: Context window management — tiktoken token counting, conversation pruning within 128K token limit
 
 ### User Interface
 
@@ -146,10 +146,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | HYBR-01 | Phase 6 | Complete |
 | HYBR-02 | Phase 6 | Removed |
 | HYBR-03 | Phase 6 | Complete |
-| CHAT-01 | Phase 7 | Pending |
-| CHAT-02 | Phase 7 | Pending |
-| CHAT-03 | Phase 7 | Pending |
-| CHAT-04 | Phase 7 | Pending |
+| CHAT-01 | Phase 7 | Complete |
+| CHAT-02 | Phase 7 | Complete |
+| CHAT-03 | Phase 7 | Complete |
+| CHAT-04 | Phase 7 | Complete |
 | UIUX-01 | Phase 8 | Pending |
 | UIUX-02 | Phase 8 | Pending |
 | UIUX-03 | Phase 9 | Pending |
