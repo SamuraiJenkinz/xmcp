@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Atlas &mdash; Sign In{% endblock %}
+{% block content %}
+<div class="splash-container">
+    <div class="splash-card">
+        <span class="splash-icon">&#9889;</span>
+        <h1>Atlas</h1>
+        <p class="splash-subtitle">MMC Exchange Infrastructure Assistant</p>
+        <p class="splash-description">
+            Ask questions about Exchange mailboxes, DAG health, mail flow,
+            connectors, and hybrid configuration &mdash; powered by live environment data.
+        </p>
+        <a href="{{ url_for('login') }}" class="btn-signin">
+            <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+                <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+                <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+                <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+            </svg>
+            Sign in with Microsoft
+        </a>
+    </div>
+</div>
+{% endblock %}
