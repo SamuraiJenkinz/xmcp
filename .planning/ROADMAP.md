@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Mailbox Tools** - get_mailbox_stats, search_mailboxes, get_shared_mailbox_owners
 - [x] **Phase 4: DAG and Database Tools** - list_dag_members, get_dag_health, get_database_copies
 - [x] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
-- [ ] **Phase 6: Hybrid Tools** - get_hybrid_config, get_migration_batches, get_connector_status
+- [x] **Phase 6: Hybrid Tools** - get_hybrid_config, get_connector_status (get_migration_batches removed — out of MMC scope)
 - [ ] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
 - [ ] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
 - [ ] **Phase 9: UI Polish** - Tool visibility panel, copy/export, loading indicators, keyboard shortcuts, dark mode
@@ -119,12 +119,11 @@ Plans:
   2. get_migration_batches returns active and historical migration batch status with completion percentages
   3. get_connector_status reports hybrid connector health with a live test result against the Exchange Online endpoint
   4. All 15 tools enumerate correctly when queried via the MCP inspector — the server is fully complete
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 06-01: Implement get_hybrid_config with org relationship and federation trust schema
-- [ ] 06-02: Implement get_migration_batches with completion percentage and status fields
-- [ ] 06-03: Implement get_connector_status with live Exchange Online endpoint validation
+- [x] 06-01-PLAN.md — Remove get_migration_batches (out of scope), implement get_hybrid_config with 5-cmdlet composite handler
+- [x] 06-02-PLAN.md — Implement get_connector_status with TLS certificate validation and connector health assessment
 
 ### Phase 7: Chat App Core
 **Goal**: A colleague can log in with their MMC identity, ask an Exchange question in natural language, watch the tool call resolve, and read an AI-composed answer — end-to-end
@@ -192,7 +191,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 3. Mailbox Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 4. DAG and Database Tools | 3/3 | ✓ Complete | 2026-03-20 |
 | 5. Mail Flow and Security Tools | 5/5 | ✓ Complete | 2026-03-20 |
-| 6. Hybrid Tools | 0/3 | Not started | - |
+| 6. Hybrid Tools | 2/2 | ✓ Complete | 2026-03-20 |
 | 7. Chat App Core | 0/6 | Not started | - |
 | 8. Conversation Persistence | 0/3 | Not started | - |
 | 9. UI Polish | 0/4 | Not started | - |

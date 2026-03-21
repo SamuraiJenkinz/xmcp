@@ -47,9 +47,9 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### Hybrid Tools
 
-- [ ] **HYBR-01**: get_hybrid_config — full hybrid topology: org relationships, federation trust, connector mapping
-- [ ] **HYBR-02**: get_migration_batches — active and historical migration batch status with completion percentages
-- [ ] **HYBR-03**: get_connector_status — validates hybrid connector health with live Exchange Online endpoint test
+- [x] **HYBR-01**: get_hybrid_config — full hybrid topology: org relationships, federation trust, connector mapping
+- [~] **HYBR-02**: ~~get_migration_batches~~ — Removed (MMC does not use migration batches; tool removed in 06-01)
+- [x] **HYBR-03**: get_connector_status — validates hybrid connector health with TLS certificate validation
 
 ### Chat Application
 
@@ -123,10 +123,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| EXCL-01 | Phase 1 | Pending |
-| EXCL-02 | Phase 1 | Pending |
-| EXCL-03 | Phase 1 | Pending |
-| EXCL-04 | Phase 1 | Pending |
+| EXCL-01 | Phase 1 | Complete |
+| EXCL-02 | Phase 1 | Complete |
+| EXCL-03 | Phase 1 | Complete |
+| EXCL-04 | Phase 1 | Complete |
 | MCPS-01 | Phase 2 | Complete |
 | MCPS-02 | Phase 2 | Complete |
 | MCPS-03 | Phase 2 | Complete |
@@ -143,9 +143,9 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SECU-01 | Phase 5 | Complete |
 | SECU-02 | Phase 5 | Complete |
 | SECU-03 | Phase 5 | Complete |
-| HYBR-01 | Phase 6 | Pending |
-| HYBR-02 | Phase 6 | Pending |
-| HYBR-03 | Phase 6 | Pending |
+| HYBR-01 | Phase 6 | Complete |
+| HYBR-02 | Phase 6 | Removed |
+| HYBR-03 | Phase 6 | Complete |
 | CHAT-01 | Phase 7 | Pending |
 | CHAT-02 | Phase 7 | Pending |
 | CHAT-03 | Phase 7 | Pending |
