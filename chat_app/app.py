@@ -13,6 +13,7 @@ from chat_app.auth import auth_bp, login_required
 from chat_app.chat import chat_bp
 from chat_app.config import Config
 from chat_app.conversations import conversations_bp
+from chat_app.db import get_db
 from chat_app.mcp_client import get_openai_tools, init_mcp, is_connected
 from chat_app.openai_client import init_openai
 from chat_app.secrets import load_secrets
@@ -45,7 +46,7 @@ def create_app() -> Flask:
     # Register auth blueprint (provides /login, /auth/callback, /logout)
     app.register_blueprint(auth_bp)
 
-    # Register chat blueprint (provides /chat/stream, /chat/clear)
+    # Register chat blueprint (provides /chat/stream)
     app.register_blueprint(chat_bp)
 
     # --- Initialize OpenAI client ---
@@ -75,7 +76,20 @@ def create_app() -> Flask:
     def chat():
         user = session.get("user")
         display_name = user.get("name", "Colleague")
-        return render_template("chat.html", user=user, display_name=display_name)
+        # Find the user's most recently active thread for initial sidebar focus
+        db = get_db()
+        user_id = user.get("oid", "")
+        last_thread = db.execute(
+            "SELECT id FROM threads WHERE user_id = ? ORDER BY updated_at DESC LIMIT 1",
+            (user_id,),
+        ).fetchone()
+        last_thread_id = last_thread["id"] if last_thread else None
+        return render_template(
+            "chat.html",
+            user=user,
+            display_name=display_name,
+            last_thread_id=last_thread_id,
+        )
 
     # --- Health endpoint ---
     @app.route("/api/health")
