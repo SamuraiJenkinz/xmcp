@@ -62,12 +62,12 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 - [x] **UIUX-01**: Conversation history persisting across sessions (SQLite-backed, scoped to authenticated user)
 - [x] **UIUX-02**: Multiple conversation threads with sidebar navigation (create, switch, delete)
-- [ ] **UIUX-03**: Tool visibility panel — collapsible panel showing tool name, parameters, and raw Exchange result
-- [ ] **UIUX-04**: Copy/export responses for reports or tickets
+- [x] **UIUX-03**: Tool visibility panel — collapsible panel showing tool name, parameters, and raw Exchange result
+- [x] **UIUX-04**: Copy/export responses for reports or tickets
 - [x] **UIUX-05**: Conversation auto-naming from first query text
-- [ ] **UIUX-06**: Loading indicators — "Querying Exchange..." status during tool execution (2-4s expected)
-- [ ] **UIUX-07**: Keyboard shortcuts (Ctrl+Enter to send, Esc to cancel)
-- [ ] **UIUX-08**: Dark mode toggle
+- [x] **UIUX-06**: Loading indicators — "Querying Exchange..." status during tool execution (2-4s expected)
+- [x] **UIUX-07**: Keyboard shortcuts (Ctrl+Enter to send, Esc to cancel)
+- [x] **UIUX-08**: Dark mode toggle
 
 ## v2 Requirements
 
@@ -152,12 +152,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAT-04 | Phase 7 | Complete |
 | UIUX-01 | Phase 8 | Complete |
 | UIUX-02 | Phase 8 | Complete |
-| UIUX-03 | Phase 9 | Pending |
-| UIUX-04 | Phase 9 | Pending |
+| UIUX-03 | Phase 9 | Complete |
+| UIUX-04 | Phase 9 | Complete |
 | UIUX-05 | Phase 8 | Complete |
-| UIUX-06 | Phase 9 | Pending |
-| UIUX-07 | Phase 9 | Pending |
-| UIUX-08 | Phase 9 | Pending |
+| UIUX-06 | Phase 9 | Complete |
+| UIUX-07 | Phase 9 | Complete |
+| UIUX-08 | Phase 9 | Complete |
 
 **Coverage:**
 - v1 requirements: 35 total
@@ -166,4 +166,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-19*
-*Last updated: 2026-03-19 after roadmap creation*
+*Last updated: 2026-03-22 after Phase 9 completion*

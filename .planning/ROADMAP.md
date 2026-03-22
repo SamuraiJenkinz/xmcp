@@ -20,7 +20,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 6: Hybrid Tools** - get_hybrid_config, get_connector_status (get_migration_batches removed — out of MMC scope)
 - [x] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
 - [x] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
-- [ ] **Phase 9: UI Polish** - Tool visibility panel, copy/export, loading indicators, keyboard shortcuts, dark mode
+- [x] **Phase 9: UI Polish** - Tool visibility panel, copy/export, loading indicators, keyboard shortcuts, dark mode
 
 ## Phase Details
 
@@ -171,13 +171,13 @@ Plans:
   3. A "Querying Exchange..." loading indicator is visible during the 2-4 second tool execution window
   4. Pressing Ctrl+Enter sends a message and Esc cancels an in-progress response
   5. A dark mode toggle persists the colleague's visual preference across sessions
-**Plans**: TBD
+**Plans**: 4 plans
 
 Plans:
-- [ ] 09-01: Implement collapsible tool visibility panel per message with tool name, parameters, and raw result
-- [ ] 09-02: Implement copy-to-clipboard and export response functionality
-- [ ] 09-03: Implement loading indicator with "Querying Exchange..." status tied to tool execution state
-- [ ] 09-04: Implement keyboard shortcuts (Ctrl+Enter to send, Esc to cancel) and dark mode toggle with session persistence
+- [x] 09-01-PLAN.md — Collapsible tool visibility panels with params, result, and JSON syntax highlighting
+- [x] 09-02-PLAN.md — Copy-to-clipboard on assistant messages and tool panels
+- [x] 09-03-PLAN.md — Bouncing-dots loading indicator and Esc-to-cancel via AbortController
+- [x] 09-04-PLAN.md — Dark mode toggle with CSS custom properties, localStorage persistence, OS auto-detect
 
 ## Progress
 
@@ -194,4 +194,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 6. Hybrid Tools | 2/2 | ✓ Complete | 2026-03-20 |
 | 7. Chat App Core | 6/6 | ✓ Complete | 2026-03-21 |
 | 8. Conversation Persistence | 3/3 | ✓ Complete | 2026-03-22 |
-| 9. UI Polish | 0/4 | Not started | - |
+| 9. UI Polish | 4/4 | ✓ Complete | 2026-03-22 |
