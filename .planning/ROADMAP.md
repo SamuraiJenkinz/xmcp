@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: Mail Flow and Security Tools** - check_mail_flow, get_transport_queues, get_smtp_connectors, get_dkim_config, get_dmarc_status, check_mobile_devices
 - [x] **Phase 6: Hybrid Tools** - get_hybrid_config, get_connector_status (get_migration_batches removed — out of MMC scope)
 - [x] **Phase 7: Chat App Core** - Azure AD SSO, Azure OpenAI tool-calling loop, SSE streaming, context window management
-- [ ] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
+- [x] **Phase 8: Conversation Persistence** - SQLite threads and messages, multi-thread sidebar navigation, conversation auto-naming
 - [ ] **Phase 9: UI Polish** - Tool visibility panel, copy/export, loading indicators, keyboard shortcuts, dark mode
 
 ## Phase Details
@@ -157,9 +157,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — SQLite database layer (db.py, schema.sql) and thread CRUD API blueprint (conversations.py)
-- [ ] 08-02-PLAN.md — Migrate chat_stream from Flask session to SQLite with thread_id routing and auto-naming
-- [ ] 08-03-PLAN.md — Sidebar UI with thread list, create/switch/delete/rename, and thread_id integration
+- [x] 08-01-PLAN.md — SQLite database layer (db.py, schema.sql) and thread CRUD API blueprint (conversations.py)
+- [x] 08-02-PLAN.md — Migrate chat_stream from Flask session to SQLite with thread_id routing and auto-naming
+- [x] 08-03-PLAN.md — Sidebar UI with thread list, create/switch/delete/rename, and thread_id integration
 
 ### Phase 9: UI Polish
 **Goal**: The chat interface feels like a polished internal tool — colleagues can inspect what Exchange data was used, export answers for tickets, and work efficiently with keyboard and visual preferences
@@ -193,5 +193,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9
 | 5. Mail Flow and Security Tools | 5/5 | ✓ Complete | 2026-03-20 |
 | 6. Hybrid Tools | 2/2 | ✓ Complete | 2026-03-20 |
 | 7. Chat App Core | 6/6 | ✓ Complete | 2026-03-21 |
-| 8. Conversation Persistence | 0/3 | Not started | - |
+| 8. Conversation Persistence | 3/3 | ✓ Complete | 2026-03-22 |
 | 9. UI Polish | 0/4 | Not started | - |

@@ -60,11 +60,11 @@ Requirements for initial working demo. Each maps to roadmap phases.
 
 ### User Interface
 
-- [ ] **UIUX-01**: Conversation history persisting across sessions (SQLite-backed, scoped to authenticated user)
-- [ ] **UIUX-02**: Multiple conversation threads with sidebar navigation (create, switch, delete)
+- [x] **UIUX-01**: Conversation history persisting across sessions (SQLite-backed, scoped to authenticated user)
+- [x] **UIUX-02**: Multiple conversation threads with sidebar navigation (create, switch, delete)
 - [ ] **UIUX-03**: Tool visibility panel — collapsible panel showing tool name, parameters, and raw Exchange result
 - [ ] **UIUX-04**: Copy/export responses for reports or tickets
-- [ ] **UIUX-05**: Conversation auto-naming from first query text
+- [x] **UIUX-05**: Conversation auto-naming from first query text
 - [ ] **UIUX-06**: Loading indicators — "Querying Exchange..." status during tool execution (2-4s expected)
 - [ ] **UIUX-07**: Keyboard shortcuts (Ctrl+Enter to send, Esc to cancel)
 - [ ] **UIUX-08**: Dark mode toggle
@@ -150,11 +150,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAT-02 | Phase 7 | Complete |
 | CHAT-03 | Phase 7 | Complete |
 | CHAT-04 | Phase 7 | Complete |
-| UIUX-01 | Phase 8 | Pending |
-| UIUX-02 | Phase 8 | Pending |
+| UIUX-01 | Phase 8 | Complete |
+| UIUX-02 | Phase 8 | Complete |
 | UIUX-03 | Phase 9 | Pending |
 | UIUX-04 | Phase 9 | Pending |
-| UIUX-05 | Phase 8 | Pending |
+| UIUX-05 | Phase 8 | Complete |
 | UIUX-06 | Phase 9 | Pending |
 | UIUX-07 | Phase 9 | Pending |
 | UIUX-08 | Phase 9 | Pending |
