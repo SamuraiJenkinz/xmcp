@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 ## Current Position
 
 Phase: 9 of 9 (UI Polish) — In progress
-Plan: 1 of 4 in phase 9 complete
-Status: In progress — collapsible tool panels with JSON highlighting complete
-Last activity: 2026-03-22 — Completed 09-01-PLAN.md: tool panels in UI (params+result in SSE, details/summary DOM, JSON highlighting)
+Plan: 2 of 4 in phase 9 complete
+Status: In progress — copy-to-clipboard on assistant messages and tool panels complete
+Last activity: 2026-03-22 — Completed 09-02-PLAN.md: copy-to-clipboard (copyText utility, hover-reveal message copy, always-visible tool JSON copy)
 
-Progress: [█████████░] 86% (30/35 plans complete)
+Progress: [█████████░] 89% (31/35 plans complete)
 
 ## Performance Metrics
 
@@ -183,6 +183,10 @@ Recent decisions affecting current work:
 - [09-01]: highlightJson() HTML-escapes before regex replace — prevents XSS from Exchange API data containing HTML special chars
 - [09-01]: Dark JSON code theme (Catppuccin-inspired) on tool-panel-json pre blocks — visually distinguishes Exchange data from surrounding chat
 - [09-01]: tool_events params stored as already-parsed dict, result as raw string — frontend parse+stringify normalizes Exchange JSON indentation
+- [09-02]: Copy button only reveals after finalize() adds .finalized — prevents copying incomplete streamed text mid-response
+- [09-02]: textNode.textContent used for AI text copy — TextNode sibling to tool panels, naturally excludes Exchange data
+- [09-02]: navigator.clipboard guard: if (!navigator.clipboard) return — no-op on non-HTTPS/legacy browsers, no error thrown
+- [09-02]: tool-panel-copy overrides position:static and opacity:1 — tool JSON copy always visible, unlike hover-reveal message copy
 
 ### Pending Todos
 
@@ -196,6 +200,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T11:20:28Z
-Stopped at: Completed 09-01-PLAN.md — collapsible tool panels with JSON syntax highlighting
+Last session: 2026-03-22T11:23:50Z
+Stopped at: Completed 09-02-PLAN.md — copy-to-clipboard on assistant messages and tool panels
 Resume file: None
