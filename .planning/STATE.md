@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-19)
 ## Current Position
 
 Phase: 9 of 9 (UI Polish) — In progress
-Plan: 2 of 4 in phase 9 complete
-Status: In progress — copy-to-clipboard on assistant messages and tool panels complete
-Last activity: 2026-03-22 — Completed 09-02-PLAN.md: copy-to-clipboard (copyText utility, hover-reveal message copy, always-visible tool JSON copy)
+Plan: 3 of 4 in phase 9 complete
+Status: In progress — bouncing dots loading indicator and Esc-to-cancel streaming complete
+Last activity: 2026-03-22 — Completed 09-03-PLAN.md: bouncing-dots indicator, AbortController Esc-to-cancel, markInterrupted
 
-Progress: [█████████░] 89% (31/35 plans complete)
+Progress: [█████████░] 91% (32/35 plans complete)
 
 ## Performance Metrics
 
@@ -187,6 +187,11 @@ Recent decisions affecting current work:
 - [09-02]: textNode.textContent used for AI text copy — TextNode sibling to tool panels, naturally excludes Exchange data
 - [09-02]: navigator.clipboard guard: if (!navigator.clipboard) return — no-op on non-HTTPS/legacy browsers, no error thrown
 - [09-02]: tool-panel-copy overrides position:static and opacity:1 — tool JSON copy always visible, unlike hover-reveal message copy
+- [09-03]: dotsEl inserted with insertBefore(dotsEl, textNode) — dots precede text in DOM, appear immediately before first SSE event
+- [09-03]: removeDots() idempotent via dotsRemoved flag — safe to call from tool, text, done, error, and abort paths
+- [09-03]: AbortError discriminated in both fetch.catch() and pump().catch() — routes to markInterrupted() not markError()
+- [09-03]: Document-level Escape listener (not inputEl) — works regardless of which element has focus during streaming
+- [09-03]: pump() checks signal.aborted before reader.read() — catches abort between chunk reads
 
 ### Pending Todos
 
@@ -200,6 +205,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T11:23:50Z
-Stopped at: Completed 09-02-PLAN.md — copy-to-clipboard on assistant messages and tool panels
+Last session: 2026-03-22T12:32:53Z
+Stopped at: Completed 09-03-PLAN.md — bouncing dots loading indicator and Esc-to-cancel streaming
 Resume file: None
