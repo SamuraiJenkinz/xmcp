@@ -32,6 +32,7 @@
     --color-brand-bg-hover: #dbeafe;
     --color-brand-bg-active:#eff6ff;
     --color-brand-border:   #bfdbfe;
+    --color-on-brand:       #ffffff;
 
     /* Semantic: success */
     --color-success:        #16a34a;
@@ -109,6 +110,7 @@
     --color-brand-bg-hover: #1e2d4d;
     --color-brand-bg-active:#1a2540;
     --color-brand-border:   #2a4070;
+    --color-on-brand:       #ffffff;
 
     /* Semantic: success */
     --color-success:        #4ade80;
@@ -352,7 +354,7 @@ html, body {
     align-items: center;
     gap: 10px;
     background: var(--color-brand);
-    color: #ffffff;
+    color: var(--color-on-brand);
     font-size: 15px;
     font-weight: 600;
     text-decoration: none;
@@ -549,7 +551,7 @@ html, body {
 
 .user-message .message-content {
     background: var(--color-brand);
-    color: #ffffff;
+    color: var(--color-on-brand);
     padding: 10px 14px;
     border-radius: 14px 14px 3px 14px;
     max-width: 80%;
@@ -905,7 +907,7 @@ html, body {
 #send-btn {
     flex-shrink: 0;
     background: var(--color-brand);
-    color: #ffffff;
+    color: var(--color-on-brand);
     border: none;
     border-radius: 8px;
     padding: 8px 16px;
