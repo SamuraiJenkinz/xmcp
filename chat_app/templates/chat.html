@@ -1,32 +1,42 @@
 {% extends "base.html" %}
 {% block title %}Atlas &mdash; Chat{% endblock %}
 {% block content %}
-<div class="chat-container">
-    <div class="chat-messages" id="chat-messages">
-        <div class="message assistant-message" id="welcome-message">
-            <div class="message-content">
-                <p>Hello, <strong>{{ display_name }}</strong>! I&rsquo;m <strong>Atlas</strong>, MMC&rsquo;s Exchange infrastructure assistant.</p>
-                <p>I can help you query live Exchange data. Try one of these:</p>
-                <div class="example-queries">
-                    <button class="example-query" data-query="Check mailbox size for a specific user">Check mailbox size for a specific user</button>
-                    <button class="example-query" data-query="Show DAG health and replication status">Show DAG health and replication status</button>
-                    <button class="example-query" data-query="Check mail flow routing for an address">Check mail flow routing for an address</button>
-                    <button class="example-query" data-query="Show hybrid connector status">Show hybrid connector status</button>
+<div class="app-layout" data-last-thread-id="{{ last_thread_id or '' }}">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-btn" id="new-chat-btn" title="New conversation">+ New Chat</button>
+        </div>
+        <ul class="thread-list" id="thread-list">
+            <!-- Populated by JS -->
+        </ul>
+    </aside>
+    <div class="chat-container">
+        <div class="chat-messages" id="chat-messages">
+            <div class="message assistant-message" id="welcome-message">
+                <div class="message-content">
+                    <p>Hello, <strong>{{ display_name }}</strong>! I&rsquo;m <strong>Atlas</strong>, MMC&rsquo;s Exchange infrastructure assistant.</p>
+                    <p>I can help you query live Exchange data. Try one of these:</p>
+                    <div class="example-queries">
+                        <button class="example-query" data-query="Check mailbox size for a specific user">Check mailbox size for a specific user</button>
+                        <button class="example-query" data-query="Show DAG health and replication status">Show DAG health and replication status</button>
+                        <button class="example-query" data-query="Check mail flow routing for an address">Check mail flow routing for an address</button>
+                        <button class="example-query" data-query="Show hybrid connector status">Show hybrid connector status</button>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="chat-input-area">
-        <form id="chat-form" autocomplete="off">
-            <textarea
-                id="chat-input"
-                placeholder="Ask about Exchange infrastructure..."
-                rows="1"
-                autofocus
-                aria-label="Message input"
-            ></textarea>
-            <button type="submit" id="send-btn" title="Send (Ctrl+Enter)" aria-label="Send message">Send</button>
-        </form>
+        <div class="chat-input-area">
+            <form id="chat-form" autocomplete="off">
+                <textarea
+                    id="chat-input"
+                    placeholder="Ask about Exchange infrastructure..."
+                    rows="1"
+                    autofocus
+                    aria-label="Message input"
+                ></textarea>
+                <button type="submit" id="send-btn" title="Send (Ctrl+Enter)" aria-label="Send message">Send</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}
