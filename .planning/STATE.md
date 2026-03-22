@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 8 — Conversation Persistence (SQLite layer + thread CRUD complete, chat_stream integration and sidebar next)
+**Current focus:** Phase 8 — Conversation Persistence (SQLite layer, thread CRUD, chat_stream migration complete — sidebar JS next)
 
 ## Current Position
 
 Phase: 8 of 9 (Conversation Persistence) — In Progress
-Plan: 1 of 3 in phase 8 complete
-Status: In progress — 08-01 complete (SQLite module, schema, CRUD blueprint)
-Last activity: 2026-03-21 — Completed 08-01-PLAN.md: db.py, schema.sql, conversations.py, config.py, app.py
+Plan: 2 of 3 in phase 8 complete
+Status: In progress — 08-02 complete (chat_stream SQLite migration, auto-naming, last_thread_id)
+Last activity: 2026-03-21 — Completed 08-02-PLAN.md: chat.py (SQLite-backed), app.py (last_thread_id)
 
-Progress: [███████░░░] 77% (27/35 plans complete)
+Progress: [████████░░] 80% (28/35 plans complete)
 
 ## Performance Metrics
 
@@ -169,6 +169,10 @@ Recent decisions affecting current work:
 - [08-01]: user_id stored as TEXT (Azure AD OID UUID) — no users table; session["user"]["oid"] is authoritative
 - [08-01]: rename_thread PATCH does NOT update updated_at — renaming should not re-order threads in sidebar
 - [08-01]: strftime('%Y-%m-%dT%H:%M:%SZ','now') not CURRENT_TIMESTAMP — consistent ISO 8601 with Z suffix
+- [08-02]: thread_name captured before generator entry (closure) — auto-naming decision must read value before any mutation inside generator
+- [08-02]: get_db() called twice — once pre-generator for ownership check + load, once inside generator for post-stream write; same per-request connection via Flask g
+- [08-02]: Windows strftime %#d and %#I used in _fallback_name() — server runs on Windows, standard %d/%I would include leading zeros
+- [08-02]: thread_named SSE event emitted before done event — sidebar update happens before stream closes; None auto_name_applied means no event
 
 ### Pending Todos
 
@@ -182,6 +186,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-21T23:18:51Z
-Stopped at: Completed 08-01-PLAN.md — db.py, schema.sql, conversations_bp, DATABASE config, app.py registration
+Last session: 2026-03-22T00:01:39Z
+Stopped at: Completed 08-02-PLAN.md — chat.py SQLite migration, _auto_name/_fallback_name, thread_named SSE, app.py last_thread_id
 Resume file: None
