@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-19)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 9 — Polish and Deployment
+**Current focus:** Phase 9 — COMPLETE
 
 ## Current Position
 
-Phase: 9 of 9 (UI Polish) — In progress
-Plan: 3 of 4 in phase 9 complete
-Status: In progress — bouncing dots loading indicator and Esc-to-cancel streaming complete
-Last activity: 2026-03-22 — Completed 09-03-PLAN.md: bouncing-dots indicator, AbortController Esc-to-cancel, markInterrupted
+Phase: 9 of 9 (UI Polish) — COMPLETE
+Plan: 4 of 4 in phase 9 complete
+Status: ALL PHASES COMPLETE — full Atlas chat app production-ready
+Last activity: 2026-03-22 — Completed 09-04-PLAN.md: dark mode system (CSS tokens, flash prevention, localStorage persistence, toggle button)
 
-Progress: [█████████░] 91% (32/35 plans complete)
+Progress: [██████████] 100% (35/35 plans complete)
 
 ## Performance Metrics
 
@@ -192,6 +192,10 @@ Recent decisions affecting current work:
 - [09-03]: AbortError discriminated in both fetch.catch() and pump().catch() — routes to markInterrupted() not markError()
 - [09-03]: Document-level Escape listener (not inputEl) — works regardless of which element has focus during streaming
 - [09-03]: pump() checks signal.aborted before reader.read() — catches abort between chunk reads
+- [09-04]: JSON code block stays intentionally dark in both themes (Catppuccin) — consistent Exchange data reading experience
+- [09-04]: --color-on-brand: #ffffff token for text-on-blue (signin btn, user bubble, send btn) — stays white in both modes for contrast
+- [09-04]: No transition: all anywhere — explicit background-color/color/border-color transitions only to avoid layout jank
+- [09-04]: All dark mode JS placed before early return in app.js so toggle works on unauthenticated login splash page
 
 ### Pending Todos
 
@@ -205,6 +209,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-22T12:32:53Z
-Stopped at: Completed 09-03-PLAN.md — bouncing dots loading indicator and Esc-to-cancel streaming
+Last session: 2026-03-22T13:16:10Z
+Stopped at: Completed 09-04-PLAN.md — dark mode system (CSS custom properties, flash prevention, localStorage, OS auto-detect, toggle button)
 Resume file: None
