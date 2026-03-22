@@ -16,6 +16,30 @@
     var threadListEl = document.getElementById('thread-list');
     var newChatBtn = document.getElementById('new-chat-btn');
 
+    // ---- Dark mode toggle (placed before early return so it works on login splash) ----
+    var themeToggleBtn = document.getElementById('theme-toggle');
+    var themeToggleIcon = document.getElementById('theme-toggle-icon');
+
+    function updateDarkModeIcon(theme) {
+        if (!themeToggleIcon) return;
+        // ☀ (sun) in dark mode, ☾ (crescent moon) in light mode
+        themeToggleIcon.innerHTML = theme === 'dark' ? '&#9790;' : '&#9788;';
+    }
+
+    function toggleDarkMode() {
+        var current = document.documentElement.getAttribute('data-theme') || 'light';
+        var next = current === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', next);
+        localStorage.setItem('atlas-theme', next);
+        updateDarkModeIcon(next);
+    }
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener('click', toggleDarkMode);
+    }
+
+    updateDarkModeIcon(document.documentElement.getAttribute('data-theme') || 'light');
+
     if (!messagesEl || !inputEl || !formEl || !sendBtn) {
         // Not on the chat page — silently exit
         return;
