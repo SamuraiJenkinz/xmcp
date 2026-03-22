@@ -258,10 +258,20 @@ def run_tool_loop(
                 logger.info("Dispatching MCP tool: %s(%s)", tool_name, arguments)
                 try:
                     result_text = call_mcp_tool(tool_name, arguments)
-                    tool_events.append({"name": tool_name, "status": "success"})
+                    tool_events.append({
+                        "name": tool_name,
+                        "status": "success",
+                        "params": arguments,
+                        "result": result_text,
+                    })
                 except Exception as exc:
                     result_text = f"Tool error: {exc}"
-                    tool_events.append({"name": tool_name, "status": "error"})
+                    tool_events.append({
+                        "name": tool_name,
+                        "status": "error",
+                        "params": arguments,
+                        "result": result_text,
+                    })
                     logger.warning("MCP tool %s failed: %s", tool_name, exc)
                 messages.append(
                     {
@@ -285,10 +295,20 @@ def run_tool_loop(
             logger.info("Dispatching MCP tool (legacy function_call): %s(%s)", tool_name, arguments)
             try:
                 result_text = call_mcp_tool(tool_name, arguments)
-                tool_events.append({"name": tool_name, "status": "success"})
+                tool_events.append({
+                    "name": tool_name,
+                    "status": "success",
+                    "params": arguments,
+                    "result": result_text,
+                })
             except Exception as exc:
                 result_text = f"Tool error: {exc}"
-                tool_events.append({"name": tool_name, "status": "error"})
+                tool_events.append({
+                    "name": tool_name,
+                    "status": "error",
+                    "params": arguments,
+                    "result": result_text,
+                })
                 logger.warning("MCP tool %s failed: %s", tool_name, exc)
             messages.append(
                 {

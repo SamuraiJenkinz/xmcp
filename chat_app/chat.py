@@ -9,7 +9,7 @@ Provides one route:
 
 SSE event format (newline-delimited)::
 
-    data: {"type": "tool",         "name": "<tool_name>", "status": "success|error"}\\n\\n
+    data: {"type": "tool",         "name": "<tool_name>", "status": "success|error", "params": {...}, "result": "<json>"}\\n\\n
     data: {"type": "text",         "delta": "<chunk>"}\\n\\n
     data: {"type": "thread_named", "thread_id": <id>, "name": "<auto-name>"}\\n\\n
     data: {"type": "done"}\\n\\n
@@ -227,6 +227,8 @@ def chat_stream() -> Response:
                     "type": "tool",
                     "name": event["name"],
                     "status": event["status"],
+                    "params": event.get("params", {}),
+                    "result": event.get("result"),
                 })
 
             # ---------------------------------------------------------------
