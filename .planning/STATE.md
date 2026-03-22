@@ -2,200 +2,46 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-19)
+See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Phase 9 — COMPLETE
+**Current focus:** v1.0 MVP shipped — planning next milestone
 
 ## Current Position
 
-Phase: 9 of 9 (UI Polish) — COMPLETE
-Plan: 4 of 4 in phase 9 complete
-Status: ALL PHASES COMPLETE — full Atlas chat app production-ready
-Last activity: 2026-03-22 — Completed 09-04-PLAN.md: dark mode system (CSS tokens, flash prevention, localStorage persistence, toggle button)
+Phase: 9 of 9 complete — v1.0 MVP SHIPPED
+Plan: All 35 plans complete
+Status: Milestone archived, ready for next milestone
+Last activity: 2026-03-22 — v1.0 MVP milestone complete
 
-Progress: [██████████] 100% (35/35 plans complete)
+Progress: [##########] 100% (35/35 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 18
-- Average duration: ~6 min
-- Total execution time: ~80 min
+- Total plans completed: 35
+- Total execution time: ~4 days (2026-03-19 → 2026-03-22)
+- Git commits: 139
 
 **By Phase:**
 
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 01-exchange-client-foundation | 4/4 | ~50 min | 12 min |
-| 02-mcp-server-scaffold | 3/3 | 15 min | 5 min |
-| 03-mailbox-tools | 3/3 | ~11 min | 4 min |
-| 04-dag-and-database-tools | 3/3 | ~14 min | 5 min |
-| 05-mail-flow-and-security-tools | 5/5 | 16 min | 3 min |
-| 06-hybrid-tools | 2/2 | 50 min | 25 min |
-| 07-chat-app-core | 6/6 | 21 min | 4 min |
-
-**Recent Trend:**
-- Last 5 plans: 05-01 (3 min), 06-01 (25 min), 06-02 (25 min), 07-01 (4 min), 07-03 (2 min)
-- Trend: Well-scoped implementation plans executing very fast
-
-*Updated after each plan completion*
+| Phase | Plans | Completed |
+|-------|-------|-----------|
+| 01-exchange-client-foundation | 4/4 | 2026-03-19 |
+| 02-mcp-server-scaffold | 3/3 | 2026-03-19 |
+| 03-mailbox-tools | 3/3 | 2026-03-20 |
+| 04-dag-and-database-tools | 3/3 | 2026-03-20 |
+| 05-mail-flow-and-security-tools | 5/5 | 2026-03-20 |
+| 06-hybrid-tools | 2/2 | 2026-03-20 |
+| 07-chat-app-core | 6/6 | 2026-03-21 |
+| 08-conversation-persistence | 3/3 | 2026-03-22 |
+| 09-ui-polish | 4/4 | 2026-03-22 |
 
 ## Accumulated Context
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- [Pre-Phase 1]: Flask 3.x + Waitress chosen over FastAPI — run async PowerShell calls in thread pool via run_in_executor
-- [Pre-Phase 1]: Per-call PSSession, no pooling — accept 2-4s latency; benchmark before optimizing
-- [Pre-Phase 1]: SQLite for conversation persistence — zero ops, correct for <100 concurrent users
-- [Pre-Phase 1]: Official mcp SDK (not fastmcp) — stdio transport for v1
-- [01-01]: Use -EncodedCommand (Base64 UTF-16LE) not -Command for PowerShell — prevents cp1252 corruption
-- [01-01]: Auto-prepend _PS_PREAMBLE inside run_ps() — all callers get UTF-8 stdout by default
-- [01-01]: proc.communicate() not proc.wait() — prevents pipe-buffer deadlock
-- [01-02]: System default DNS resolver only — no custom nameserver configuration
-- [01-02]: Negative-cache NXDOMAIN/NoAnswer for 300s
-- [01-03]: Non-retryable patterns checked case-insensitively — raise immediately, no retry
-- [01-03]: Empty string from run_ps() returns [] from run_cmdlet()
-- [01-04]: Interactive auth (browser popup) as default, CBA as optional fallback — user requested removal of certificate requirement
-- [01-04]: Auth mode auto-detected: AZURE_CERT_THUMBPRINT present → CBA, absent → interactive
-- [02-01]: anyio.run(main) as entry point — mcp SDK uses anyio internally; asyncio.run works but anyio.run is idiomatic
-- [02-01]: Human-readable log format over structured JSON — internal admin tool, terminal readability preferred at this stage
-- [02-01]: raise RuntimeError(sanitized) from None in call_tool — SDK's _make_error_result(str(e)) creates isError=True with the clean message
-- [02-01]: SIGTERM handler in try/except — Windows may not support SIGTERM registration; wrap for compatibility
-- [02-02]: NotImplementedError from stubs re-raised as plain RuntimeError (no _sanitize_error) — stub message already clean
-- [02-02]: Startup banner uses len(TOOL_DEFINITIONS) directly — avoids async call, simpler
-- [02-02]: TYPE_CHECKING guard on ExchangeClient in tools.py
-- [02-03]: Does NOT clause cross-references sibling tool by name — makes disambiguation machine-readable
-- [02-03]: Single-quoted example queries in descriptions as LLM trigger phrase convention
-- [02-03]: "PowerShell" forbidden in tool descriptions — descriptions are user-facing, not admin-facing — avoids circular import; client passed at call time
-- [03-01]: last_logon passed through as-is from Exchange — no date parsing; LLM reads /Date(ms)/ format
-- [03-01]: total_size_bytes included alongside human-friendly total_size — LLM needs raw bytes for quota % calculation
-- [03-01]: Quota values passed as strings (not parsed) — Exchange returns full natural language strings; no parsing needed
-- [03-01]: test_call_tool_not_implemented_raises updated to use search_mailboxes stub — get_mailbox_stats is now real
-- [03-02]: ANR trailing wildcard stripped before passing to -Anr — implicit prefix matching
-- [03-02]: Database not-found returns empty result (not error) — search finding nothing is valid
-- [03-02]: RecipientTypeDetails passed unquoted — it is a PowerShell enum parameter
-- [03-02]: test_call_tool_not_implemented_raises updated to use list_dag_members stub — search_mailboxes is now real
-- [03-03]: System account filtering in PowerShell Where-Object, not Python — reduces data transferred
-- [03-03]: via_group always null — Get-MailboxPermission shows IsInherited but not which group caused it
-- [03-03]: SendAs display_name always null — Get-RecipientPermission has no display name field
-- [03-03]: GrantSendOnBehalfTo identity returned as-is (DN/UPN) — resolving would require N extra Get-Recipient calls
-- [04-01]: dag_name functionally required despite schema required:[] — raise RuntimeError before any Exchange call
-- [04-01]: Unreachable servers produce error entry with null fields — partial results pattern, not tool failure
-- [04-01]: @() wrapper on ForEach-Object projection forces array output for single-member DAGs
-- [04-01]: .ToString() on ADObjectId/ADSite/ServerVersion objects for plain string representation
-- [04-01]: Active DB count = Status=="Mounted"; everything else is passive
-- [04-01]: test_call_tool_not_implemented_raises updated to get_dag_health — list_dag_members is now real
-- [04-02]: No -Status flag on Get-DatabaseAvailabilityGroup in get_dag_health — only need member names, saves Exchange round-trip
-- [04-02]: is_mounted derived from Status == "Mounted" in handler — cleaner API, no raw status string interpretation needed by LLM
-- [04-02]: Queue lengths as raw integers, no threshold interpretation — context-dependent meaning, LLM interprets
-- [04-02]: Content index state passed as-is (Healthy/Crawling/Failed/etc.) — all values meaningful as strings
-- [04-02]: test_call_tool_not_implemented_raises updated to use get_database_copies — get_dag_health is now real
-- [04-03]: Activation preference from Get-MailboxDatabase (authoritative), not Get-MailboxDatabaseCopyStatus (known bug)
-- [04-03]: Both dict and list ActivationPreference serialization formats handled (Exchange version-dependent)
-- [04-03]: Zero copies raises RuntimeError (abnormal database state, not valid empty result)
-- [04-03]: test_call_tool_not_implemented_raises updated to use check_mail_flow — get_database_copies is now real
-- [05-01]: check_mail_flow is config-based route analysis only — no test messages sent, safe for production use
-- [05-01]: Internal routing check uses accepted domains set membership; wildcard/subdomain connectors not checked for internal
-- [05-01]: AddressSpace parsing: strip "SMTP:" prefix and ";cost" suffix before domain comparison
-- [05-01]: Enabled-only connector filtering before domain matching — Enabled:False connectors skipped
-- [05-01]: routing_type=internal takes precedence over connector matching when recipient domain is accepted
-- [05-01]: test_call_tool_not_implemented_raises updated to get_transport_queues — check_mail_flow is now real
-- [05-02]: Return ALL queues — over_threshold boolean flags backlogs, not a filter; LLM needs full queue context
-- [05-02]: Two-step query: Get-TransportService discovery then per-server Get-Queue -Server (no all-server mode in Get-Queue)
-- [05-02]: server_name shortcut skips Get-TransportService when caller targets specific server
-- [05-02]: test_call_tool_not_implemented_raises updated to get_smtp_connectors — get_transport_queues is now real
-- [05-03]: connector_type defaults to "all" — returns both send and receive, most informative for LLM
-- [05-03]: Invalid connector_type raises RuntimeError immediately before any Exchange call — fail fast
-- [05-03]: MaxMessageSize serialized as str(val) if val else None — ByteQuantifiedSize renders as "25 MB (26,214,400 bytes)"
-- [05-03]: Multi-valued Bindings/RemoteIPRanges use ForEach-Object { $_.ToString() } — same lesson as Phase 4 ActivationPreference
-- [05-03]: test_call_tool_not_implemented_raises updated to use get_dkim_config stub — get_smtp_connectors is now real
-- [05-04]: CNAME cache key prefix "CNAME:{name}" prevents collision with TXT cache entries in shared _cache dict
-- [05-04]: Sentinel object() per-call to distinguish DNS error (match=null) from NXDOMAIN/not-published (match=false)
-- [05-04]: Three-state DNS match: True (published==expected), False (mismatch or expected-but-missing), None (DNS error)
-- [05-04]: Expected-but-NXDOMAIN = False (definite failure); DNS LookupError = None (unknown — don't claim failure)
-- [05-04]: dns_utils imported at module level in tools.py to enable patch('exchange_mcp.tools.dns_utils.get_cname_record') in tests
-- [05-04]: test_call_tool_not_implemented_raises updated to use get_dmarc_status stub — get_dkim_config is now real
-- [05-05]: get_dmarc_status does NOT check client is None — pure DNS tool works without Exchange connection
-- [05-05]: get_dmarc_status raises RuntimeError on LookupError — DNS errors surface as user-readable errors
-- [05-05]: check_mobile_devices returns ALL devices including stale partnerships — LLM/user decides relevance
-- [05-05]: Empty device list is valid result (not an error) — user simply has no mobile partnerships
-- [05-05]: test_call_tool_not_implemented_raises updated to get_hybrid_config (Phase 6 stub)
-- [06-01]: get_migration_batches removed — out of MMC scope; tool count now 15 (14 Exchange + ping)
-- [06-01]: get_hybrid_config composite handler: 5 sequential cmdlets (org rel, fed trust, intra-org, avail addr, hybrid send)
-- [06-01]: Per-section independent error handling — partial Exchange failure yields {"error": "..."} for that section only
-- [06-01]: FederationTrust X509Certificate2 projected to scalar strings in PowerShell (Thumbprint, Subject, NotAfter ISO-8601)
-- [06-01]: MultiValuedProperty fields projected with ForEach-Object ToString() — same pattern as Phase 4/5
-- [06-01]: test_call_tool_not_implemented_raises updated to get_connector_status (last remaining stub)
-- [06-02]: get_connector_status identifies hybrid send connectors by CloudServicesMailEnabled eq true
-- [06-02]: get_connector_status identifies hybrid receive connectors by TlsCertificateName non-empty
-- [06-02]: Per-connector TLS cert lookup via Get-ExchangeCertificate -DomainName returns None gracefully if cmdlet unavailable (Exchange Online)
-- [06-02]: None cert treated as healthy — cannot fully verify but connector is still TLS-configured
-- [06-02]: all_healthy=True for empty connector list — no connectors is not an unhealthy state
-- [06-02]: test_call_tool_not_implemented_raises updated to use nonexistent_tool — zero stubs remain in TOOL_DISPATCH
-- [07-01]: Stub login/logout routes in app.py prevent url_for BuildError before MSAL auth is wired in 07-02
-- [07-01]: fetch-based SSE (not native EventSource) — /chat/stream requires POST body with user message payload
-- [07-01]: SESSION_FILE_DIR defaults to /tmp/flask-sessions; created with os.makedirs(exist_ok=True) at startup
-- [07-01]: Static Config class with update_from_secrets classmethod — simpler than dataclass for this startup pattern
-- [07-02]: Conditional Access interaction_required redirects to /login (not error page) — MSAL includes required claims in next auth request
-- [07-02]: ValueError on acquire_token_by_auth_code_flow catches CSRF/state mismatch — redirect to /login, not 400 error
-- [07-02]: get_token_silently() exposed as module-level helper — 07-03 chat endpoint uses this for API calls
-- [07-02]: login_required checks session['user'], redirects to url_for('index') — splash page is unauthenticated landing
-- [07-02]: auth_callback redirects to url_for('chat') on success — /chat registered in same app factory
-- [07-03]: Use openai.OpenAI (not AzureOpenAI) — MMC gateway URL format does not match Azure SDK auto-routing
-- [07-03]: Strip /chat/completions suffix in _get_base_url() — SDK appends it automatically; double-append would 404
-- [07-03]: Set api-key default header alongside api_key param — MMC gateway may require header-based auth
-- [07-03]: _message_to_dict() handles tool_calls in preparation for 07-05 tool-call loop
-- [07-04]: Daemon thread owns asyncio.new_event_loop() running run_forever() — Flask never calls asyncio.run()
-- [07-04]: _async_run() uses run_coroutine_threadsafe().result(timeout) — standard sync-to-async bridge
-- [07-04]: AsyncExitStack held as module state (_exit_stack) — keeps stdio_client + ClientSession contexts alive for app lifetime
-- [07-04]: threading.Lock wraps every call_mcp_tool() — MCP stdio is single JSON-RPC stream, concurrent calls corrupt it
-- [07-04]: init_mcp() timeout 120s — Exchange MCP server does auth at startup, cold start can be slow
-- [07-04]: Module import is side-effect-free — subprocess only spawned when init_mcp() called explicitly
-- [07-05]: json.loads(tc.function.arguments) with fallback to {} on JSONDecodeError — arguments may be empty string from gateway
-- [07-05]: _use_tools_param module flag persists fallback across all requests after first gateway rejection — avoids repeated rejections
-- [07-05]: tool_events list ({name, status}) returned alongside messages — caller decides what to stream to UI
-- [07-05]: init_openai and init_mcp wrapped in try/except in create_app — app starts in degraded mode if either unavailable
-- [07-05]: /api/health returns tools_count via len(get_openai_tools()) — reflects actual cached tool count
-- [07-06]: Session data read BEFORE generator entry in chat_stream — stream_with_context carries context but pre-reading avoids session backend issues in generators
-- [07-06]: run_tool_loop final assistant message stripped before streaming — remove non-streamed answer, re-request via streaming completions so users see partial text
-- [07-06]: _EFFECTIVE_LIMIT = 123904 (128000 - 4096) using o200k_base encoding for gpt-4o-mini
-- [07-06]: X-Accel-Buffering: no header on SSE response — disables Nginx proxy buffering
-- [08-01]: Auto-bootstrap schema in get_db() on first open — app self-starts without manual flask init-db
-- [08-01]: 1:1 messages row per thread (not per-message rows) — matches existing list[dict] structure, one-query load
-- [08-01]: user_id stored as TEXT (Azure AD OID UUID) — no users table; session["user"]["oid"] is authoritative
-- [08-01]: rename_thread PATCH does NOT update updated_at — renaming should not re-order threads in sidebar
-- [08-01]: strftime('%Y-%m-%dT%H:%M:%SZ','now') not CURRENT_TIMESTAMP — consistent ISO 8601 with Z suffix
-- [08-02]: thread_name captured before generator entry (closure) — auto-naming decision must read value before any mutation inside generator
-- [08-02]: get_db() called twice — once pre-generator for ownership check + load, once inside generator for post-stream write; same per-request connection via Flask g
-- [08-02]: Windows strftime %#d and %#I used in _fallback_name() — server runs on Windows, standard %d/%I would include leading zeros
-- [08-02]: thread_named SSE event emitted before done event — sidebar update happens before stream closes; None auto_name_applied means no event
-- [08-03]: sidebar rendered by JS fetch, not Jinja — threads list is dynamic and must reflect CRUD without page reload
-- [08-03]: thread_named SSE updates span.textContent directly — avoids full re-render race condition during streaming
-- [08-03]: fetchThreads() called on stream done (not thread_named) to re-order sidebar — updated_at only changes on message write
-- [08-03]: chat-input-area changed from position:fixed+transform to position:absolute within chat-container — fixed positioning broke with sidebar shifting viewport anchor
-- [08-03]: showWelcomeMessage() generates welcome HTML via JS innerHTML — Jinja welcome message cleared by switchThread on first thread load
-- [09-01]: Native details/summary used for tool panels — zero JS toggle logic, browser-native keyboard/accessibility support
-- [09-01]: Panels default collapsed (no 'open' attribute) — keeps chat flow clean; users expand when they want to inspect Exchange data
-- [09-01]: highlightJson() HTML-escapes before regex replace — prevents XSS from Exchange API data containing HTML special chars
-- [09-01]: Dark JSON code theme (Catppuccin-inspired) on tool-panel-json pre blocks — visually distinguishes Exchange data from surrounding chat
-- [09-01]: tool_events params stored as already-parsed dict, result as raw string — frontend parse+stringify normalizes Exchange JSON indentation
-- [09-02]: Copy button only reveals after finalize() adds .finalized — prevents copying incomplete streamed text mid-response
-- [09-02]: textNode.textContent used for AI text copy — TextNode sibling to tool panels, naturally excludes Exchange data
-- [09-02]: navigator.clipboard guard: if (!navigator.clipboard) return — no-op on non-HTTPS/legacy browsers, no error thrown
-- [09-02]: tool-panel-copy overrides position:static and opacity:1 — tool JSON copy always visible, unlike hover-reveal message copy
-- [09-03]: dotsEl inserted with insertBefore(dotsEl, textNode) — dots precede text in DOM, appear immediately before first SSE event
-- [09-03]: removeDots() idempotent via dotsRemoved flag — safe to call from tool, text, done, error, and abort paths
-- [09-03]: AbortError discriminated in both fetch.catch() and pump().catch() — routes to markInterrupted() not markError()
-- [09-03]: Document-level Escape listener (not inputEl) — works regardless of which element has focus during streaming
-- [09-03]: pump() checks signal.aborted before reader.read() — catches abort between chunk reads
-- [09-04]: JSON code block stays intentionally dark in both themes (Catppuccin) — consistent Exchange data reading experience
-- [09-04]: --color-on-brand: #ffffff token for text-on-blue (signin btn, user bubble, send btn) — stays white in both modes for contrast
-- [09-04]: No transition: all anywhere — explicit background-color/color/border-color transitions only to avoid layout jank
-- [09-04]: All dark mode JS placed before early return in app.js so toggle works on unauthenticated login splash page
+All decisions logged in PROJECT.md Key Decisions table with outcomes.
 
 ### Pending Todos
 
@@ -203,12 +49,12 @@ None.
 
 ### Blockers/Concerns
 
-- [Phase 1]: Verify Exchange throttling policy for service account before Phase 3 tool testing
-- [Phase 7]: Flask vs FastAPI resolved as Flask — scaffold is live and working
-- [General]: MMC Azure OpenAI gateway API version pinned at 2023-05-15 — _use_tools_param fallback now handles this automatically; still worth verifying with CTS
+- [Operational]: CHATGPT_ENDPOINT must be set as bare env var in production (not in secrets.py pipeline)
+- [Tech Debt]: Tool events not persisted to SQLite — historical messages lose tool panels
+- [Tech Debt]: Copy button not rendered on historical messages
 
 ## Session Continuity
 
-Last session: 2026-03-22T13:16:10Z
-Stopped at: Completed 09-04-PLAN.md — dark mode system (CSS custom properties, flash prevention, localStorage, OS auto-detect, toggle button)
+Last session: 2026-03-22
+Stopped at: v1.0 MVP milestone complete
 Resume file: None
