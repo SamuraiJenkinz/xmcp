@@ -714,6 +714,52 @@ html, body {
     white-space: nowrap;
 }
 
+/* ---- Copy Button ---- */
+.copy-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    opacity: 0;
+    background: #ffffff;
+    color: #6b7280;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 3px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s, background 0.15s, color 0.15s;
+    z-index: 2;
+    font-family: inherit;
+}
+
+.copy-btn:hover {
+    background: #f3f4f6;
+    color: #374151;
+}
+
+.copy-btn.copy-success {
+    background: #f0fdf4;
+    color: #16a34a;
+    border-color: #bbf7d0;
+}
+
+.assistant-message.finalized:hover > .message-content > .copy-btn,
+.assistant-message.finalized:focus-within > .message-content > .copy-btn {
+    opacity: 1;
+}
+
+.assistant-message .message-content {
+    position: relative;
+}
+
+.tool-panel-copy {
+    position: static;
+    opacity: 1;
+    margin-top: 8px;
+    display: inline-block;
+}
+
 /* ---- Responsive: hide sidebar on mobile ---- */
 @media (max-width: 768px) {
     .sidebar {

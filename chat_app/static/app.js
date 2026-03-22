@@ -67,6 +67,24 @@
         );
     }
 
+    // ---- Copy to clipboard utility ----
+    function copyText(text, btn) {
+        if (!navigator.clipboard) return;
+        navigator.clipboard.writeText(text).then(function() {
+            var original = btn.textContent;
+            btn.textContent = 'Copied!';
+            btn.classList.add('copy-success');
+            btn.disabled = true;
+            setTimeout(function() {
+                btn.textContent = original;
+                btn.classList.remove('copy-success');
+                btn.disabled = false;
+            }, 1500);
+        }).catch(function(err) {
+            console.error('[Atlas] Copy failed:', err);
+        });
+    }
+
     // ---- Message DOM builders ----
     function createMessageEl(role) {
         var div = document.createElement('div');
@@ -94,6 +112,18 @@
         cursor.className = 'streaming-cursor';
         els.content.appendChild(textNode);
         els.content.appendChild(cursor);
+
+        var copyBtn = document.createElement('button');
+        copyBtn.className = 'copy-btn';
+        copyBtn.type = 'button';
+        copyBtn.title = 'Copy response';
+        copyBtn.textContent = 'Copy';
+        copyBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            copyText(textNode.textContent, copyBtn);
+        });
+        els.content.appendChild(copyBtn);
+
         messagesEl.appendChild(els.wrapper);
         scrollToBottom();
 
@@ -150,6 +180,17 @@
                     }
                     resultPre.innerHTML = highlightJson(resultStr);
                     body.appendChild(resultPre);
+
+                    var toolCopyBtn = document.createElement('button');
+                    toolCopyBtn.className = 'copy-btn tool-panel-copy';
+                    toolCopyBtn.type = 'button';
+                    toolCopyBtn.title = 'Copy Exchange JSON';
+                    toolCopyBtn.textContent = 'Copy JSON';
+                    toolCopyBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        copyText(resultStr || '', toolCopyBtn);
+                    });
+                    body.appendChild(toolCopyBtn);
                 }
 
                 details.appendChild(summary);
@@ -165,6 +206,7 @@
             },
             finalize: function () {
                 cursor.remove();
+                els.wrapper.classList.add('finalized');
             },
             markError: function (msg) {
                 els.wrapper.classList.add('error-message');
