@@ -22,6 +22,7 @@
     }
 
     var isStreaming = false;
+    var currentAbortController = null;
 
     // ---- Thread state ----
     var currentThreadId = null;
@@ -113,6 +114,20 @@
         els.content.appendChild(textNode);
         els.content.appendChild(cursor);
 
+        var dotsEl = document.createElement('div');
+        dotsEl.className = 'thinking-dots';
+        dotsEl.innerHTML = '<span></span><span></span><span></span>';
+        els.content.insertBefore(dotsEl, textNode);
+        scrollToBottom();
+
+        var dotsRemoved = false;
+        function removeDots() {
+            if (!dotsRemoved && dotsEl.parentNode) {
+                dotsEl.parentNode.removeChild(dotsEl);
+                dotsRemoved = true;
+            }
+        }
+
         var copyBtn = document.createElement('button');
         copyBtn.className = 'copy-btn';
         copyBtn.type = 'button';
@@ -128,6 +143,15 @@
         scrollToBottom();
 
         return {
+            removeDots: removeDots,
+            markInterrupted: function () {
+                removeDots();
+                cursor.remove();
+                var marker = document.createElement('span');
+                marker.className = 'interrupted-marker';
+                marker.textContent = ' [response cancelled]';
+                els.content.appendChild(marker);
+            },
             appendText: function (chunk) {
                 textNode.textContent += chunk;
                 scrollToBottom();
@@ -240,7 +264,7 @@
     }
 
     // ---- SSE stream reader (fetch-based — POST body needed) ----
-    function readSSEStream(response, assistantMsg) {
+    function readSSEStream(response, assistantMsg, signal) {
         var reader = response.body.getReader();
         var decoder = new TextDecoder('utf-8');
         var buffer = '';
@@ -260,6 +284,7 @@
 
             if (event.type === 'tool') {
                 // Mark previous panel done before showing next
+                assistantMsg.removeDots();
                 if (activeChip) {
                     assistantMsg.markToolDone(activeChip);
                 }
@@ -271,6 +296,7 @@
                 );
             } else if (event.type === 'text') {
                 // Once text starts arriving, mark last tool chip done
+                assistantMsg.removeDots();
                 if (activeChip) {
                     assistantMsg.markToolDone(activeChip);
                     activeChip = null;
@@ -296,23 +322,34 @@
                     assistantMsg.markToolDone(activeChip);
                     activeChip = null;
                 }
+                assistantMsg.removeDots();
                 assistantMsg.finalize();
                 setStreaming(false);
+                currentAbortController = null;
                 // Re-fetch thread list to update sidebar ordering (updated_at changed)
                 fetchThreads();
             } else if (event.type === 'error') {
+                assistantMsg.removeDots();
                 assistantMsg.markError(event.message || null);
                 setStreaming(false);
+                currentAbortController = null;
             }
         }
 
         function pump() {
+            if (signal && signal.aborted) {
+                assistantMsg.removeDots();
+                assistantMsg.markInterrupted();
+                setStreaming(false);
+                return;
+            }
             return reader.read().then(function (result) {
                 if (result.done) {
                     // Flush any remaining buffer
                     if (buffer.trim()) {
                         buffer.split('\n').forEach(processLine);
                     }
+                    assistantMsg.removeDots();
                     assistantMsg.finalize();
                     setStreaming(false);
                     return;
@@ -333,9 +370,15 @@
         }
 
         pump().catch(function (err) {
-            console.error('[Atlas] Stream read error:', err);
-            assistantMsg.markError('Connection interrupted. Please try again.');
+            assistantMsg.removeDots();
+            if (err.name === 'AbortError') {
+                assistantMsg.markInterrupted();
+            } else {
+                console.error('[Atlas] Stream read error:', err);
+                assistantMsg.markError('Connection interrupted. Please try again.');
+            }
             setStreaming(false);
+            currentAbortController = null;
         });
     }
 
@@ -373,25 +416,35 @@
         appendUserMessage(text);
         var assistantMsg = createAssistantMessage();
 
+        currentAbortController = new AbortController();
+        var signal = currentAbortController.signal;
+
         fetch('/chat/stream', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: text, thread_id: currentThreadId })
+            body: JSON.stringify({ message: text, thread_id: currentThreadId }),
+            signal: signal
         })
             .then(function (response) {
                 if (!response.ok) {
                     throw new Error('HTTP ' + response.status);
                 }
-                readSSEStream(response, assistantMsg);
+                readSSEStream(response, assistantMsg, signal);
             })
             .catch(function (err) {
-                console.error('[Atlas] Fetch error:', err);
-                assistantMsg.markError(
-                    err.message === 'HTTP 401'
-                        ? 'Your session has expired. Please sign in again.'
-                        : 'Could not reach the server. Please check your connection.'
-                );
+                assistantMsg.removeDots();
+                if (err.name === 'AbortError') {
+                    assistantMsg.markInterrupted();
+                } else {
+                    console.error('[Atlas] Fetch error:', err);
+                    assistantMsg.markError(
+                        err.message === 'HTTP 401'
+                            ? 'Your session has expired. Please sign in again.'
+                            : 'Could not reach the server. Please check your connection.'
+                    );
+                }
                 setStreaming(false);
+                currentAbortController = null;
             });
     }
 
@@ -605,6 +658,14 @@
             inputEl.value = '';
             resetInputSize();
             sendMessage(text);
+        }
+    });
+
+    // ---- Keyboard shortcut: Escape to cancel streaming ----
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && isStreaming && currentAbortController) {
+            currentAbortController.abort();
+            currentAbortController = null;
         }
     });
 

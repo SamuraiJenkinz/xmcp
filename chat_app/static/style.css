@@ -626,6 +626,39 @@ html, body {
     color: #991b1b;
 }
 
+/* ---- Thinking / loading dots ---- */
+.thinking-dots {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.thinking-dots span {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #9ca3af;
+    animation: bounce-dot 1.2s ease-in-out infinite;
+}
+
+.thinking-dots span:nth-child(1) { animation-delay: 0s; }
+.thinking-dots span:nth-child(2) { animation-delay: 0.2s; }
+.thinking-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce-dot {
+    0%, 60%, 100% { transform: translateY(0); }
+    30%            { transform: translateY(-6px); }
+}
+
+/* ---- Interrupted / cancelled marker ---- */
+.interrupted-marker {
+    color: #9ca3af;
+    font-size: 12px;
+    font-style: italic;
+    margin-left: 4px;
+}
+
 /* ---- Chat Input Area ---- */
 .chat-input-area {
     position: absolute;
