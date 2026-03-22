@@ -45,6 +45,28 @@
         messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
+    // ---- JSON syntax highlighter ----
+    function highlightJson(jsonStr) {
+        var escaped = jsonStr
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+        return escaped.replace(
+            /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+            function(match) {
+                var cls = 'json-num';
+                if (/^"/.test(match)) {
+                    cls = /:$/.test(match) ? 'json-key' : 'json-str';
+                } else if (/true|false/.test(match)) {
+                    cls = 'json-bool';
+                } else if (/null/.test(match)) {
+                    cls = 'json-null';
+                }
+                return '<span class="' + cls + '">' + match + '</span>';
+            }
+        );
+    }
+
     // ---- Message DOM builders ----
     function createMessageEl(role) {
         var div = document.createElement('div');
@@ -80,18 +102,65 @@
                 textNode.textContent += chunk;
                 scrollToBottom();
             },
-            addToolChip: function (toolName) {
-                var chip = document.createElement('div');
-                chip.className = 'tool-chip';
-                chip.setAttribute('data-tool', toolName);
-                chip.textContent = 'Querying ' + toolName + '\u2026';
-                els.content.insertBefore(chip, textNode);
+            addToolPanel: function (toolName, params, result, status) {
+                var details = document.createElement('details');
+                details.className = 'tool-panel';
+
+                var summary = document.createElement('summary');
+                summary.className = 'tool-panel-summary';
+                var icon = document.createElement('span');
+                icon.className = 'tool-panel-icon';
+                var nameSpanEl = document.createElement('span');
+                nameSpanEl.className = 'tool-panel-name';
+                nameSpanEl.textContent = toolName;
+                var statusEl = document.createElement('span');
+                statusEl.className = 'tool-panel-status ' + (status === 'error' ? 'status-error' : 'status-success');
+                statusEl.textContent = status === 'error' ? 'Error' : 'Success';
+                summary.appendChild(icon);
+                summary.appendChild(nameSpanEl);
+                summary.appendChild(statusEl);
+
+                var body = document.createElement('div');
+                body.className = 'tool-panel-body';
+
+                if (params && Object.keys(params).length > 0) {
+                    var paramLabel = document.createElement('div');
+                    paramLabel.className = 'tool-panel-label';
+                    paramLabel.textContent = 'Parameters';
+                    body.appendChild(paramLabel);
+                    var paramPre = document.createElement('pre');
+                    paramPre.className = 'tool-panel-json';
+                    paramPre.innerHTML = highlightJson(JSON.stringify(params, null, 2));
+                    body.appendChild(paramPre);
+                }
+
+                if (result) {
+                    var resultLabel = document.createElement('div');
+                    resultLabel.className = 'tool-panel-label';
+                    resultLabel.textContent = 'Exchange Result';
+                    body.appendChild(resultLabel);
+                    var resultPre = document.createElement('pre');
+                    resultPre.className = 'tool-panel-json tool-panel-result';
+                    var resultStr;
+                    try {
+                        var parsed = JSON.parse(result);
+                        resultStr = JSON.stringify(parsed, null, 2);
+                    } catch (e) {
+                        resultStr = result;
+                    }
+                    resultPre.innerHTML = highlightJson(resultStr);
+                    body.appendChild(resultPre);
+                }
+
+                details.appendChild(summary);
+                details.appendChild(body);
+                els.content.insertBefore(details, textNode);
                 scrollToBottom();
-                return chip;
+                return details;
             },
-            markToolDone: function (chip) {
-                if (chip) {
-                    chip.classList.add('done');
+            markToolDone: function (panel) {
+                if (panel) {
+                    panel.classList.add('done');
                 }
             },
             finalize: function () {
@@ -148,11 +217,16 @@
             }
 
             if (event.type === 'tool') {
-                // Mark previous chip done before showing next
+                // Mark previous panel done before showing next
                 if (activeChip) {
                     assistantMsg.markToolDone(activeChip);
                 }
-                activeChip = assistantMsg.addToolChip(event.name);
+                activeChip = assistantMsg.addToolPanel(
+                    event.name,
+                    event.params || {},
+                    event.result || null,
+                    event.status || 'success'
+                );
             } else if (event.type === 'text') {
                 // Once text starts arriving, mark last tool chip done
                 if (activeChip) {

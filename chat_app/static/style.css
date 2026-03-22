@@ -450,6 +450,159 @@ html, body {
     to { transform: rotate(360deg); }
 }
 
+/* ---- Tool Panel (collapsible details/summary) ---- */
+.tool-panel {
+    display: block;
+    margin: 6px 0;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f9fafb;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.tool-panel.done > summary .tool-panel-icon::before {
+    content: '\2713';
+    color: #16a34a;
+}
+
+.tool-panel-summary {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    background: #f3f4f6;
+    border-radius: 8px;
+    transition: background 0.15s;
+}
+
+.tool-panel-summary::-webkit-details-marker {
+    display: none;
+}
+
+.tool-panel[open] > .tool-panel-summary {
+    border-radius: 8px 8px 0 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.tool-panel-summary:hover {
+    background: #e9ecef;
+}
+
+.tool-panel-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    font-size: 11px;
+    color: #6b7280;
+}
+
+.tool-panel-icon::before {
+    content: '\25B6';
+    font-size: 9px;
+    color: #6b7280;
+    transition: transform 0.15s;
+}
+
+.tool-panel[open] > .tool-panel-summary .tool-panel-icon::before {
+    transform: rotate(90deg);
+}
+
+.tool-panel.done:not([open]) > .tool-panel-summary .tool-panel-icon::before {
+    content: '\2713';
+    color: #16a34a;
+    font-size: 11px;
+    transform: none;
+}
+
+.tool-panel-name {
+    font-weight: 600;
+    color: #374151;
+    flex: 1;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px;
+}
+
+.tool-panel-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.tool-panel-status.status-success {
+    background: #dcfce7;
+    color: #16a34a;
+}
+
+.tool-panel-status.status-error {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.tool-panel-body {
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.tool-panel-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: #9ca3af;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.tool-panel-json {
+    margin: 0;
+    padding: 8px 10px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    border-radius: 6px;
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 11px;
+    line-height: 1.55;
+    overflow-x: auto;
+    white-space: pre;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.tool-panel-result {
+    max-height: 480px;
+}
+
+/* ---- JSON syntax highlighting ---- */
+.json-key {
+    color: #89b4fa;
+}
+
+.json-str {
+    color: #a6e3a1;
+}
+
+.json-num {
+    color: #fab387;
+}
+
+.json-bool {
+    color: #cba6f7;
+}
+
+.json-null {
+    color: #f38ba8;
+}
+
 /* ---- Streaming cursor ---- */
 .streaming-cursor {
     display: inline-block;
