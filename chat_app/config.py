@@ -53,8 +53,17 @@ class Config:
             cls.AZURE_AUTHORITY = (
                 f"https://login.microsoftonline.com/{cls.AZURE_TENANT_ID}"
             )
-        # Server settings (loaded after .env is read)
+        if secrets.get("CHATGPT_ENDPOINT"):
+            cls.CHATGPT_ENDPOINT = secrets["CHATGPT_ENDPOINT"]
+        if secrets.get("API_VERSION"):
+            cls.API_VERSION = secrets["API_VERSION"]
+        if secrets.get("OPENAI_MODEL"):
+            cls.OPENAI_MODEL = secrets["OPENAI_MODEL"]
         if secrets.get("CHAT_HOST"):
             cls.HOST = secrets["CHAT_HOST"]
         if secrets.get("CHAT_PORT"):
             cls.PORT = int(secrets["CHAT_PORT"])
+        if secrets.get("CHAT_DB_PATH"):
+            cls.DATABASE = secrets["CHAT_DB_PATH"]
+        if secrets.get("SESSION_FILE_DIR"):
+            cls.SESSION_FILE_DIR = secrets["SESSION_FILE_DIR"]

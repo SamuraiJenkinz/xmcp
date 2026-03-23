@@ -43,12 +43,20 @@ def load_secrets() -> dict[str, str]:
     except ImportError:
         pass
 
-    return {
-        "FLASK_SECRET_KEY": os.environ.get("FLASK_SECRET_KEY", ""),
-        "AZURE_CLIENT_ID": os.environ.get("AZURE_CLIENT_ID", ""),
-        "AZURE_CLIENT_SECRET": os.environ.get("AZURE_CLIENT_SECRET", ""),
-        "AZURE_TENANT_ID": os.environ.get("AZURE_TENANT_ID", ""),
-        "AZURE_OPENAI_API_KEY": os.environ.get("AZURE_OPENAI_API_KEY", ""),
-        "CHAT_HOST": os.environ.get("CHAT_HOST", ""),
-        "CHAT_PORT": os.environ.get("CHAT_PORT", ""),
-    }
+    # Return all env vars that Config or the app might need.
+    # dotenv has already loaded .env into os.environ above.
+    keys = [
+        "FLASK_SECRET_KEY",
+        "AZURE_CLIENT_ID",
+        "AZURE_CLIENT_SECRET",
+        "AZURE_TENANT_ID",
+        "AZURE_OPENAI_API_KEY",
+        "CHATGPT_ENDPOINT",
+        "API_VERSION",
+        "OPENAI_MODEL",
+        "CHAT_HOST",
+        "CHAT_PORT",
+        "CHAT_DB_PATH",
+        "SESSION_FILE_DIR",
+    ]
+    return {k: os.environ.get(k, "") for k in keys}
