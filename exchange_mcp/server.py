@@ -256,13 +256,11 @@ async def main() -> None:
     logger.info("Validating Exchange connection (auth_mode=%s)...", client.auth_mode)
     ok = await client.verify_connection()
     if not ok:
-        logger.error(
-            "FATAL: Cannot reach Exchange Online. "
-            "Check credentials (auth_mode=%s) and network connectivity. "
-            "Server will not start.",
+        logger.warning(
+            "Exchange connection check failed (auth_mode=%s). "
+            "Server starting in degraded mode — tools will attempt auth per-call.",
             client.auth_mode,
         )
-        sys.exit(1)
 
     # -- Startup banner -----------------------------------------------------
     logger.info(
