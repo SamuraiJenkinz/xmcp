@@ -53,3 +53,8 @@ class Config:
             cls.AZURE_AUTHORITY = (
                 f"https://login.microsoftonline.com/{cls.AZURE_TENANT_ID}"
             )
+        # Server settings (loaded after .env is read)
+        if secrets.get("CHAT_HOST"):
+            cls.HOST = secrets["CHAT_HOST"]
+        if secrets.get("CHAT_PORT"):
+            cls.PORT = int(secrets["CHAT_PORT"])
