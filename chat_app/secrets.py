@@ -49,4 +49,6 @@ def load_secrets() -> dict[str, str]:
         "AZURE_CLIENT_SECRET": os.environ.get("AZURE_CLIENT_SECRET", ""),
         "AZURE_TENANT_ID": os.environ.get("AZURE_TENANT_ID", ""),
         "AZURE_OPENAI_API_KEY": os.environ.get("AZURE_OPENAI_API_KEY", ""),
+        "CHAT_HOST": os.environ.get("CHAT_HOST", ""),
+        "CHAT_PORT": os.environ.get("CHAT_PORT", ""),
     }
