@@ -25,7 +25,16 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ### Active
 
-(Fresh for next milestone — define with `/gsd:new-milestone`)
+#### Current Milestone: v1.1 — Colleague Lookup
+
+**Goal:** Enable colleague search and profile display via Microsoft Graph API, rendered as inline profile cards in the chat UI.
+
+- [ ] Microsoft Graph API client module (MSAL client credentials flow, same app registration)
+- [ ] MCP tool: search_colleagues (query by name/department)
+- [ ] MCP tool: get_colleague_profile (detailed user info)
+- [ ] Photo proxy route (GET /api/photo/<user_id>) in Flask
+- [ ] Inline profile card rendering in chat UI (photo + name + title + department + email)
+- [ ] Azure AD app permissions: User.Read.All, ProfilePhoto.Read.All
 
 ### Out of Scope
 
@@ -73,4 +82,4 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | get_migration_batches removed | MMC does not use migration batches; confirmed during Phase 6 research | Good — scope correctly reduced |
 
 ---
-*Last updated: 2026-03-22 after v1.0 MVP milestone*
+*Last updated: 2026-03-24 after v1.1 milestone started*

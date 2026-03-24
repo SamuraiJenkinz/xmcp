@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-22)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.0 MVP shipped — planning next milestone
+**Current focus:** v1.1 — Colleague Lookup via Microsoft Graph API
 
 ## Current Position
 
-Phase: 9 of 9 complete — v1.0 MVP SHIPPED
-Plan: All 35 plans complete
-Status: Milestone archived, ready for next milestone
-Last activity: 2026-03-22 — v1.0 MVP milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements for v1.1
+Last activity: 2026-03-24 — Milestone v1.1 started
 
-Progress: [##########] 100% (35/35 plans complete)
+Progress: Defining requirements
 
 ## Performance Metrics
 
@@ -49,12 +49,21 @@ None.
 
 ### Blockers/Concerns
 
-- [Operational]: CHATGPT_ENDPOINT must be set as bare env var in production (not in secrets.py pipeline)
 - [Tech Debt]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt]: Copy button not rendered on historical messages
 
+### Post-v1.0 Fixes (2026-03-24)
+
+- Switched powershell.exe → pwsh.exe (PS7) for cleaner error handling
+- Fixed env var propagation to child processes (inject CBA creds into PS script directly)
+- Fixed MCP subprocess env passing (env=dict(os.environ) in StdioServerParameters)
+- Fixed conversation pruning: increased safety buffer to 8K, prune after tool results, atomic tool group removal
+- Added start.py for simple HTTPS startup
+- Deployed to usdf11v1784.mercer.com:5050 with internal PKI cert + Azure AD SSO
+- Created auth-workflow.html documentation
+
 ## Session Continuity
 
-Last session: 2026-03-22
-Stopped at: v1.0 MVP milestone complete
+Last session: 2026-03-24
+Stopped at: Defining v1.1 requirements and roadmap
 Resume file: None
