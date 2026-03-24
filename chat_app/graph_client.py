@@ -5,9 +5,12 @@ from __future__ import annotations
 import base64
 import json
 import logging
+import time
 
 import msal
 import requests
+
+from chat_app.config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -100,3 +103,126 @@ def _verify_roles(access_token: str, tenant_id: str, client_id: str) -> None:
 def is_graph_enabled() -> bool:
     """Return True if the Graph client has been successfully initialised."""
     return _graph_enabled
+
+
+def _get_token() -> str | None:
+    """Acquire (or return cached) client-credentials token via MSAL.
+
+    MSAL handles cache internally — calling this on every request is correct
+    and cheap on cache hits (MSAL 1.34.0 returns cached token if >5 min
+    remaining, refreshes transparently when expiry is close).
+
+    Returns the access token string, or None if the client is not initialised
+    or token acquisition fails.
+    """
+    if _cca is None:
+        return None
+
+    result = _cca.acquire_token_for_client(scopes=_GRAPH_SCOPES)
+
+    if "access_token" in result:
+        return result["access_token"]
+
+    logger.error(
+        "Graph token acquisition failed — %s: %s",
+        result.get("error"),
+        result.get("error_description", ""),
+    )
+    return None
+
+
+def _make_headers(*, search: bool = False) -> dict[str, str] | None:
+    """Build authorization headers for a Graph API request.
+
+    Args:
+        search: When True, adds ``ConsistencyLevel: eventual`` header.
+            This is MANDATORY for ``$search`` on directory objects — without
+            it Graph returns HTTP 400.
+
+    Returns:
+        A dict of headers, or None if no token is available.
+    """
+    token = _get_token()
+    if token is None:
+        return None
+
+    headers: dict[str, str] = {"Authorization": f"Bearer {token}"}
+    if search:
+        headers["ConsistencyLevel"] = "eventual"
+
+    return headers
+
+
+def _graph_request_with_retry(
+    method: str,
+    url: str,
+    *,
+    headers: dict,
+    params: dict | None = None,
+    max_retries: int = 3,
+    timeout: int = Config.GRAPH_TIMEOUT,
+) -> requests.Response:
+    """Execute a Graph API request with retry logic for 429/503 and timeouts.
+
+    Retries on HTTP 429 (Too Many Requests) and 503 (Service Unavailable),
+    honouring the ``Retry-After`` response header when present, falling back
+    to exponential backoff (``2 ** attempt`` seconds) if absent.
+
+    Args:
+        method: HTTP verb, e.g. ``"GET"``.
+        url: Absolute Graph endpoint URL.
+        headers: Request headers (from :func:`_make_headers`).
+        params: Optional query-string parameters.
+        max_retries: Maximum number of attempts before giving up.
+        timeout: Per-request socket timeout in seconds.
+
+    Returns:
+        The :class:`requests.Response` from the first non-retriable response.
+
+    Raises:
+        RuntimeError: If all retries are exhausted without a successful
+            non-retriable response.
+        requests.exceptions.Timeout: Propagated if last attempt times out
+            after all retries.
+    """
+    last_exc: Exception | None = None
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.request(
+                method, url, headers=headers, params=params, timeout=timeout
+            )
+
+            if response.status_code in (429, 503):
+                retry_after_raw = response.headers.get("Retry-After")
+                retry_after = (
+                    int(retry_after_raw) if retry_after_raw else 2 ** attempt
+                )
+                logger.warning(
+                    "Graph request got HTTP %d on attempt %d/%d — "
+                    "retrying after %ds",
+                    response.status_code,
+                    attempt + 1,
+                    max_retries,
+                    retry_after,
+                )
+                time.sleep(retry_after)
+                continue
+
+            # Any other status code (200, 404, 400, 500, …): return to caller.
+            return response
+
+        except requests.exceptions.Timeout as exc:
+            last_exc = exc
+            backoff = 2 ** attempt
+            logger.warning(
+                "Graph request timed out on attempt %d/%d — retrying after %ds",
+                attempt + 1,
+                max_retries,
+                backoff,
+            )
+            time.sleep(backoff)
+
+    if last_exc is not None:
+        raise last_exc
+    raise RuntimeError("Graph request failed after retries")
