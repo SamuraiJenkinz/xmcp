@@ -15,6 +15,7 @@ from typing import Any
 from openai import OpenAI
 
 from chat_app.config import Config
+from chat_app.context_mgr import prune_conversation
 from chat_app.mcp_client import call_mcp_tool, get_openai_tools
 
 logger = logging.getLogger(__name__)
@@ -281,6 +282,8 @@ def run_tool_loop(
                         "content": result_text,
                     }
                 )
+            # Prune after tool results to stay within context window
+            messages = prune_conversation(messages)
             # Continue looping — send tool results back to the model
             continue
 
@@ -317,6 +320,8 @@ def run_tool_loop(
                     "content": result_text,
                 }
             )
+            # Prune after tool results to stay within context window
+            messages = prune_conversation(messages)
             # Continue looping — send function result back to the model
             continue
 

@@ -33,8 +33,8 @@ _ENCODING = tiktoken.get_encoding("o200k_base")
 #: gpt-4o-mini context window (tokens)
 _MAX_TOKENS: int = 128_000
 
-#: Reserve this many tokens for the model's reply
-_SAFETY_BUFFER: int = 4_096
+#: Reserve tokens for the model's reply + tool definitions (~1,700 tokens)
+_SAFETY_BUFFER: int = 8_192
 
 #: Prune when the conversation exceeds this many tokens
 _EFFECTIVE_LIMIT: int = _MAX_TOKENS - _SAFETY_BUFFER
