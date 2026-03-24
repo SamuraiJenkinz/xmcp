@@ -51,14 +51,15 @@ Connect-ExchangeOnline `
     -ShowBanner:$false `
     -SkipLoadingFormatData"""
 
-# Certificate-based auth (CBA) — env vars are read by PowerShell at runtime.
-# Used when AZURE_CERT_THUMBPRINT env var is set.
-_PS_CONNECT_CBA: str = """\
+# Certificate-based auth (CBA) — template with {placeholders} filled at runtime
+# from os.environ because Python-set env vars may not propagate to child
+# processes on Windows.
+_PS_CONNECT_CBA_TEMPLATE: str = """\
 Import-Module ExchangeOnlineManagement -ErrorAction Stop
 Connect-ExchangeOnline `
-    -CertificateThumbPrint $env:AZURE_CERT_THUMBPRINT `
-    -AppID $env:AZURE_CLIENT_ID `
-    -Organization $env:AZURE_TENANT_DOMAIN `
+    -CertificateThumbPrint '{cert_thumbprint}' `
+    -AppID '{client_id}' `
+    -Organization '{tenant_domain}' `
     -ShowBanner:$false `
     -SkipLoadingFormatData"""
 
@@ -218,7 +219,14 @@ class ExchangeClient:
         Returns:
             Complete PowerShell script body ready for ``ps_runner.run_ps()``.
         """
-        connect = _PS_CONNECT_CBA if self.auth_mode == "certificate" else _PS_CONNECT_INTERACTIVE
+        if self.auth_mode == "certificate":
+            connect = _PS_CONNECT_CBA_TEMPLATE.format(
+                cert_thumbprint=os.environ["AZURE_CERT_THUMBPRINT"],
+                client_id=os.environ["AZURE_CLIENT_ID"],
+                tenant_domain=os.environ["AZURE_TENANT_DOMAIN"],
+            )
+        else:
+            connect = _PS_CONNECT_INTERACTIVE
         body = f"""\
 try {{
     {connect}
