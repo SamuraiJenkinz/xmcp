@@ -136,15 +136,46 @@ def get_token_count(messages: list[dict[str, Any]]) -> int:
     return count_tokens_in_messages(messages)
 
 
+def _group_messages(non_system: list[dict[str, Any]]) -> list[list[dict[str, Any]]]:
+    """Group non-system messages into atomic units that must be removed together.
+
+    Groups:
+    - A standalone user or assistant message (no tool_calls) is its own group.
+    - An assistant message with tool_calls + all subsequent tool/function result
+      messages form one group (removing the assistant without the tool results
+      causes an OpenAI API error).
+    """
+    groups: list[list[dict[str, Any]]] = []
+    i = 0
+    while i < len(non_system):
+        msg = non_system[i]
+        # Assistant with tool_calls — group with all following tool results
+        if msg.get("role") == "assistant" and msg.get("tool_calls"):
+            group = [msg]
+            i += 1
+            while i < len(non_system) and non_system[i].get("role") in ("tool", "function"):
+                group.append(non_system[i])
+                i += 1
+            groups.append(group)
+        # Orphaned tool/function result (no preceding assistant) — group alone
+        elif msg.get("role") in ("tool", "function"):
+            groups.append([msg])
+            i += 1
+        else:
+            groups.append([msg])
+            i += 1
+    return groups
+
+
 def prune_conversation(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Remove oldest non-system messages until the conversation fits in the limit.
+    """Remove oldest non-system message groups until the conversation fits in the limit.
 
     Preserves:
     - All system messages (role == "system")
-    - The most recent user message (to avoid sending an empty conversation)
+    - The most recent message group (to avoid sending an empty conversation)
 
-    Non-system, non-latest-user messages are removed oldest-first until
-    ``count_tokens_in_messages(result) <= _EFFECTIVE_LIMIT``.
+    Tool call groups (assistant + tool results) are removed atomically to
+    prevent orphaned tool messages that OpenAI would reject.
 
     Does NOT mutate the input list.
 
@@ -169,14 +200,15 @@ def prune_conversation(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
     non_system = [m for m in messages if m.get("role") != "system"]
 
     if not non_system:
-        # Nothing to prune — only system messages
         return list(messages)
 
-    # We always keep at least the latest message (to avoid an empty context)
-    # Attempt to prune from the oldest non-system messages first
-    while len(non_system) > 1:
-        # Rebuild conversation: system messages first, then remaining non-system
-        candidate = system_messages + non_system
+    # Group messages so tool call chains are removed atomically
+    groups = _group_messages(non_system)
+
+    while len(groups) > 1:
+        # Flatten remaining groups
+        remaining = [m for g in groups for m in g]
+        candidate = system_messages + remaining
         candidate_count = count_tokens_in_messages(candidate)
         if candidate_count <= _EFFECTIVE_LIMIT:
             logger.info(
@@ -185,15 +217,15 @@ def prune_conversation(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 len(messages) - len(candidate),
             )
             return candidate
-        # Remove the oldest non-system message
-        non_system.pop(0)
+        # Remove the oldest group (may be a single message or a tool call chain)
+        groups.pop(0)
 
-    # Only one non-system message remains — return system + that message
-    result = system_messages + non_system
+    # Only one group remains
+    result = system_messages + [m for g in groups for m in g]
     final_count = count_tokens_in_messages(result)
     logger.warning(
         "After maximum pruning conversation is still %d tokens "
-        "(keeping 1 non-system message + system messages)",
+        "(keeping last message group + system messages)",
         final_count,
     )
     return result
