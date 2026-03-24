@@ -82,7 +82,7 @@ async def run_ps(script: str, timeout: int = DEFAULT_TIMEOUT) -> str:
     encoded = _encode_command(full_script)
 
     proc = await asyncio.create_subprocess_exec(
-        "powershell.exe",
+        "pwsh.exe",
         "-NonInteractive",
         "-NoProfile",
         "-EncodedCommand",
