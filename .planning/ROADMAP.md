@@ -123,7 +123,7 @@ Plans:
 - [x] 10-01: Azure AD app permissions + admin consent verification (GRAPH-02)
 - [x] 10-02: graph_client.py — MSAL singleton, token acquisition, caching (GRAPH-01, GRAPH-03)
 - [x] 10-03: User search and profile methods with ConsistencyLevel header (SRCH-04)
-- [ ] 10-04: Unit tests for graph_client.py core operations (gap closure)
+- [x] 10-04: Unit tests for graph_client.py core operations (gap closure)
 
 ---
 
@@ -180,6 +180,6 @@ Plans:
 | 7. Chat App Core | v1.0 | 6/6 | Complete | 2026-03-21 |
 | 8. Conversation Persistence | v1.0 | 3/3 | Complete | 2026-03-22 |
 | 9. UI Polish | v1.0 | 4/4 | Complete | 2026-03-22 |
-| 10. Graph Client Foundation | v1.1 | 3/4 | Gap closure | - |
+| 10. Graph Client Foundation | v1.1 | 4/4 | Complete | 2026-03-24 |
 | 11. MCP Tools + Photo Proxy | v1.1 | 0/3 | Not started | - |
 | 12. Profile Card Frontend + System Prompt | v1.1 | 0/3 | Not started | - |

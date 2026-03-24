@@ -7,16 +7,16 @@
 
 ### Graph Infrastructure
 
-- [ ] **GRAPH-01**: Graph API client authenticates via MSAL client credentials flow (isolated from SSO)
-- [ ] **GRAPH-02**: Azure AD app registration has User.Read.All and ProfilePhoto.Read.All application permissions with admin consent
-- [ ] **GRAPH-03**: Graph API token is cached at module level and refreshed automatically
+- [x] **GRAPH-01**: Graph API client authenticates via MSAL client credentials flow (isolated from SSO)
+- [x] **GRAPH-02**: Azure AD app registration has User.Read.All and ProfilePhoto.Read.All application permissions with admin consent
+- [x] **GRAPH-03**: Graph API token is cached at module level and refreshed automatically
 
 ### Colleague Search
 
 - [ ] **SRCH-01**: User can search for colleagues by name via natural language ("look up John Smith")
 - [ ] **SRCH-02**: Search returns top results with name, job title, department, and email
 - [ ] **SRCH-03**: Search handles empty results with a clear message
-- [ ] **SRCH-04**: Search uses `$search` with `ConsistencyLevel: eventual` header
+- [x] **SRCH-04**: Search uses `$search` with `ConsistencyLevel: eventual` header
 
 ### Profile Display
 
@@ -57,13 +57,13 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GRAPH-01 | Phase 10 | Pending |
-| GRAPH-02 | Phase 10 | Pending |
-| GRAPH-03 | Phase 10 | Pending |
+| GRAPH-01 | Phase 10 | Complete |
+| GRAPH-02 | Phase 10 | Complete |
+| GRAPH-03 | Phase 10 | Complete |
 | SRCH-01 | Phase 11 | Pending |
 | SRCH-02 | Phase 11 | Pending |
 | SRCH-03 | Phase 11 | Pending |
-| SRCH-04 | Phase 10 | Pending |
+| SRCH-04 | Phase 10 | Complete |
 | PROF-01 | Phase 11 | Pending |
 | PROF-02 | Phase 12 | Pending |
 | PROF-03 | Phase 11 | Pending |
