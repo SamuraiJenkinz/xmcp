@@ -57,28 +57,28 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| GRAPH-01 | — | Pending |
-| GRAPH-02 | — | Pending |
-| GRAPH-03 | — | Pending |
-| SRCH-01 | — | Pending |
-| SRCH-02 | — | Pending |
-| SRCH-03 | — | Pending |
-| SRCH-04 | — | Pending |
-| PROF-01 | — | Pending |
-| PROF-02 | — | Pending |
-| PROF-03 | — | Pending |
-| PROF-04 | — | Pending |
-| PROF-05 | — | Pending |
-| MCP-01 | — | Pending |
-| MCP-02 | — | Pending |
-| MCP-03 | — | Pending |
-| MCP-04 | — | Pending |
+| GRAPH-01 | Phase 10 | Pending |
+| GRAPH-02 | Phase 10 | Pending |
+| GRAPH-03 | Phase 10 | Pending |
+| SRCH-01 | Phase 11 | Pending |
+| SRCH-02 | Phase 11 | Pending |
+| SRCH-03 | Phase 11 | Pending |
+| SRCH-04 | Phase 10 | Pending |
+| PROF-01 | Phase 11 | Pending |
+| PROF-02 | Phase 12 | Pending |
+| PROF-03 | Phase 11 | Pending |
+| PROF-04 | Phase 12 | Pending |
+| PROF-05 | Phase 11 | Pending |
+| MCP-01 | Phase 11 | Pending |
+| MCP-02 | Phase 11 | Pending |
+| MCP-03 | Phase 12 | Pending |
+| MCP-04 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.1 requirements: 16 total
-- Mapped to phases: 0
-- Unmapped: 16
+- Mapped to phases: 16
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 after initial definition*
+*Last updated: 2026-03-24 — phase assignments added*

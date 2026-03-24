@@ -2,28 +2,28 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-22)
+See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.1 — Colleague Lookup via Microsoft Graph API
+**Current focus:** v1.1 — Phase 10: Graph Client Foundation
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements for v1.1
-Last activity: 2026-03-24 — Milestone v1.1 started
+Phase: 10 of 12 (Graph Client Foundation)
+Plan: 0 of 3 in current phase
+Status: Ready to plan
+Last activity: 2026-03-24 — v1.1 roadmap created, Phase 10 is next
 
-Progress: Defining requirements
+Progress: [█████████░░░] v1.0 complete, v1.1 starting Phase 10
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35
+- Total plans completed: 35 (v1.0)
 - Total execution time: ~4 days (2026-03-19 → 2026-03-22)
 - Git commits: 139
 
-**By Phase:**
+**By Phase (v1.0):**
 
 | Phase | Plans | Completed |
 |-------|-------|-----------|
@@ -43,27 +43,28 @@ Progress: Defining requirements
 
 All decisions logged in PROJECT.md Key Decisions table with outcomes.
 
+Key v1.1 decision: Use `msal` + `requests` directly — `msgraph-sdk` rejected (7 new transitive packages for two REST endpoints, already have both deps).
+
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- [Tech Debt]: Tool events not persisted to SQLite — historical messages lose tool panels
-- [Tech Debt]: Copy button not rendered on historical messages
+- [BLOCKER — Phase 10]: Admin consent for User.Read.All and ProfilePhoto.Read.All must be granted by a tenant admin before any Graph code can be tested. Start this request on day 1.
+- [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
+- [Tech Debt — v1.0]: Copy button not rendered on historical messages
 
 ### Post-v1.0 Fixes (2026-03-24)
 
-- Switched powershell.exe → pwsh.exe (PS7) for cleaner error handling
-- Fixed env var propagation to child processes (inject CBA creds into PS script directly)
-- Fixed MCP subprocess env passing (env=dict(os.environ) in StdioServerParameters)
-- Fixed conversation pruning: increased safety buffer to 8K, prune after tool results, atomic tool group removal
-- Added start.py for simple HTTPS startup
-- Deployed to usdf11v1784.mercer.com:5050 with internal PKI cert + Azure AD SSO
-- Created auth-workflow.html documentation
+- Switched powershell.exe → pwsh.exe (PS7)
+- Fixed env var propagation to child processes
+- Fixed MCP subprocess env passing
+- Fixed conversation pruning (8K buffer, prune after tool results, atomic group removal)
+- Added start.py, deployed to usdf11v1784.mercer.com:5050
 
 ## Session Continuity
 
 Last session: 2026-03-24
-Stopped at: Defining v1.1 requirements and roadmap
+Stopped at: v1.1 roadmap created — Phase 10 ready to plan
 Resume file: None
