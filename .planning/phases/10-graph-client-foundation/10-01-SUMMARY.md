@@ -2,7 +2,7 @@
 phase: 10-graph-client-foundation
 plan: "01"
 subsystem: api
-tags: [msal, microsoft-graph, azure-ad, jwt, config]
+tags: [msal, microsoft-graph, azure-ad, jwt, config, client-credentials]
 
 # Dependency graph
 requires:
@@ -11,9 +11,9 @@ requires:
 provides:
   - Graph API configuration constants (GRAPH_BASE_URL, GRAPH_SEARCH_MAX_RESULTS, GRAPH_TIMEOUT) in Config
   - graph_client.py singleton module with init_graph(), _verify_roles(), is_graph_enabled()
-  - Admin consent checkpoint for User.Read.All and ProfilePhoto.Read.All
+  - Admin consent confirmed for User.Read.All and ProfilePhoto.Read.All (application permissions)
 affects:
-  - 10-02 (token acquisition logic calls init_graph() from app.py)
+  - 10-02 (token acquisition logic calls init_graph() from app.py, builds on this skeleton)
   - 10-03 (colleague lookup endpoints use is_graph_enabled() gate)
 
 # Tech tracking
@@ -22,7 +22,7 @@ tech-stack:
   patterns:
     - "Module-level singleton pattern: _cca and _graph_enabled are module globals guarded by init_graph()"
     - "JWT payload decode for role verification without a full JWT library (base64 + json only)"
-    - "Admin consent URL pattern logged on permission failure for operator action"
+    - "Admin consent URL logged inline on permission failure for operator action"
 
 key-files:
   created:
@@ -31,46 +31,48 @@ key-files:
     - chat_app/config.py
 
 key-decisions:
-  - "Graph constants are class-level literals on Config (not env vars) — they are API contract values, not deployment-specific"
-  - "init_graph() does NOT set _graph_enabled=True when roles are missing (logs error but does not set flag) — safer fail-open vs. silent failure distinction deferred to 10-02"
-  - "Imports in graph_client.py include requests even though it is unused in skeleton — imported now to confirm dep is available at import time"
+  - "Graph constants are class-level literals on Config (not env vars) — API contract values, not deployment-specific"
+  - "init_graph() does not set _graph_enabled=True if roles are missing — safer than silent fail-open"
+  - "requests imported in graph_client.py even though unused in skeleton — confirms dep available at import time"
+  - "Application permissions (not delegated) required for client-credentials flow — no user context"
 
 patterns-established:
   - "is_graph_enabled() gate: all Graph call sites check this before proceeding"
   - "Consent URL logged inline with errors so operators can action without reading docs"
 
 # Metrics
-duration: 1min
+duration: ~30min (across two sessions with async consent checkpoint)
 completed: 2026-03-24
 ---
 
 # Phase 10 Plan 01: Graph Client Foundation Summary
 
-**MSAL confidential-client singleton (graph_client.py) with JWT role verification and Graph config constants — paused at admin consent checkpoint**
+**MSAL confidential-client singleton (graph_client.py) with JWT role verification, Graph config constants, and admin consent confirmed for User.Read.All + ProfilePhoto.Read.All**
 
 ## Performance
 
-- **Duration:** ~1 min
+- **Duration:** ~30 min (including async consent checkpoint between sessions)
 - **Started:** 2026-03-24T19:28:39Z
-- **Completed:** 2026-03-24T19:29:31Z
-- **Tasks:** 1/2 (paused at human-action checkpoint)
+- **Completed:** 2026-03-24 (resumed after admin consent granted)
+- **Tasks:** 2/2 complete
 - **Files modified:** 2
 
 ## Accomplishments
 
 - Added `GRAPH_BASE_URL`, `GRAPH_SEARCH_MAX_RESULTS`, `GRAPH_TIMEOUT` to `Config` as class-level constants
 - Created `chat_app/graph_client.py` with `init_graph()`, `_verify_roles()`, `is_graph_enabled()`
-- `init_graph()` acquires client-credentials token, logs admin consent URL on any permission failure
+- `init_graph()` acquires client-credentials token via MSAL, logs admin consent URL on any permission failure
 - `_verify_roles()` decodes JWT payload with base64/json (no extra deps) and checks `User.Read.All` + `ProfilePhoto.Read.All`
-- Plan paused at Task 2 (human-action checkpoint) — admin consent must be granted before continuation
+- Tenant admin granted admin consent for both application permissions via Azure Portal
 
 ## Task Commits
 
 Each task was committed atomically:
 
 1. **Task 1: Add Graph constants to config.py and create graph_client.py skeleton** - `afc4b9f` (feat)
+2. **Task 2: Grant admin consent for Graph API permissions** - No commit (human action — Azure Portal)
 
-**Plan metadata:** (docs commit follows STATE.md update)
+**Plan metadata:** this commit (docs: complete plan)
 
 ## Files Created/Modified
 
@@ -79,13 +81,23 @@ Each task was committed atomically:
 
 ## Decisions Made
 
-- Graph constants are class-level literals on Config (not env vars) because they are API contract values (base URL, timeout), not deployment-specific secrets.
+- Graph constants are class-level literals on `Config` (not env vars) because they are API contract values (base URL, timeout), not deployment-specific secrets.
 - `init_graph()` sets `_graph_enabled = True` only after `_verify_roles()` completes — the flag is the source of truth for downstream callers.
 - `requests` imported in graph_client.py even though unused in the skeleton, confirming the dependency is available at import time (used in Plan 02).
+- Application permissions selected (not delegated) — client-credentials flow operates with no user context, so delegated permissions would not apply.
 
 ## Deviations from Plan
 
 None - plan executed exactly as written.
+
+## Authentication Gates
+
+Task 2 was an intentional human-action checkpoint requiring tenant admin intervention:
+
+1. Admin consent granted for `User.Read.All` (Application permission) via Azure Portal
+2. Admin consent granted for `ProfilePhoto.Read.All` (Application permission) via Azure Portal
+
+This is normal plan flow, not a deviation.
 
 ## Issues Encountered
 
@@ -93,25 +105,15 @@ None.
 
 ## User Setup Required
 
-**Admin consent required before Task 2 can be completed.**
-
-Grant application permissions on the existing Azure AD app registration:
-
-1. Azure Portal > App registrations > [your app] > API permissions
-2. Add application permission: `User.Read.All`
-3. Add application permission: `ProfilePhoto.Read.All`
-4. Click "Grant admin consent for [tenant]"
-
-Or navigate directly to:
-`https://login.microsoftonline.com/{your-tenant-id}/adminconsent?client_id={your-client-id}`
+None — admin consent was the only external configuration step and has been completed.
 
 ## Next Phase Readiness
 
-- Task 1 complete: config constants and graph_client.py skeleton are in place
-- **Blocker:** Task 2 (admin consent) must be completed before 10-02 can start
-- Once consent is granted, reply "done" to continue — the continuation agent will verify and commit the checkpoint
-- Plan 10-02 will call `init_graph()` from `app.py` and add token acquisition tests
+- Config constants and `graph_client.py` skeleton fully in place
+- Admin consent confirmed — MSAL token acquisition in Plan 02 will succeed
+- `is_graph_enabled()` guard pattern established for all downstream Graph call sites
+- Plan 10-02 can proceed: wire `init_graph()` into `app.py` startup and add token acquisition tests
 
 ---
 *Phase: 10-graph-client-foundation*
-*Completed: 2026-03-24 (partial — paused at checkpoint)*
+*Completed: 2026-03-24*
