@@ -117,7 +117,7 @@ Plans:
   3. Token is cached at module level and refreshed automatically before expiry — no 401 errors after the first successful call
   4. `search_users("test")` returns structured results with `ConsistencyLevel: eventual` header on every request
   5. `get_user_photo_bytes()` returns `None` (not an exception) when the target user has no photo
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 10-01: Azure AD app permissions + admin consent verification (GRAPH-02)
@@ -137,7 +137,7 @@ Plans:
   4. `GET /api/photo/<user_id>` returns the JPEG photo for an authenticated user who has a photo
   5. `GET /api/photo/<user_id>` returns a placeholder image with HTTP 200 (not 404) when the user has no photo
   6. `GET /api/photo/<user_id>` returns 401/302-to-login for unauthenticated requests
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 11-01: MCP tool definitions in tools.py — search_colleagues and get_colleague_profile schemas (MCP-01, MCP-02)
@@ -155,7 +155,7 @@ Plans:
   2. Profile cards for users without photos display a fallback avatar (initials or SVG icon), not a broken image
   3. A search returning multiple results renders multiple profile cards in the same message
   4. Atlas reliably selects `search_colleagues` for name queries and `get_colleague_profile` for ID-specific lookups — verified with at least 5 representative phrasings
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
 - [ ] 12-01: addProfileCard() DOM builder in app.js triggered by SSE tool events (MCP-04, PROF-02, PROF-04)
