@@ -33,6 +33,11 @@ class Config:
         "OPENAI_MODEL", "mmc-tech-gpt-4o-mini-128k-2024-07-18"
     )
 
+    # Microsoft Graph API
+    GRAPH_BASE_URL: str = "https://graph.microsoft.com/v1.0"
+    GRAPH_SEARCH_MAX_RESULTS: int = 25
+    GRAPH_TIMEOUT: int = 10
+
     # Server
     HOST: str = os.environ.get("CHAT_HOST", "0.0.0.0")
     PORT: int = int(os.environ.get("CHAT_PORT", "5000"))
