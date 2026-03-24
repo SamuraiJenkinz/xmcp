@@ -35,6 +35,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import os
 import threading
 from contextlib import AsyncExitStack
 from typing import Any
@@ -123,6 +124,7 @@ async def _connect_mcp() -> None:
     params = StdioServerParameters(
         command="uv",
         args=["run", "python", "-m", "exchange_mcp.server"],
+        env=dict(os.environ),
     )
 
     stack = AsyncExitStack()
