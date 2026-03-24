@@ -14,6 +14,7 @@ from chat_app.chat import chat_bp
 from chat_app.config import Config
 from chat_app.conversations import conversations_bp
 from chat_app.db import get_db
+from chat_app.graph_client import init_graph
 from chat_app.mcp_client import get_openai_tools, init_mcp, is_connected
 from chat_app.openai_client import init_openai
 from chat_app.secrets import load_secrets
@@ -62,6 +63,17 @@ def create_app() -> Flask:
         init_mcp(app)
     except Exception as exc:
         logger.error("MCP client initialization failed (degraded mode — no tools): %s", exc)
+
+    # --- Initialize Graph API client (colleague lookup) ---
+    # Graceful degradation: chat works without Graph if consent is missing.
+    try:
+        init_graph(
+            client_id=Config.AZURE_CLIENT_ID,
+            client_secret=Config.AZURE_CLIENT_SECRET,
+            tenant_id=Config.AZURE_TENANT_ID,
+        )
+    except Exception as exc:
+        logger.error("Graph client initialization failed (degraded mode): %s", exc)
 
     # --- Root route ---
     @app.route("/")
