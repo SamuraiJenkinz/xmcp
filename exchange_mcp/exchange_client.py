@@ -64,9 +64,7 @@ Connect-ExchangeOnline `
 
 # Always executed in the finally block to ensure the session is cleaned up
 # even if the cmdlet raises an error.
-_PS_DISCONNECT: str = (
-    "Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue"
-)
+_PS_DISCONNECT: str = "# Session ends when process exits — no explicit disconnect needed"
 
 # ---------------------------------------------------------------------------
 # Error classification
