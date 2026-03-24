@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 ## Current Position
 
 Phase: 10 of 12 (Graph Client Foundation)
-Plan: 1 of 3 in current phase (complete)
-Status: In progress — Plan 01 complete, ready for Plan 02
-Last activity: 2026-03-24 — Completed 10-01-PLAN.md (admin consent confirmed, all tasks done)
+Plan: 2 of 3 in current phase (complete)
+Status: In progress — Plan 02 complete, ready for Plan 03
+Last activity: 2026-03-24 — Completed 10-02-PLAN.md (token layer + app startup wiring)
 
 Progress: [█████████░░░] v1.0 complete, v1.1 starting Phase 10
 
@@ -52,6 +52,7 @@ None.
 ### Blockers/Concerns
 
 - [RESOLVED — 2026-03-24]: Admin consent for User.Read.All and ProfilePhoto.Read.All granted. 10-01 complete.
+- [RESOLVED — 2026-03-24]: Token layer (_get_token, _make_headers, _graph_request_with_retry) implemented. 10-02 complete.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
 
@@ -65,6 +66,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24
-Stopped at: 10-01-PLAN.md complete — all tasks done, admin consent confirmed
+Last session: 2026-03-24T19:41Z
+Stopped at: 10-02-PLAN.md complete — token layer done, Graph wired into app startup
 Resume file: None
