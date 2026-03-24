@@ -24,6 +24,7 @@ Implementation notes
 
 import asyncio
 import base64
+import os
 from asyncio.subprocess import PIPE
 
 # Prepended to every script to ensure consistent encoding and strict error mode.
@@ -89,6 +90,7 @@ async def run_ps(script: str, timeout: int = DEFAULT_TIMEOUT) -> str:
         encoded,
         stdout=PIPE,
         stderr=PIPE,
+        env=os.environ.copy(),
     )
 
     try:
