@@ -1,499 +1,524 @@
-# Architecture Patterns
+# Architecture Patterns: Microsoft Graph Colleague Lookup Integration
 
-**Project:** Exchange Infrastructure MCP Server + Python Chat App
-**Researched:** 2026-03-19
-**Confidence:** HIGH (all patterns verified against official documentation)
+**Project:** Exchange Infrastructure MCP Server — v1.1 Colleague Lookup milestone
+**Researched:** 2026-03-24
+**Scope:** Integration of Microsoft Graph API (user search + profile + photo) into the existing MCP server + Flask chat app
 
 ---
 
-## Recommended Architecture
+## Executive Summary
 
-This system is four cooperating processes on a single domain-joined Windows server. There is no distributed deployment in v1.
+The Graph colleague lookup feature slots cleanly into the existing architecture. The pattern mirrors how Exchange tools already work: a new peer client module (`graph_client.py`) is called from the MCP server; new MCP tools surface data to the AI; a Flask photo proxy route handles binary image serving. Token acquisition reuses the existing MSAL `ConfidentialClientApplication` pattern from `auth.py`, using `acquire_token_for_client` (client credentials flow) rather than on-behalf-of, because the Graph calls are app-level lookups against the directory, not delegated user actions.
+
+The one structural addition is a photo proxy route in `app.py` — the browser cannot call Graph directly because the bearer token is server-side only, and Graph does not support CORS for `$value` endpoints. Profile card rendering lives entirely in `app.js` as a new branch of the SSE `tool` event handler, keeping the server contract (JSON tool events over SSE) unchanged.
+
+---
+
+## Existing Architecture (What Is Already Built)
 
 ```
-Browser (MMC Internal Network / VPN)
+Browser (MMC internal / VPN)
     |
-    | HTTPS
+    | HTTPS + SSE
     v
-+----------------------------------+
-|  Chat Application  (app.py)      |  Flask/FastAPI + Jinja2
-|  - Azure AD OIDC login           |  Port 5000/5001
-|  - Conversation management       |  MSAL ConfidentialClientApplication
-|  - Azure OpenAI tool-call loop   |
-|  - SSE/streaming responses       |
-|  - Session token store           |
-+-----------------+----------------+
-                  |
-                  | In-process (direct Python import)
-                  | OR subprocess/IPC (if isolated)
-                  v
-+----------------------------------+
-|  MCP Client Layer  (in app.py)   |  mcp Python SDK (Tier 1)
-|  - Spawn server.py via stdio     |
-|  - tools/list on startup         |
-|  - tools/call per turn           |
-+-----------------+----------------+
-                  |
-                  | JSON-RPC 2.0 over stdio
-                  v
-+----------------------------------+
-|  MCP Server  (server.py)         |  FastMCP (mcp[cli] >= 1.2.0)
-|  - Tool registry (15 tools)      |
-|  - Input schema validation       |
-|  - Dispatch to exchange_client   |
-|  - Error mapping                 |
-+-----------------+----------------+
-                  |
-                  | Python function calls (direct import)
-                  v
-+----------------------------------+
-|  Exchange Client (exchange_cl.)  |  asyncio + subprocess
-|  - Build PowerShell scripts      |
-|  - asyncio.create_subprocess_exec|
-|  - New-PSSession per call        |
-|  - Kerberos Negotiate auth       |
-|  - Parse JSON output             |
-|  - DNS lookups (dnspython)       |
-+----------------------------------+
-                  |
-                  | WS-MAN / PowerShell Remoting (port 5985/5986)
-                  v
-+----------------------------------+
-|  Exchange 2019 Management Shell  |
-|  (Exchange Server FQDN)          |
-+----------------------------------+
++------------------------------------------+
+|  chat_app/app.py  — Flask / Waitress      |
+|  Blueprints: auth_bp, chat_bp,            |
+|              conversations_bp             |
+|  Routes:                                  |
+|    GET  /                                 |
+|    GET  /chat                             |
+|    POST /chat/stream  (SSE)               |
+|    GET  /api/health                       |
+|    /auth/* (MSAL auth code flow)          |
+|    /api/threads/* (conversation CRUD)     |
+|  State:                                   |
+|    SQLite (chat.db) — threads + messages  |
+|    Filesystem sessions (flask-session)    |
+|    MCP background thread + asyncio loop   |
++------------------+-----------------------+
+                   |
+                   | JSON-RPC 2.0 over stdio pipe
+                   | (threading.Lock serialises calls)
+                   v
++------------------------------------------+
+|  exchange_mcp/server.py  — MCP server    |
+|  Tools: 15 Exchange tools + ping          |
+|  Dispatch: TOOL_DISPATCH dict             |
+|  Error: _sanitize_error() strips PS trace|
++------------------+-----------------------+
+                   |
+                   | async Python calls
+                   v
++------------------------------------------+
+|  exchange_mcp/exchange_client.py          |
+|  ExchangeClient — PowerShell subprocess   |
+|  Auth: interactive or CBA (cert)          |
+|  Per-call PSSession lifecycle             |
+|  Retry with exponential backoff           |
++------------------------------------------+
+                   |
+                   | WinRM/PowerShell Remoting
+                   v
+         Exchange Management Shell
+         (Exchange Online / on-prem)
+```
+
+### Key Constraints Already Established
+
+- Flask is synchronous; async work dispatched via `run_coroutine_threadsafe` to a dedicated background loop in `mcp_client.py`.
+- The MCP server subprocess uses stdio exclusively for JSON-RPC; stdout is reserved.
+- MSAL `ConfidentialClientApplication` is created per-request from `auth.py` (`_build_msal_app()`). The `SerializableTokenCache` is persisted in the Flask session.
+- Scopes currently acquired: `["User.Read"]` for delegated SSO login.
+- Tool results flow as JSON text over MCP → `run_tool_loop()` in `openai_client.py` → SSE `tool` events → `app.js` `addToolPanel()`.
+
+---
+
+## Graph Integration: Target Architecture
+
+```
+Browser (MMC internal / VPN)
+    |
+    | HTTPS + SSE
+    v
++------------------------------------------+
+|  chat_app/app.py  — Flask / Waitress      |
+|  (modified)                               |
+|  NEW route:                               |
+|    GET  /api/photo/<user_id>              |  <-- photo proxy
+|    (login_required, proxies Graph binary) |
++------------------+-----------------------+
+                   |
+                   | JSON-RPC 2.0 over stdio pipe
+                   v
++------------------------------------------+
+|  exchange_mcp/server.py  — MCP server    |
+|  (modified — add 2 new tools)             |
+|  NEW tools in TOOL_DEFINITIONS:           |
+|    search_colleagues                      |
+|    get_colleague_profile                  |
+|  TOOL_DISPATCH entries point to           |
+|    graph_client.GraphClient methods       |
++------------------+-----------------------+
+                   |          |
+      async Python calls      | async Python calls
+                   |          |
+                   v          v
++------------------------------------------+    +------------------------------------------+
+|  exchange_mcp/exchange_client.py          |    |  exchange_mcp/graph_client.py  (NEW)      |
+|  (unchanged)                             |    |  GraphClient                              |
++------------------------------------------+    |  Auth: MSAL client credentials            |
+                                                |    acquire_token_for_client(              |
+                                                |      ["https://graph.microsoft.com/.def"] |
+                                                |    )                                      |
+                                                |  Methods:                                 |
+                                                |    search_users(query) -> list[dict]      |
+                                                |    get_user_profile(user_id) -> dict      |
+                                                |    get_user_photo_bytes(user_id) -> bytes |
+                                                +------------------------------------------+
+                                                                   |
+                                                                   | HTTPS REST (requests)
+                                                                   v
+                                                     graph.microsoft.com/v1.0
+                                                     /users?$search=...
+                                                     /users/{id}?$select=...
+                                                     /users/{id}/photo/96x96/$value
 ```
 
 ---
 
-## Component Boundaries
+## Component-by-Component Integration Points
 
-### Component 1: Chat Application (app.py)
+### 1. graph_client.py (NEW — peer to exchange_client.py)
 
-**Responsibility:** User-facing HTTP server. Owns authentication, conversation storage, and the Azure OpenAI interaction loop. Orchestrates the MCP client.
+**Location:** `exchange_mcp/graph_client.py`
 
-**Communicates with:**
-- Browser: HTTP/HTTPS (Jinja2 templates + HTMX or fetch for streaming)
-- Azure AD / Entra ID: OIDC redirect flow (login.microsoftonline.com)
-- Azure OpenAI endpoint: HTTPS (openai Python SDK)
-- MCP Server: stdio pipe (spawns server.py as subprocess, uses mcp SDK client)
-- Database / file store: local SQLite or JSON files for conversation persistence
+**Responsibility:** All Microsoft Graph API calls. No Exchange, no PowerShell. Parallel design to `exchange_client.py`.
 
-**Does NOT:**
-- Execute PowerShell directly
-- Know about Exchange topology
-- Hold user credentials
+**Auth model:** App-only (client credentials flow). Uses the same `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` environment variables already present in the system. Acquires a token with scope `https://graph.microsoft.com/.default` — this is the app-only scope that bundles all consented application permissions.
 
-**Key state owned:**
-- Flask session or JWT cookie (user identity, access token)
-- MSAL token cache (per-user, encrypted)
-- Conversation threads (messages list per conversation_id)
+**Why client credentials, not on-behalf-of:** The Graph calls are directory lookups (find a colleague by name), not actions that need to respect the logged-in user's own Graph permissions. The service runs as the registered application identity. This is simpler and avoids OBO complexity. The logged-in user is already authenticated via Azure AD; their identity is used for access control to the chat app, not for Graph authorization.
+
+**Token caching inside GraphClient:** MSAL `SerializableTokenCache` in memory, module-level. App tokens (client credentials) are long-lived (typically 1 hour) and can be safely cached at the module level — they are not user-specific. This is distinct from the per-user token cache in the Flask session used for SSO.
+
+**Key methods:**
+
+```
+search_users(query: str, top: int = 10) -> list[dict]
+  GET /v1.0/users?$search="displayName:{query}"
+              &$select=id,displayName,jobTitle,department,mail,userPrincipalName
+              &$top={top}
+  Headers: ConsistencyLevel: eventual
+  Required permission: User.Read.All (application)
+
+get_user_profile(user_id: str) -> dict
+  GET /v1.0/users/{user_id}
+              ?$select=id,displayName,jobTitle,department,
+                       mail,userPrincipalName,officeLocation,
+                       businessPhones,mobilePhone,manager
+  Required permission: User.Read.All (application)
+
+get_user_photo_bytes(user_id: str, size: str = "96x96") -> bytes
+  GET /v1.0/users/{user_id}/photos/{size}/$value
+  Returns: raw image bytes (jpeg)
+  Returns: None if 404 (user has no photo)
+  Required permission: ProfilePhoto.Read.All (application)
+```
+
+**Error handling:** `RuntimeError` on Graph API errors, matching the exchange_client convention so `server.py`'s `_sanitize_error()` can process them uniformly. 404 from photo endpoint returns `None` rather than raising — the tool result should gracefully indicate no photo available.
+
+**No PowerShell dependency:** Pure Python + `requests` library (or `httpx` for async). This is a REST client, not a subprocess runner.
+
+**Async vs sync:** The MCP server's `handle_call_tool` is async. `graph_client.py` should expose async methods (using `httpx.AsyncClient`) to avoid blocking the event loop. This mirrors the async pattern in `exchange_client.py`.
 
 ---
 
-### Component 2: MCP Server (server.py)
+### 2. exchange_mcp/tools.py (MODIFIED — add 2 tools)
 
-**Responsibility:** Protocol boundary. Exposes Exchange tools to any MCP-compatible client. Does not contain business logic — it validates input schemas and delegates to the exchange client.
-
-**Communicates with:**
-- MCP Client (app.py): JSON-RPC 2.0 over stdio
-- Exchange Client: direct Python function calls (same process)
-
-**Does NOT:**
-- Authenticate users (no session, no tokens)
-- Know about Azure AD
-- Store state between calls
-
-**Transport:** stdio only (v1). The server runs as a child process of app.py. Stdout is the JSON-RPC channel — never use print() to stdout in this process.
-
-**Tool registration pattern (FastMCP):**
+**Add to TOOL_DEFINITIONS:**
 
 ```python
-from mcp.server.fastmcp import FastMCP
-mcp = FastMCP("exchange-mcp")
-
-@mcp.tool()
-async def get_mailbox_statistics(alias: str) -> str:
-    """Get mailbox size, item count, and last logon for a mailbox.
-
-    Args:
-        alias: The mailbox alias or email address
-    """
-    return await exchange_client.get_mailbox_statistics(alias)
-
-if __name__ == "__main__":
-    mcp.run(transport="stdio")
+Tool(
+    name="search_colleagues",
+    description=(
+        "Search for MMC colleagues by name or partial name. Returns a list of matching "
+        "people with their job title, department, and email address. "
+        "Use when asked to find a person: 'Who is Jane Smith?', 'Find colleagues in IT', "
+        "'Search for John in Finance'. Returns up to 10 results."
+    ),
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "Name or partial name to search for."
+            }
+        },
+        "required": ["query"]
+    }
+),
+Tool(
+    name="get_colleague_profile",
+    description=(
+        "Get detailed profile information for a specific colleague by their user ID "
+        "or email address. Returns name, title, department, office, phone numbers, "
+        "and manager. Use after search_colleagues to get full details for a specific person."
+    ),
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "user_id": {
+                "type": "string",
+                "description": "The user's Azure AD object ID or email address (UPN)."
+            }
+        },
+        "required": ["user_id"]
+    }
+)
 ```
 
-FastMCP generates the `inputSchema` JSON Schema automatically from Python type hints and docstrings. The `description` field of the docstring becomes the tool description visible to the LLM.
+**Add to TOOL_DISPATCH:**
 
-**Error handling:**
-- Protocol errors (unknown tool, malformed arguments) → JSON-RPC error object, code -32602
-- Execution errors (PowerShell failure, timeout) → tool result with `isError: true` and descriptive text
-- Never raise unhandled exceptions — catch at the `@mcp.tool` level and return `isError: true`
+```python
+"search_colleagues": handle_search_colleagues,
+"get_colleague_profile": handle_get_colleague_profile,
+```
+
+**Handler signature (same pattern as Exchange tools):**
+
+```python
+async def handle_search_colleagues(
+    arguments: dict, client: ExchangeClient | None
+) -> Any:
+    ...
+
+async def handle_get_colleague_profile(
+    arguments: dict, client: ExchangeClient | None
+) -> Any:
+    ...
+```
+
+The `client` parameter is the ExchangeClient (unused by Graph handlers). Graph handlers construct or receive a `GraphClient` instance independently. A module-level `_graph_client: GraphClient | None` in `server.py` follows the same pattern as `_exchange_client`.
 
 ---
 
-### Component 3: Exchange Client (exchange_client.py)
+### 3. exchange_mcp/server.py (MODIFIED — Graph client lifecycle)
 
-**Responsibility:** The only component that touches Exchange. Builds PowerShell command strings, spawns subprocesses, manages session lifecycle, and parses output.
+**Add module-level reference:**
 
-**Communicates with:**
-- MCP Server: direct Python function calls (caller)
-- Exchange Server: WS-MAN over port 5985/5986 (via PowerShell remoting)
-- DNS: dnspython for DMARC/SPF/DKIM lookups (direct)
-- Windows Credential Manager or environment: for service account credentials (if needed for session bootstrap)
-
-**Session model (per-call, no pooling):**
-
-```
-For each tool invocation:
-  1. Build inline PowerShell script block:
-       $session = New-PSSession -ConfigurationName Microsoft.Exchange
-                  -ConnectionUri "http://<exchserver>/PowerShell/"
-                  -Authentication Negotiate
-       Import-PSSession $session -DisableNameChecking | Out-Null
-       <cmdlet invocation with ConvertTo-Json output>
-       Remove-PSSession $session
-
-  2. asyncio.create_subprocess_exec("powershell.exe", "-Command", script)
-  3. Await with asyncio.wait_for(proc.communicate(), timeout=30)
-  4. Parse stdout as JSON
-  5. Return structured dict to MCP server
+```python
+_graph_client: GraphClient | None = None
 ```
 
-**Kerberos context:** Because the Windows server is domain-joined and the chat app runs as (or impersonates) the logged-in user's identity, `Authentication Negotiate` in New-PSSession triggers Kerberos ticket acquisition from the domain controller. The Kerberos Service Ticket is issued to the Exchange HTTP service SPN (http/<exchserver>). This requires the service account (or impersonated user) to have the Exchange RBAC roles listed in constraints.
+**Initialize in `main()` before stdio opens** (same pattern as `_exchange_client`):
 
-**DNS tools:** Direct calls via `dns.resolver.resolve()` for MX/TXT/DMARC records. No subprocess needed for these — pure Python.
+```python
+graph_client = GraphClient()
+_graph_client = graph_client
+ok = await graph_client.verify_connection()
+if not ok:
+    logger.warning("Graph client connection check failed — colleague tools degraded")
+```
 
-**Critical constraint:** `asyncio.create_subprocess_exec` on Windows requires the event loop to be `ProactorEventLoop` (which is the default on Python 3.8+ Windows). Flask's development server does not use asyncio — PowerShell subprocess calls must be run via `asyncio.run()` or in a thread pool if the web framework is synchronous (Flask). FastAPI is async-native and is the preferred choice for this reason.
+**Pass to tool handlers** by making `_graph_client` accessible in the dispatch context. The simplest approach: add a second context parameter to the Graph tool handlers, or use a module-level singleton accessed directly. The latter is simpler and consistent with how `_exchange_client` is accessed.
+
+**Tool count:** Changes from 15 to 17 (15 Exchange tools + ping + 2 Graph tools). Update the startup banner log message.
 
 ---
 
-### Component 4: Azure OpenAI Integration (inside app.py)
+### 4. Photo Proxy Route in app.py (NEW ROUTE — NOT a blueprint)
 
-**Responsibility:** Manages the multi-turn conversation loop with Azure OpenAI, including tool calling. This is not a separate process — it is the core logic function of app.py.
+**Why a proxy is required:** The Graph `photo/$value` endpoint returns raw binary (JPEG). Browser `<img src="...">` tags cannot call it directly because:
+- The bearer token is server-side (never exposed to browser JS)
+- Graph does not add CORS headers to `$value` binary endpoints
+- The existing auth pattern keeps all Azure credentials on the server
 
-**Pattern:** Chat Completions API with `tools` parameter (not Assistants API).
+**Route:**
 
 ```
-Turn flow:
-  1. User submits message
-  2. app.py appends to messages list: {role: "user", content: "..."}
-  3. First API call:
-       response = client.chat.completions.create(
-           model=deployment_name,
-           messages=messages,
-           tools=mcp_tools_as_openai_format,
-           tool_choice="auto"
-       )
-  4. If response.choices[0].message.tool_calls:
-       For each tool_call:
-         a. Extract tool name + JSON arguments
-         b. Route to MCP client → MCP server → Exchange client
-         c. Get result string
-         d. Append to messages: {role: "tool", tool_call_id: id, content: result}
-  5. Second API call (same messages + tool results)
-  6. Stream final response to browser via SSE
-  7. Append assistant message to conversation history
+GET /api/photo/<user_id>
 ```
 
-**Tool format translation:** MCP tools (JSON Schema `inputSchema`) map directly to OpenAI `tools` format. The `name`, `description`, and `parameters` (the `inputSchema`) are identical in structure. The chat app builds the `tools` array once at startup from the `tools/list` response.
+**Location:** Inline route in `app.py` (not a separate blueprint). This is a single route; a blueprint would be overengineering. Add it after the existing `/api/health` route.
 
-**Token management:** gpt-4o-mini-128k has a 128K context window. For Exchange queries (structured data responses), typical tool results are 1-5KB. Token pressure becomes a concern after approximately 50+ conversation turns or very large mailbox enumeration outputs. Mitigation: summarize or truncate tool results before appending to the messages list.
+**Implementation:**
 
-**Streaming:** Use `stream=True` in the completions request. Yield SSE chunks to the browser. Tool calls must be assembled from stream chunks before they can be dispatched — buffer the stream until `finish_reason == "tool_calls"` before executing tools.
+```python
+@app.route("/api/photo/<user_id>")
+@login_required
+def user_photo(user_id: str):
+    # Import graph_client module directly — not via MCP
+    from exchange_mcp.graph_client import GraphClient
+    client = GraphClient()  # module-level singleton preferred
+    photo_bytes = asyncio.run_in_executor_equivalent(client.get_user_photo_bytes(user_id))
+    if photo_bytes is None:
+        # Return a 1x1 transparent GIF placeholder
+        return Response(TRANSPARENT_GIF_BYTES, content_type="image/gif")
+    return Response(
+        photo_bytes,
+        content_type="image/jpeg",
+        headers={"Cache-Control": "max-age=3600"}
+    )
+```
+
+**Note on async in Flask route:** The photo proxy calls `graph_client.get_user_photo_bytes()` which is async. Use the same `_async_run()` pattern from `mcp_client.py` — dispatch to the background MCP event loop via `run_coroutine_threadsafe`. This avoids creating a new event loop inside a Flask route handler, which is an existing solved problem in this codebase.
+
+**Alternatively:** Make `get_user_photo_bytes` also available as a synchronous wrapper in `graph_client.py`, since photo fetching is a direct REST call (not subprocess), making a sync version using `requests` library straightforward. This is the simpler path — no asyncio bridge needed for the proxy route.
+
+**Cache-Control header:** `max-age=3600` (1 hour) is appropriate. Profile photos change rarely. The browser will cache the image and not re-request it on every render within that window.
+
+**Security:** Route is protected by `@login_required`. Only authenticated colleagues can fetch photos. The `user_id` path parameter is passed directly to Graph — validate it is a GUID or UPN format before passing, to prevent path injection into the Graph URL.
 
 ---
 
-## Data Flow
+### 5. Profile Card Rendering in app.js (FRONTEND CHANGE)
 
-### Conversation Turn (Happy Path)
+**What the AI returns:** When `search_colleagues` or `get_colleague_profile` is called, the MCP tool result JSON contains colleague fields. The AI then writes a text response that describes the profile. The SSE stream delivers:
+1. A `tool` event: `{"type": "tool", "name": "get_colleague_profile", "status": "success", "result": "{...json...}"}`
+2. `text` events: the AI's prose description
+3. A `done` event
 
-```
-Browser
-  --[POST /chat/message]--> app.py
-                              |
-                              +--> MSAL token cache check (is user authenticated?)
-                              |
-                              +--> Build messages list
-                              |
-                              +--> AzureOpenAI.chat.completions.create(tools=[...])
-                              |       |
-                              |       v
-                              |    Azure OpenAI (stg1 MMC endpoint)
-                              |       |
-                              |    Response: tool_calls=["get_mailbox_stats"]
-                              |       |
-                              +--> MCP ClientSession.call_tool("get_mailbox_statistics", {alias: "jdoe"})
-                              |       |
-                              |     [JSON-RPC over stdio pipe]
-                              |       |
-                              |    server.py: dispatch to exchange_client.get_mailbox_statistics("jdoe")
-                              |       |
-                              |    exchange_client.py:
-                              |       +--> Build PS script (New-PSSession + Get-MailboxStatistics | ConvertTo-Json)
-                              |       +--> asyncio.create_subprocess_exec("powershell.exe", ...)
-                              |       +--> [Kerberos ticket → Exchange WS-MAN]
-                              |       +--> Exchange 2019 Management Shell executes cmdlet
-                              |       +--> Returns JSON stdout
-                              |       +--> Parse + return dict
-                              |       |
-                              |    server.py: return tool result {content: [{type: "text", text: "..."}]}
-                              |       |
-                              |     [JSON-RPC response over stdio]
-                              |       |
-                              +--> Append tool result to messages
-                              |
-                              +--> AzureOpenAI.chat.completions.create(messages + tool results, stream=True)
-                              |       |
-                              |    [Stream chunks]
-                              |       |
-  <--[SSE stream]------------- app.py yields chunks to browser
-```
+**Profile card rendering approach:** The frontend detects Graph colleague tool results and renders them as structured profile cards inline with the AI text, in addition to the collapsible tool panel. This requires a new rendering branch in `app.js`.
 
-### Authentication Flow (First Login)
+**Recommended format: HTML injection via innerHTML** (not markdown). The existing `appendText()` function appends raw text characters from streaming deltas. Profile card HTML needs to be injected as a DOM element, not as streaming text. The best insertion point is inside `addToolPanel()` or as a companion `addProfileCard()` method called when the SSE `tool` event has `name === "search_colleagues"` or `name === "get_colleague_profile"`.
+
+**Profile card structure (inserted above the AI text, below the tool panel):**
 
 ```
-Browser
-  --[GET /]--> app.py (no session) --> redirect to /auth/login
-  --[GET /auth/login]--> app.py
-    --> MSAL.initiate_auth_code_flow(scopes=[...], redirect_uri=...)
-    --> store flow in session
-    --> redirect to login.microsoftonline.com/tenantId/oauth2/v2.0/authorize
-
-  Azure AD login page
-    --> user authenticates (password + MFA)
-    --> redirect to /auth/callback?code=...&state=...
-
-  --[GET /auth/callback]--> app.py
-    --> MSAL.acquire_token_by_auth_code_flow(session["flow"], request.args)
-    --> cache token in session (encrypted)
-    --> extract UPN from id_token claims
-    --> redirect to /
-
-  Subsequent requests:
-    --> check session for valid token
-    --> MSAL.acquire_token_silent() (uses refresh token if access token expired)
+[collapsible tool panel — existing behavior]
+[profile card div — new]
+  <img src="/api/photo/{user_id}" onerror="this.src='/static/no-photo.svg'">
+  <div class="profile-info">
+    <div class="profile-name">{displayName}</div>
+    <div class="profile-title">{jobTitle}</div>
+    <div class="profile-dept">{department}</div>
+    <div class="profile-email"><a href="mailto:{mail}">{mail}</a></div>
+  </div>
+[streaming AI text — existing behavior]
 ```
 
-### Identity Pass-Through to Exchange
+**For `search_colleagues` returning multiple people:** Render a card row for each result. Parse the JSON tool result, iterate over the results array, render one card per person.
+
+**Why not markdown:** The existing `appendText()` builds a DOM text node (`document.createTextNode('')`), not an HTML element. The AI's streaming text content cannot contain raw HTML — it would appear as literal `<div>` tags. Profile cards must be constructed as DOM elements from the SSE `tool` event data (which arrives before the streaming text), not from the AI's text output.
+
+**What the AI text response should say:** The system prompt should instruct Atlas to describe the colleague in conversational prose when Graph tools are invoked ("Jane Smith is a Senior Engineer in the IT department..."), supplementing the card rather than repeating its fields verbatim. The card provides the photo and structured layout; the text provides context.
+
+---
+
+## Data Flow: Colleague Lookup Turn
 
 ```
-app.py runs on domain-joined Windows server
-  |
-  The Windows service account (or user context) under which app.py runs
-  must be configured for Kerberos Constrained Delegation (KCD):
+1. User types: "Find Jane Smith in IT"
 
-  Option A: Service account delegation
-    - app.py runs as a dedicated service account (e.g., svc-xmcp)
-    - svc-xmcp is configured with KCD to Exchange HTTP SPNs
-    - When spawning powershell.exe, it inherits svc-xmcp context
-    - New-PSSession -Authentication Negotiate → Kerberos as svc-xmcp
-    - Exchange sees svc-xmcp identity (audit trail shows service account)
+2. POST /chat/stream
+   browser -> Flask
 
-  Option B: True per-user delegation (complex, v2 consideration)
-    - Requires Azure AD app configured for OBO flow
-    - App acquires Kerberos token on behalf of user via S4U2Proxy
-    - Passes user identity all the way to Exchange shell
-    - Exchange audit log shows actual colleague UPN
+3. run_tool_loop() — OpenAI tool-call loop
+   Atlas model selects: search_colleagues({"query": "Jane Smith"})
 
-  For v1: Option A is simpler and achievable. The UPN of the logged-in
-  user is logged in the app's own audit log even if Exchange sees the
-  service account. Full S4U2Proxy delegation is a v2 enhancement.
+4. call_mcp_tool("search_colleagues", {"query": "Jane Smith"})
+   Flask thread -> MCP background event loop (via run_coroutine_threadsafe)
+
+5. JSON-RPC over stdio pipe
+   mcp_client.py -> exchange_mcp/server.py
+
+6. handle_search_colleagues(arguments, _exchange_client)
+   server.py -> graph_client.GraphClient.search_users("Jane Smith")
+
+7. MSAL acquire_token_for_client(["https://graph.microsoft.com/.default"])
+   Graph token cache hit (if not expired) or token fetch from Azure AD
+
+8. GET https://graph.microsoft.com/v1.0/users
+        ?$search="displayName:Jane Smith"
+        &$select=id,displayName,jobTitle,department,mail,userPrincipalName
+        &$top=10
+        &ConsistencyLevel=eventual
+   graph_client.py -> graph.microsoft.com
+
+9. JSON response: [{id, displayName, jobTitle, department, mail}, ...]
+
+10. server.py wraps result as TextContent JSON
+    Returns: [{"id": "...", "displayName": "Jane Smith", ...}, ...]
+
+11. call_mcp_tool returns result JSON string
+    Appended to messages as role=tool
+
+12. Atlas model generates text response + emits done
+
+13. SSE stream to browser:
+    data: {"type": "tool", "name": "search_colleagues", "status": "success",
+           "result": "[{\"id\":\"...\", \"displayName\":\"Jane Smith\", ...}]"}
+    data: {"type": "text", "delta": "I found Jane Smith..."}
+    data: {"type": "done"}
+
+14. app.js SSE handler:
+    - "tool" event with name "search_colleagues":
+        addToolPanel(...)         -- existing collapsible panel
+        addProfileCard(result)    -- NEW: parse result JSON, render card(s)
+                                     img src="/api/photo/{id}"
+    - "text" events: appendText() -- existing streaming text
+
+15. Browser requests /api/photo/{user_id}
+    GET /api/photo/abc-123-def
+
+16. Flask photo proxy:
+    GraphClient.get_user_photo_bytes("abc-123-def", size="96x96")
+    -> GET /v1.0/users/abc-123-def/photos/96x96/$value
+    -> returns JPEG bytes
+    Response(jpeg_bytes, content_type="image/jpeg", Cache-Control: max-age=3600)
+
+17. Browser renders <img> with colleague photo
 ```
+
+---
+
+## Token Caching: Graph vs SSO
+
+Two separate MSAL token concerns in this system:
+
+| Token Purpose | Where Cached | Flow | Scope | Lifetime |
+|---------------|-------------|------|-------|----------|
+| SSO login (user identity) | Flask filesystem session, per-user `SerializableTokenCache` | Auth code flow | `User.Read` | 1h access / longer refresh |
+| Graph API calls (app-level) | Module-level singleton in `graph_client.py`, `SerializableTokenCache` | Client credentials | `https://graph.microsoft.com/.default` | 1 hour |
+
+**Key design rule:** Do NOT reuse the SSO user token for Graph API calls. They serve different purposes and have different scopes. The SSO token is a delegated token scoped to `User.Read` for the logged-in user's own profile. The Graph search token is an application token with `User.Read.All` to search the entire directory. Mixing them is architecturally incorrect and would require OBO flow complexity with no benefit.
+
+**Module-level token cache in GraphClient:** Since `graph_client.py` is imported by `server.py` (the MCP subprocess), and the MCP subprocess is a single long-lived process, the module-level token cache persists for the lifetime of the MCP server process. This is appropriate — client credential tokens can be shared across all tool calls in the same process.
+
+---
+
+## Required Azure AD App Registration Changes
+
+The existing app registration (AZURE_CLIENT_ID) needs two new **application permissions** (not delegated — these are app-only calls):
+
+| Permission | Type | Purpose |
+|------------|------|---------|
+| `User.Read.All` | Application | Search users, get profile details |
+| `ProfilePhoto.Read.All` | Application | Fetch user photos |
+
+**Admin consent required:** Application permissions always require tenant admin consent. This is a one-time action in the Azure portal (App Registrations -> API permissions -> Grant admin consent).
+
+**No new client secret needed:** The existing `AZURE_CLIENT_SECRET` is reused. The same app identity acquires both SSO tokens (delegated) and Graph app tokens (application).
+
+---
+
+## New vs Modified Files
+
+| File | Status | What Changes |
+|------|--------|-------------|
+| `exchange_mcp/graph_client.py` | NEW | Complete Graph API client — search, profile, photo |
+| `exchange_mcp/tools.py` | MODIFIED | Add `search_colleagues` and `get_colleague_profile` tool definitions and dispatch entries |
+| `exchange_mcp/server.py` | MODIFIED | Add `_graph_client` module-level reference, initialize in `main()`, pass to Graph handlers; update tool count in banner |
+| `chat_app/app.py` | MODIFIED | Add `GET /api/photo/<user_id>` route |
+| `chat_app/static/app.js` | MODIFIED | Add `addProfileCard()` function, handle Graph tool events in SSE handler |
+| `chat_app/static/style.css` | MODIFIED | Profile card CSS (photo dimensions, layout, responsive) |
+| `chat_app/openai_client.py` | MODIFIED | Update SYSTEM_PROMPT to include colleague lookup guidance for Atlas |
+
+**No new blueprints, no new Python packages beyond `httpx` (or `requests`) for the Graph REST client.**
 
 ---
 
 ## Suggested Build Order
 
-Dependencies determine sequence. Build from the bottom up.
+Dependencies determine sequence.
 
-### Layer 0: Foundation (no dependencies)
-Build first because everything depends on it.
+### Step 1: graph_client.py (foundation, no UI dependency)
+Build and test in isolation before touching any other file. Verify:
+- Token acquisition with `acquire_token_for_client` succeeds
+- `search_users("test name")` returns expected shape
+- `get_user_profile(known_id)` returns full profile dict
+- `get_user_photo_bytes(known_id)` returns JPEG bytes
+- 404 from photo endpoint returns `None` gracefully
 
-1. **Project scaffold** — directory structure, pyproject.toml/requirements.txt, .env pattern, config.py
-2. **Exchange client skeleton** — async PowerShell subprocess runner with a single test cmdlet (Get-ExchangeServer). Validate Kerberos auth, JSON output parsing, timeout handling.
-3. **DNS utilities** — dnspython resolver functions. Zero dependencies on other components.
+### Step 2: MCP server integration (tools.py + server.py)
+Add tool definitions and dispatch entries. Test with `mcp dev exchange_mcp/server.py` or direct MCP client. Verify the AI model selects `search_colleagues` and `get_colleague_profile` appropriately.
 
-### Layer 1: MCP Server (depends on Exchange client)
-Build second because the chat app needs it to enumerate tools.
+### Step 3: Photo proxy route (app.py)
+Add the `/api/photo/<user_id>` route. Test by hitting it directly in a browser after login. Verify Cache-Control header, 404 handling (placeholder GIF), and `@login_required` gate.
 
-4. **MCP server** — FastMCP server with all 15 tools registered. Each tool wraps the corresponding exchange_client function. Validate with `mcp dev server.py` or the MCP Inspector before integrating with the chat app.
-5. **Tool schemas** — Verify all 15 tool `inputSchema` definitions are accurate and descriptions are LLM-friendly.
+### Step 4: Profile card frontend (app.js + style.css)
+Add the card rendering logic. Test by sending a message that triggers the Graph tools and verifying the card renders with the proxied photo URL.
 
-### Layer 2: Chat Application Core (depends on MCP server)
-Build third, iteratively.
-
-6. **Flask/FastAPI skeleton** — basic routing, Jinja2 templates, health check endpoint
-7. **Azure AD auth** — MSAL ConfidentialClientApplication, auth code flow, session management, /auth/login + /auth/callback routes
-8. **Azure OpenAI integration** — basic chat completions without tool calling (verify connectivity to MMC stg1 endpoint)
-9. **MCP client integration** — spawn server.py on app startup, tools/list, inject tools into OpenAI requests
-10. **Tool calling loop** — detect tool_calls in response, route to MCP server, append results, make second call
-11. **Streaming** — SSE streaming of final response to browser
-
-### Layer 3: UI and Polish (depends on chat app core)
-Build last.
-
-12. **Conversation persistence** — SQLite or JSON file store for multi-session history
-13. **Sidebar navigation** — multiple conversation threads
-14. **Tool visibility** — display which tool was invoked and the raw result
-15. **Export/copy** — response export functionality
-
----
-
-## Key Interfaces Between Components
-
-### Interface 1: MCP stdio transport (app.py ↔ server.py)
-
-**Protocol:** JSON-RPC 2.0 over stdin/stdout pipe
-**Client-side:** `mcp.ClientSession` + `mcp.client.stdio.stdio_client()`
-**Server-side:** `mcp.run(transport="stdio")`
-**Critical rule:** Nothing in server.py may write to stdout except the MCP SDK. All logging must go to stderr or a file.
-
-```python
-# app.py startup pattern
-from mcp import ClientSession
-from mcp.client.stdio import stdio_client
-
-async def start_mcp_client():
-    async with stdio_client(
-        StdioServerParameters(command="python", args=["server.py"])
-    ) as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-            tools = await session.list_tools()
-            # store tools for OpenAI format conversion
-```
-
-### Interface 2: Exchange client (server.py ↔ exchange_client.py)
-
-**Protocol:** Direct async Python function calls
-**Signature pattern:** `async def get_mailbox_statistics(alias: str) -> dict`
-**Returns:** structured dict (parsed from PowerShell JSON output) or raises a typed exception
-**Error contract:** Exchange client raises `ExchangeError(message, exit_code)` on failure. MCP server catches this and returns `isError: true`.
-
-### Interface 3: Azure OpenAI tools (app.py ↔ Azure OpenAI)
-
-**Protocol:** HTTPS / openai SDK `chat.completions.create()`
-**Tools format:** OpenAI function schema derived from MCP `tools/list` response:
-```python
-def mcp_tool_to_openai(tool) -> dict:
-    return {
-        "type": "function",
-        "function": {
-            "name": tool.name,
-            "description": tool.description,
-            "parameters": tool.inputSchema  # already JSON Schema format
-        }
-    }
-```
-
-### Interface 4: PowerShell subprocess (exchange_client.py ↔ Windows)
-
-**Protocol:** asyncio subprocess via `asyncio.create_subprocess_exec`
-**Output contract:** PowerShell script must emit exactly one JSON object to stdout. Errors go to stderr. Exit code 0 = success.
-**Script pattern:**
-```powershell
-try {
-    $session = New-PSSession -ConfigurationName Microsoft.Exchange `
-        -ConnectionUri "http://exchserver.domain.local/PowerShell/" `
-        -Authentication Negotiate -ErrorAction Stop
-    Import-PSSession $session -DisableNameChecking | Out-Null
-    $result = Get-MailboxStatistics -Identity $alias |
-        Select-Object DisplayName, TotalItemSize, ItemCount, LastLogonTime |
-        ConvertTo-Json -Compress
-    Write-Output $result
-    Remove-PSSession $session
-} catch {
-    Write-Error $_.Exception.Message
-    exit 1
-}
-```
-
-### Interface 5: Azure AD / MSAL (app.py ↔ login.microsoftonline.com)
-
-**Protocol:** OIDC authorization code flow via MSAL Python `ConfidentialClientApplication`
-**Scopes required:** `openid`, `profile`, `email`, `offline_access` (for token refresh)
-**Token storage:** MSAL in-memory cache per session (keyed by user sub claim). For multi-process deployments, use `msal.SerializableTokenCache` persisted to encrypted session store.
+### Step 5: System prompt update (openai_client.py)
+Expand the Atlas system prompt to describe colleague lookup capabilities and instruct the model on when to use `search_colleagues` vs `get_colleague_profile`.
 
 ---
 
 ## Architecture Patterns to Follow
 
-### Pattern 1: Stateless MCP server
+### Pattern: Graph client mirrors exchange_client structure
+Same constructor pattern, same error conventions (raise `RuntimeError` on API errors), same `verify_connection()` method for startup health check. This keeps `server.py` consistent — it initializes both clients the same way and passes both to handlers.
 
-The MCP server has zero state between calls. All state lives in the chat application (conversation history, user session) or in Exchange (the authoritative data source). This makes the MCP server restartable without data loss and testable in isolation.
+### Pattern: Photo proxy as a thin pass-through
+The proxy should not transform the image. Fetch from Graph, return bytes. Do not base64-encode, resize, or reformat. Let the browser handle display via CSS constraints (`object-fit: cover; width: 64px; height: 64px`).
 
-### Pattern 2: Tool result as text, not structured data
+### Pattern: Profile card data from tool result JSON, not from AI text
+The SSE `tool` event carries the raw JSON result from `search_colleagues` / `get_colleague_profile`. Parse this in `app.js` to build the profile card DOM. Do not ask the AI to embed structured card data in its text response — that path is fragile (the model may format it differently, may abbreviate, may omit fields).
 
-MCP tool results return `{type: "text", text: "..."}`. Format Exchange output as human-readable text (not raw JSON) in the tool result — the LLM will parse it into a natural language response. For large outputs, summarize or paginate at the Exchange client level. Keep tool results under 8KB.
+### Pattern: Graceful photo degradation
+Every `<img>` in a profile card should have `onerror="this.src='/static/no-photo.svg'"`. Not all colleagues have photos in Azure AD. The 404 case from the proxy (which returns a placeholder GIF) plus the `onerror` fallback ensures a consistent UI regardless of photo availability.
 
-### Pattern 3: Fail loud at the Exchange boundary
-
-When PowerShell fails (cmdlet error, auth failure, timeout), return a descriptive error message that the LLM can relay to the user. "Failed to retrieve mailbox statistics: Access denied for alias jdoe (exit code 1)" is useful. Swallowing errors produces confused LLM responses.
-
-### Pattern 4: Single-process MCP for v1
-
-In v1, run the MCP server as a subprocess of the chat app (stdio transport). Do not build an HTTP MCP server. This eliminates network configuration, TLS setup, and multi-client complexity. If the chat app needs to scale to multiple workers in v2, revisit with Streamable HTTP transport.
-
-### Pattern 5: Conversation messages list as the source of truth
-
-Never store Azure OpenAI responses in a separate format. The `messages` list (with role, content, tool_call_id entries) is the canonical conversation representation. Persist this list verbatim to the database. Reload it verbatim when resuming a conversation. This guarantees correct multi-turn context.
+### Pattern: App registration permissions as a prerequisite
+The photo proxy and search tools will return 403 errors until `User.Read.All` and `ProfilePhoto.Read.All` application permissions are granted admin consent in the Azure portal. This is an infrastructure prerequisite, not a code prerequisite — document it as a deployment requirement in the phase plan.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Persistent PSSession pooling
+### Anti-Pattern: Fetching photos in the MCP tool result
+Do not return photo bytes from the MCP tool. MCP results are text (JSON). Embedding base64-encoded photos in tool result JSON would bloat the OpenAI context window (a 96x96 JPEG is ~3-8 KB of base64, multiplied by every search result). The photo proxy pattern correctly separates the binary channel (HTTP response) from the data channel (tool result JSON).
 
-**What:** Creating a pool of long-lived Exchange PSSession objects, reused across tool calls.
-**Why bad:** PSSession expiration (Exchange default: 15 minutes idle) causes silent failures. Session state accumulates (imported modules, variables). Auth token expiry breaks pool silently. Session leaks are hard to detect.
-**Instead:** Per-call sessions as specified in constraints. Accept the ~2-3 second overhead. Optimize by caching the session within a single MCP tool call that needs multiple cmdlets.
+### Anti-Pattern: Calling Graph from app.js directly
+The bearer token is server-side. Exposing it to the browser is a security violation. All Graph calls go through the server-side proxy.
 
-### Anti-Pattern 2: Writing to stdout in server.py
+### Anti-Pattern: Reusing the SSO user token for Graph directory calls
+The delegated `User.Read` token only allows reading the currently logged-in user's own profile. Directory-wide colleague search requires `User.Read.All` with application permissions. Using the wrong token will produce 403 errors.
 
-**What:** Using `print()` or `logging.StreamHandler(sys.stdout)` in the MCP server process.
-**Why bad:** Corrupts the JSON-RPC framing. The MCP client will receive malformed data and crash or hang.
-**Instead:** All logging in server.py goes to `sys.stderr` or a file handler. `print(..., file=sys.stderr)` is safe.
+### Anti-Pattern: New blueprint for the photo proxy
+One route does not warrant a blueprint. Adding a blueprint increases import complexity and registration overhead for no architectural benefit. The `/api/photo/<user_id>` route belongs inline in `app.py` alongside the existing `/api/health` route.
 
-### Anti-Pattern 3: Putting Azure OpenAI tool-call logic in the MCP server
-
-**What:** The MCP server calling Azure OpenAI directly to orchestrate multi-tool workflows.
-**Why bad:** The MCP server is a protocol boundary, not an orchestrator. It should be dumb. Complex logic in server.py makes it untestable and coupled to the AI provider.
-**Instead:** All OpenAI interaction lives in app.py. The MCP server only validates input, calls exchange_client, and returns results.
-
-### Anti-Pattern 4: Streaming Exchange output through the subprocess as it arrives
-
-**What:** Using stdout streaming from PowerShell to get partial results.
-**Why bad:** PowerShell's ConvertTo-Json only emits complete objects. Partial JSON is unparseable. Exchange cmdlets buffer internally anyway.
-**Instead:** Buffer all PowerShell stdout and parse as a complete JSON document after the process exits.
-
-### Anti-Pattern 5: Storing credentials in the MCP server or Exchange client
-
-**What:** Hardcoding Exchange credentials or API keys in server.py or exchange_client.py.
-**Why bad:** Credential exposure via code review, logs, or error messages. Violates MMC security policy.
-**Instead:** Azure OpenAI API key from AWS Secrets Manager at app startup. Exchange authentication via Kerberos (no password needed when running in correct domain context).
-
-### Anti-Pattern 6: Using Flask's synchronous context with asyncio subprocesses naively
-
-**What:** Calling `asyncio.run()` inside a Flask route handler that is already in a synchronous thread.
-**Why bad:** On Python 3.10+, `asyncio.run()` in a thread that already has a running event loop raises `RuntimeError`. Flask's dev server is synchronous.
-**Instead:** Either use FastAPI (async-native, recommended) or use `concurrent.futures.ThreadPoolExecutor` with `loop.run_in_executor()` for the async subprocess calls if staying with Flask.
-
----
-
-## Scalability Considerations
-
-This is an internal tool with limited concurrency requirements. These are directional notes, not v1 requirements.
-
-| Concern | At 10 concurrent users | At 100 concurrent users | At 1000 concurrent users |
-|---------|----------------------|------------------------|-------------------------|
-| PowerShell subprocesses | Fine (10 parallel PS processes) | Process limit risk; consider pooling | Requires session pooling or distributed deployment |
-| Azure OpenAI latency | Acceptable (1-5s/turn) | Queue depth may build; add per-user rate limiting | Requires async queue + worker pool |
-| Exchange WS-MAN connections | Fine | Monitor throttling (EMS default: 18 max sessions per user) | Requires service account with elevated throttling policy |
-| Conversation storage | In-memory or file store fine | SQLite fine | Migrate to PostgreSQL |
-| MCP server instances | One per app process | One per app worker | One per app worker (no state to share) |
+### Anti-Pattern: Blocking Flask request thread on async Graph call
+`graph_client.get_user_photo_bytes()` is async. Do not call `asyncio.run()` inside the Flask route handler — this creates a new event loop in a thread that may already have one (the MCP background loop). Use `run_coroutine_threadsafe(_mcp_loop)` (reusing the existing background loop from `mcp_client.py`) or provide a synchronous `requests`-based implementation for the photo proxy specifically.
 
 ---
 
@@ -501,24 +526,21 @@ This is an internal tool with limited concurrency requirements. These are direct
 
 | Area | Confidence | Source |
 |------|------------|--------|
-| MCP stdio transport + FastMCP patterns | HIGH | Official MCP docs (modelcontextprotocol.io), verified 2026-03-19 |
-| Azure OpenAI tool calling (chat completions) | HIGH | Official Microsoft Learn docs, verified 2026-03-19 |
-| MSAL Python auth code flow | HIGH | Official MSAL Python docs + Microsoft identity platform docs, verified 2026-03-19 |
-| OAuth 2.0 OBO flow mechanics | HIGH | Official Microsoft identity platform docs, verified 2026-03-19 |
-| PSSession per-call pattern for Exchange | HIGH | Official Exchange + PowerShell docs |
-| asyncio subprocess on Windows (ProactorEventLoop) | MEDIUM | Python 3.11 docs + known Windows asyncio behavior (training knowledge, consistent with docs) |
-| Kerberos KCD for identity pass-through | MEDIUM | Azure AD Seamless SSO docs describe the Kerberos ticket flow; true S4U2Proxy delegation for this pattern is documented but implementation-specific to MMC AD config |
-| gpt-4o-mini tool calling parallel support | HIGH | Azure OpenAI function calling docs confirm gpt-4o-mini (2024-07-18) supports parallel function calls |
+| Graph `/users?$search` with `ConsistencyLevel: eventual` | HIGH | Official MS Learn docs verified 2026-03-24 |
+| Graph `profilephoto-get` endpoint, 96x96 size | HIGH | Official MS Learn docs verified 2026-03-24 |
+| `ProfilePhoto.Read.All` required permission for app-only photo access | HIGH | Official MS Learn docs verified 2026-03-24 |
+| MSAL `acquire_token_for_client` for client credentials | HIGH | Official MSAL Python docs, established pattern |
+| Module-level token cache in MCP subprocess being safe | HIGH | Client credential tokens are not user-specific; safe to share process-wide |
+| Photo proxy pattern (Flask route serving binary from Graph) | HIGH | Standard pattern; no library-specific risk |
+| `ConsistencyLevel: eventual` required for `$search` on `/users` | HIGH | Official Graph docs state this explicitly |
+| Profile card as DOM injection (not markdown) | HIGH | Consistent with existing `addToolPanel()` DOM builder pattern in app.js |
 
 ---
 
 ## Sources
 
-- MCP Architecture: https://modelcontextprotocol.io/docs/concepts/architecture (verified 2026-03-19)
-- MCP Tools: https://modelcontextprotocol.io/docs/concepts/tools (verified 2026-03-19)
-- MCP Python Server quickstart: https://modelcontextprotocol.io/docs/develop/build-server (verified 2026-03-19)
-- Azure OpenAI Function Calling: https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/function-calling (verified 2026-03-19)
-- OAuth 2.0 OBO Flow: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-on-behalf-of-flow (verified 2026-03-19)
-- Azure AD Seamless SSO / Kerberos: https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/how-to-connect-sso-how-it-works (verified 2026-03-19)
-- MSAL Python: https://learn.microsoft.com/en-us/entra/msal/python/ (verified 2026-03-19)
-- Exchange Management Tools: https://learn.microsoft.com/en-us/exchange/plan-and-deploy/post-installation-tasks/install-management-tools (verified 2026-03-19)
+- Microsoft Graph List Users: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0 (verified 2026-03-24)
+- Microsoft Graph Get profilePhoto: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0 (verified 2026-03-24)
+- Microsoft Graph Get User: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0 (verified 2026-03-24)
+- MSAL Python client credentials: https://learn.microsoft.com/en-us/entra/msal/python/ (established pattern, consistent with auth.py)
+- Existing auth.py and mcp_client.py in this codebase — MSAL and asyncio bridge patterns verified by reading source

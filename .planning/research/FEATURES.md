@@ -2,7 +2,7 @@
 
 **Domain:** MCP Server for Infrastructure Management + Enterprise Internal Chat Application
 **Project:** Exchange Infrastructure MCP Server (Exchange Management Shell + Azure OpenAI + Python Chat App)
-**Researched:** 2026-03-19
+**Researched:** 2026-03-19 (original), updated 2026-03-24 (colleague lookup milestone)
 **Confidence:** HIGH — Project has a fully specified architecture document; feature analysis drawn from that spec plus domain knowledge of MCP, enterprise chat, and Exchange tooling.
 
 ---
@@ -16,6 +16,8 @@ This project has three distinct feature domains, each with its own table stakes 
 3. **Exchange Management Tooling (domain-specific)**
 
 They are analyzed separately, then cross-cutting dependencies are mapped.
+
+Domain 4 (Colleague Lookup and Profile Display) was added in milestone v1.1 and is analyzed at the end.
 
 ---
 
@@ -155,6 +157,62 @@ Features that go beyond basic Exchange tooling and address the specific pain poi
 
 ---
 
+## Domain 4: Colleague Lookup and Profile Display (v1.1 Milestone)
+
+**Context:** Users ask the AI in natural language to look up colleagues. The AI calls MCP tools that query Microsoft Graph. Results render as inline profile cards in the chat UI — photo, name, title, department, email, office location. Azure AD has 80,000+ users across Marsh, Mercer, Oliver Wyman, and Guy Carpenter.
+
+**Source confidence:** Table stakes verified against Microsoft Graph official documentation (profilephoto-get, user resource type, $search parameter docs — HIGH). Differentiators and anti-features from domain knowledge and enterprise UX research (MEDIUM).
+
+### Table Stakes
+
+Features users expect from any colleague lookup capability in an enterprise tool. Missing these makes the feature feel broken or incomplete.
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Search by name (partial match) | Users type first name, last name, or partial name — exact match only is unusable at 80K users | Low | Microsoft Graph `$search="displayName:term"` with `ConsistencyLevel: eventual` header. Returns up to 15 results by default. |
+| Search by department | "Show me people in HR" is a common first query when the user doesn't know a specific name | Low | `$filter=department eq 'Human Resources'`. Must handle exact match; department values must match AAD strings exactly. |
+| Display name prominently | First thing users scan for is the name — it orients all other data on the card | Low | Microsoft Graph `displayName` is a default-returned field. Always present. |
+| Job title on profile card | Users need title to confirm they found the right person (John Smith the VP vs John Smith the analyst) | Low | `jobTitle` in Graph user resource. Must be $select'd explicitly. Often null for some user types — render gracefully. |
+| Department on profile card | Confirms business unit context; particularly important at MMC where same name can exist across 4 operating companies | Low | `department` must be $select'd. May be null — render "Department not listed" rather than blank. |
+| Email address on profile card | Primary action after finding someone is emailing them; must be clickable `mailto:` link | Low | `mail` is returned by default. Some accounts use `userPrincipalName` only — fall back to UPN if mail is null. |
+| Profile photo or graceful fallback | Photos are the primary visual identifier; absence of a photo must not break the card layout | Medium | Microsoft Graph `GET /users/{id}/photo/$value` returns 404 when no photo exists. Server must proxy and return initials-based fallback (colored circle with initials) on 404. Photo sizes: 48x48, 96x96, 240x240 available. Use 96x96 for cards. |
+| Multiple results for ambiguous queries | "Find Sarah" in an 80,000-person directory will return many matches; presenting only one is incorrect | Low | Return up to 10 results per query. Each result renders as a compact card. User scrolls to find the right Sarah. |
+| Clear empty state for no results | When query returns zero results, user needs explicit feedback — not a blank space | Low | "No colleagues found matching '[term]'" message with suggestion to try a different search term. |
+| Results scoped to MMC Azure AD only | The Azure AD tenant contains only MMC employees; no filtering required, but tool must not reach external directories | Low | Single tenant — Graph client credentials are scoped to MMC tenant. No cross-tenant queries. |
+
+### Differentiators
+
+Features that elevate the colleague lookup experience beyond basic directory search.
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Office location on profile card | At a global company with offices across 130+ countries, knowing where someone sits matters for meeting scheduling and escalation chains | Low | `officeLocation` must be $select'd. Null in many AAD records — render only if present, do not show empty label. |
+| Business phone on card | Direct dial number is a common need when email is too slow for an incident | Low | `businessPhones` is an array — render first entry. Null for many users — render only if present. |
+| Mobile phone on card | Mobile for out-of-hours or urgent contact | Low | `mobilePhone` — render only if present. Many users will not have this populated. |
+| Operating company badge | At MMC, "Marsh", "Mercer", "Oliver Wyman", "Guy Carpenter" tell the user which business unit this person works in — critical context when names are common | Low | Derive from department, companyName, or mail domain pattern. `companyName` must be $select'd. Render as colored badge on card (e.g., Mercer = teal). |
+| Copy email to clipboard button | Most common action after finding someone — eliminates manual selection and copy | Low | Clipboard API on the email address element. Already implemented pattern in the app for AI responses. |
+| Search by both name and department simultaneously | "Find Sarah in Finance" is more precise than either query alone — filters the multi-result list meaningfully | Medium | Combine `$search="displayName:Sarah"` with `$filter=department eq 'Finance'`. Graph supports combining $search and $filter with ConsistencyLevel: eventual header. |
+| Manager field on detailed profile | For escalation workflows: "who does this person report to?" is a common follow-up question | Medium | `manager` is a navigation property — requires separate Graph call `GET /users/{id}/manager`. Not in initial card; available on expand or separate tool call. |
+| Profile card inline in chat response | Cards rendered directly in the conversation thread, not in a modal or new tab — keeps the user in context | Medium | Custom HTML rendering in AI message bubble. The AI message text introduces the results; cards appear below as structured elements, not as JSON. |
+| Differentiated card layout for single vs multi-result | A single confident match gets a larger card with more detail; multiple matches get compact cards in a scrollable list | Medium | Single result: 96x96 photo, full fields. Multiple results: 48x48 photo, name + title + department + email only. |
+
+### Anti-Features
+
+Things to deliberately NOT build for colleague lookup. Common mistakes that create privacy, performance, or scope creep problems.
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Presence/availability status ("Sarah is in a meeting") | Presence data from Graph requires `Presence.Read.All` permission — a higher-sensitivity scope. Presence is ephemeral, often stale, and creates an expectation of real-time monitoring that the tool cannot reliably deliver | Omit presence. If users need availability, direct them to Teams or Outlook calendar. |
+| Full org chart rendering | Building a tree view of reporting lines requires recursive Graph calls (manager chain, direct reports list). High API cost, complex rendering, and rarely what users need from a chat tool | Expose manager as a single field on detailed profile. If users need full org chart, direct them to the M365 profile page. |
+| Search across email content or calendar | Graph has APIs for mail and calendar; using them here creates a surveillance tool, not a directory tool. Privacy and data governance concerns are immediate | Scope the colleague lookup strictly to AAD user profile data only. Never query mailbox or calendar content. |
+| Free-text notes or annotations on colleague profiles | Any user-editable annotation layer on top of AAD data creates a shadow HR system — legal exposure, GDPR complications, data quality problems | Read-only display of official AAD data only. Direct users to the appropriate HR system for updates. |
+| Photo caching in the conversation database | Profile photos are binary blobs; storing them in SQLite adds significant size and creates a stale-photo problem (users update their photo but the cached version remains) | Proxy photos on demand via `/api/photo/<user_id>`. Add HTTP cache headers (Cache-Control: max-age=3600) for browser-level caching. No server-side photo storage. |
+| Bulk export of colleague contact data | Exporting a directory of 80,000 names, emails, and phone numbers from a chat tool creates a data exfiltration risk — even internal | Return results per query only. No "export all search results" function. Maximum 10 results per search response. |
+| Autocomplete / typeahead search in the chat input | Intercepting keystrokes in the chat input to suggest colleague names requires polling Graph on every keystroke — high API cost, complex UX state, and breaks the conversational model | Let users type complete natural language queries. The AI extracts name/department intent and calls the search tool. |
+| Displaying user account status or license details | Account enabled/disabled status, license assignments, and group memberships are AD administration data — not appropriate for a general-purpose colleague lookup in a chat tool | Scope strictly to profile display fields: name, title, department, email, phone, location, photo. |
+
+---
+
 ## Feature Dependencies
 
 ```
@@ -168,8 +226,25 @@ Pass-through identity (Kerberos Constrained Delegation)
   → Per-user audit trail in Exchange logs
 
 MCP Tool Registry (list_tools)
-  → All 15 Exchange tools (tools are registered, then callable)
+  → All Exchange tools (tools are registered, then callable)
+  → search_colleagues tool (registered with name/department params)
+  → get_colleague_profile tool (registered with user_id param)
   → Tool visibility in UI (UI reads tool call metadata from model response)
+
+Graph API client module
+  → search_colleagues tool (uses Graph /users?$search)
+  → get_colleague_profile tool (uses Graph /users/{id} + /users/{id}/photo)
+  → Photo proxy route (GET /api/photo/<user_id> fetches from Graph)
+
+Photo proxy route (Flask /api/photo/<user_id>)
+  → Profile card photo rendering (img src points to proxy, not Graph directly)
+  → Graph token never exposed to browser (security requirement)
+
+Profile card rendering (inline HTML in chat)
+  → search_colleagues tool result (card rendered from tool response)
+  → get_colleague_profile tool result (detailed card from tool response)
+  → Photo proxy route (card img src calls proxy)
+  → Existing copy-to-clipboard (email field uses existing clipboard pattern)
 
 Tool visibility in UI
   → Conversation history (tool calls are part of the stored conversation)
@@ -181,45 +256,59 @@ Conversation history
   → Export/share (exports from stored history)
 
 Per-call PSSession lifecycle
-  → All 15 Exchange tools (every tool uses PSSession)
+  → All Exchange tools (every Exchange tool uses PSSession)
   → Timeout handling (per-call timeout set when PSSession is created)
 
 Error wrapping in MCP server
   → User-visible error messages in chat UI (structured error flows to UI)
+  → Colleague lookup error states (user not found, Graph auth failure, photo 404)
 ```
 
 ---
 
 ## MVP Recommendation
 
-For v1 as specified, prioritize in this order:
+### Colleague Lookup v1.1 (Current Milestone)
 
-**Must-Have (v1 — already in scope per PROJECT.md):**
-1. All 15 Exchange tools with JSON schemas and structured responses
-2. Azure AD / Entra ID SSO for the chat app
-3. Per-call PSSession with Kerberos auth + Basic Auth fallback
-4. Conversation history persisting across sessions (DB-backed)
-5. Multiple conversation threads with sidebar
-6. Tool visibility — collapsible tool call panel showing tool name + params + raw result
-7. Copy/export response (clipboard copy as minimum, full export as enhancement)
-8. Error handling visible to user
-9. Loading indicator during tool execution
+**Must-Have (defined in PROJECT.md for v1.1):**
+1. Graph API client module — MSAL client credentials flow, same app registration as SSO
+2. `search_colleagues` MCP tool — query by name and/or department, return up to 10 results
+3. `get_colleague_profile` MCP tool — fetch detailed user info by ID
+4. Photo proxy route — `/api/photo/<user_id>` in Flask, returns initials fallback on 404
+5. Inline profile card rendering — photo + name + title + department + email
+6. Azure AD app permissions — `User.Read.All`, `ProfilePhoto.Read.All`
 
-**High Value, Low Complexity (add to v1 if time permits):**
-- Conversation auto-naming from first query
-- Queue backlog threshold configurable (not hardcoded 100)
-- Keyboard shortcuts (`Ctrl+Enter` to send)
+**Add to v1.1 if time permits (low complexity, high value):**
+- Operating company badge derived from `companyName`
+- Office location on card (render only if populated)
+- Copy email to clipboard button
+- Single vs multi-result card layout differentiation
+
+**Defer to post-v1.1:**
+- Manager field expansion (separate Graph call, add complexity)
+- Search by name + department combined (requires Graph $search + $filter combo with ConsistencyLevel header)
+- Phone numbers on card (low population rate in AAD at many enterprises; validate with CTS team first)
+- Usage analytics for colleague lookup queries
+
+### v1.0 Features (Already Built)
+
+**Shipped v1.0 (2026-03-22):**
+- All 15 Exchange tools with JSON schemas
+- Azure AD/Entra ID SSO
+- Per-call PSSession with Kerberos + Basic Auth fallback
+- Conversation history (SQLite)
+- Multiple conversation threads with sidebar
+- Collapsible tool call panel (tool name + params + raw result)
+- Copy-to-clipboard per message
+- Error handling visible to user
+- SSE streaming responses
+- Keyboard shortcuts (Ctrl+Enter)
 - Dark mode toggle
 
-**Defer to Post-v1:**
-- Write operations: requires separate privileged account + approval gates (explicit out-of-scope in PROJECT.md)
-- Exchange Online Graph API tools: separate auth flow (explicit out-of-scope in PROJECT.md)
-- Conversation search: useful but not blocking initial adoption
-- Read-only share links: useful for stakeholder sharing but adds auth complexity
-- System prompt / persona admin configuration
-- Usage analytics dashboard
-- BPA integration (high complexity, high value)
-- PSSession pooling: benchmark latency first, add only if >4s p50 latency is confirmed
+**Known v1.0 tech debt (not blocking v1.1):**
+- Tool events not persisted to SQLite (historical messages lose tool panels)
+- Copy button missing on historical messages
+- CHATGPT_ENDPOINT not in secrets pipeline
 
 ---
 
@@ -227,18 +316,29 @@ For v1 as specified, prioritize in this order:
 
 | Feature | Depends On | Enables |
 |---------|------------|---------|
-| SSO (Azure AD) | Corporate Entra ID tenant | Pass-through identity, conversation history scoping, tool audit logging |
-| Kerberos Constrained Delegation | Domain-joined Windows host, KCD config in AD | Per-user Exchange RBAC, per-user audit trail |
-| Per-call PSSession | Python asyncio, WinRM endpoint, service account | All 15 Exchange tools |
+| SSO (Azure AD) | Corporate Entra ID tenant | Pass-through identity, conversation history scoping, tool audit logging, Graph client credentials |
+| Graph API client (client credentials) | Azure AD app registration, User.Read.All + ProfilePhoto.Read.All permissions | search_colleagues, get_colleague_profile, photo proxy |
+| Photo proxy route | Graph API client, Flask routing | Profile card photo display, token security (browser never sees Graph token) |
+| Profile card rendering | search_colleagues/get_colleague_profile tool result, photo proxy | Inline colleague information in chat |
+| Kerberos Constrained Delegation | Domain-joined Windows host, KCD config in AD | Per-user Exchange RBAC, per-user audit trail (v2) |
+| Per-call PSSession | Python asyncio, WinRM endpoint, service account | All Exchange tools |
 | Tool registry (list_tools) | MCP SDK | Tool dispatch, tool visibility in UI, model tool selection |
-| Conversation DB | SSO user identity, chosen DB (SQLite/Postgres) | History persistence, multiple threads, export, search |
+| Conversation DB | SSO user identity, SQLite | History persistence, multiple threads, export, search |
 | Tool visibility in UI | MCP tool call metadata in model response | User trust, audit capability, export with tool traces |
 
 ---
 
 ## Sources
 
-- C:\xmcp\exchange-mcp-architecture.md — Primary source. Authoritative specification for all 15 tools, auth model, component design, and extensibility. HIGH confidence.
-- C:\xmcp\.planning\PROJECT.md — Project requirements, constraints, out-of-scope items, and key decisions. HIGH confidence.
-- Domain knowledge: MCP protocol design patterns, enterprise chat application conventions, Exchange Management Shell capabilities. MEDIUM confidence (training data, knowledge cutoff August 2025 — MCP ecosystem was maturing rapidly through 2024-2025).
-- Note: WebSearch and Context7 tools were not available in this research session. Feature categorizations for MCP server patterns and enterprise chat applications rely on domain knowledge rather than verified external sources. Recommend validating the MCP server table stakes list against current MCP specification documentation before finalizing.
+**HIGH confidence (official documentation, verified 2026-03-24):**
+- Microsoft Graph profilephoto GET API: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0 — Photo sizes (48x48, 64x64, 96x96, 120x120, 240x240, 360x360, 432x432, 504x504, 648x648), 404 behavior when no photo, `ProfilePhoto.Read.All` permission requirement
+- Microsoft Graph user resource type: https://learn.microsoft.com/en-us/graph/api/resources/user?view=graph-rest-1.0 — Default-returned properties (displayName, jobTitle, mail, userPrincipalName), $select-required properties (department, officeLocation, companyName, businessPhones, mobilePhone)
+- Microsoft Graph $search parameter: https://learn.microsoft.com/en-us/graph/search-query-parameter — `$search="displayName:term"` for user search, `ConsistencyLevel: eventual` header requirement, combining $search and $filter behavior
+- Microsoft Graph Toolkit Person-Card (archived, retirement 2026-08-28): https://learn.microsoft.com/en-us/graph/toolkit/components/person-card — Standard enterprise profile card sections (Contact, Organization, Messages, Files, Profile), field inventory
+
+**MEDIUM confidence (multiple sources, community-verified patterns):**
+- Initials fallback for missing photos: industry-standard pattern (Primer design system, shadcn patterns, enterprise avatar UX research). Not Graph-specific documentation.
+- Operating company badge pattern: derived from project context (4 operating companies, AAD `companyName` field). Requires validation that companyName is consistently populated in MMC AAD.
+- Card layout for single vs multi-result: enterprise search UX convention (ClearBox Consulting, search UX best practices). Not an official standard.
+
+**Note:** WebSearch and Context7 supplemented with official Microsoft documentation via WebFetch for this research session. Microsoft Graph API documentation is authoritative and current (updated 2025-11-24 per page metadata).

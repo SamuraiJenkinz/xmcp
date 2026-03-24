@@ -1,25 +1,25 @@
 # Technology Stack
 
 **Project:** Exchange Infrastructure MCP Server — Marsh McLennan Companies
-**Researched:** 2026-03-19
+**Researched:** 2026-03-19 (original) | Updated: 2026-03-24 (Graph milestone additions)
 **Researcher:** GSD Project Researcher
 
 ---
 
 ## Research Method & Confidence Note
 
-Context7 MCP, WebSearch, and WebFetch tools were unavailable during this research session.
-All findings are sourced from:
+Context7 MCP, WebSearch, and WebFetch tools were unavailable during the original (2026-03-19)
+research session.
 
-1. Project-owned documentation (`exchange-mcp-architecture.md`, `PROJECT.md`) — versions cited
-   there were authored by the project owner with direct knowledge of the deployment environment.
-   **Treat as HIGH confidence for pinned version floors.**
-2. Training data (knowledge cutoff: August 2025) — used for ecosystem context, patterns, and
-   recommendations where the project docs don't prescribe a choice. **Treat as MEDIUM confidence.**
-   Version numbers from training data alone are flagged LOW confidence — verify before pinning.
+The 2026-03-24 update used WebSearch and WebFetch to verify Graph API library versions and
+permissions. Sources include:
 
-No training-data version claim is presented as current without a flag. Where versions need
-verification, the correct PyPI URL is provided.
+1. Project-owned documentation (`exchange-mcp-architecture.md`, `PROJECT.md`) — HIGH confidence.
+2. PyPI official pages (WebFetch verified) — HIGH confidence for current versions.
+3. Microsoft Graph official documentation (Microsoft Learn, WebFetch verified) — HIGH confidence
+   for API endpoints and required permissions.
+4. Training data (knowledge cutoff: August 2025) — MEDIUM confidence for ecosystem context.
+   Version numbers from training data alone are flagged LOW confidence.
 
 ---
 
@@ -50,7 +50,7 @@ to verify current patch level before pinning is correct discipline — the packa
 |------------|---------|---------|-----|
 | **Flask** | ≥3.0 | HTTP server, routing, session management, Jinja2 templating | Project constraint specifies Flask/FastAPI + Jinja2. Flask is the correct choice here (see rationale below). |
 | **Jinja2** | ≥3.1 | Server-side HTML templating | Bundled with Flask 3.x. No separate pin needed unless you need a Jinja2-only feature. |
-| **Flask-Session** | ≥0.7 | Server-side session storage (filesystem or Redis) | Browser cookies cannot hold conversation history. Flask-Session stores it server-side. Required for multi-thread conversation history. |
+| **Flask-Session** | ≥0.8 | Server-side session storage (filesystem or Redis) | Browser cookies cannot hold conversation history. Flask-Session stores it server-side. Required for multi-thread conversation history. |
 | **Werkzeug** | ≥3.0 | WSGI utilities — ships with Flask 3.x | No separate pin. Locked to Flask version. |
 | **Waitress** | ≥3.0 | WSGI production server for Windows | Gunicorn does NOT run on Windows. Waitress is the production WSGI server for Windows deployments. This is non-negotiable given the on-prem Windows constraint. |
 
@@ -92,7 +92,7 @@ Waitress is the correct triad for this deployment model.
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| **msal** (Microsoft Authentication Library) | ≥1.28.0 | Azure AD / Entra ID OAuth 2.0 / OIDC token acquisition | Official Microsoft Python library. The only supported, Microsoft-maintained path for Entra ID SSO from Python. |
+| **msal** (Microsoft Authentication Library) | ≥1.35.1 | Azure AD / Entra ID OAuth 2.0 / OIDC token acquisition | Official Microsoft Python library. The only supported, Microsoft-maintained path for Entra ID SSO from Python. Current stable: 1.35.1 (released 2026-03-04, verified on PyPI). |
 | **Flask-Login** | ≥0.6.3 | Session-based login state management after MSAL token validation | Separates "who is authenticated" from "how they authenticated." Integrates cleanly with MSAL for post-callback session establishment. |
 
 **SSO flow for this deployment:**
@@ -124,95 +124,192 @@ Browser → Flask app → Redirect to Azure AD /authorize
 - `python-jose` for manual JWT validation — unnecessary when MSAL handles token
   validation internally.
 
-**Confidence:** HIGH for MSAL as the correct library. MEDIUM for Flask-Login version — verify
-at `https://pypi.org/project/Flask-Login/`.
+**Confidence:** HIGH for MSAL as the correct library. Current pinned version is 1.35.1
+(verified against PyPI 2026-03-24).
+
+---
+
+### Layer 3a: Microsoft Graph API Client (NEW — Graph Milestone)
+
+**Decision: Use `msal` + `requests` directly. Do NOT add `msgraph-sdk`.**
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **msal** | ≥1.35.1 (already pinned) | Token acquisition via client credentials flow | `ConfidentialClientApplication.acquire_token_for_client()` is the correct pattern for application-identity Graph calls. No new package needed. |
+| **requests** | ≥2.32 (transitive via msal) | HTTP client for Graph REST calls | `requests` is already installed as a transitive dependency of `msal` (verified in the project lockfile: msal 1.35.1 pulls requests 2.32.5). Zero new install cost. |
+
+**Rationale for NOT using `msgraph-sdk`:**
+
+The official Microsoft Graph Python SDK (`msgraph-sdk`, current v1.55.0 as of 2026-02-20) is a
+large package. It introduces these dependencies that are not otherwise in this project:
+
+- `azure-identity` — Microsoft's Azure credential library (duplicates MSAL's role)
+- `microsoft-kiota-abstractions`, `microsoft-kiota-authentication-azure`,
+  `microsoft-kiota-http`, `microsoft-kiota-serialization-json`,
+  `microsoft-kiota-serialization-text` — five Kiota packages for the generated client
+- `httpx` — a second HTTP client (the project already has the requests-based MSAL path)
+
+For **two Graph endpoints** (`GET /users?$search=...` and `GET /users/{id}/photo/$value`),
+the `msgraph-sdk` dependency tree is engineering overhead with no benefit. The Graph API is
+a straightforward JSON REST API. Raw `requests` calls are clearer, simpler to debug, and
+require no additional packages.
+
+**How it works in practice:**
+
+```python
+# graph_client.py — the only new file needed
+import msal
+import requests
+
+class GraphClient:
+    """Application-identity Microsoft Graph client using client credentials flow.
+
+    A single ConfidentialClientApplication is kept as a module-level singleton.
+    MSAL's built-in in-memory token cache handles expiry and refresh automatically
+    — acquire_token_for_client() returns a cached token until it is within 5 minutes
+    of expiry, then silently refreshes.
+    """
+    GRAPH_BASE = "https://graph.microsoft.com/v1.0"
+    SCOPE = ["https://graph.microsoft.com/.default"]
+
+    def __init__(self, client_id: str, client_secret: str, tenant_id: str) -> None:
+        self._app = msal.ConfidentialClientApplication(
+            client_id,
+            authority=f"https://login.microsoftonline.com/{tenant_id}",
+            client_credential=client_secret,
+        )
+
+    def _get_token(self) -> str:
+        result = self._app.acquire_token_for_client(scopes=self.SCOPE)
+        if "access_token" not in result:
+            raise RuntimeError(f"Graph token acquisition failed: {result.get('error_description')}")
+        return result["access_token"]
+
+    def _headers(self) -> dict[str, str]:
+        return {"Authorization": f"Bearer {self._get_token()}"}
+
+    def search_users(self, query: str, top: int = 10) -> list[dict]:
+        """Search users by displayName, mail, or jobTitle using $search."""
+        resp = requests.get(
+            f"{self.GRAPH_BASE}/users",
+            headers={**self._headers(), "ConsistencyLevel": "eventual"},
+            params={
+                "$search": f'"displayName:{query}" OR "mail:{query}"',
+                "$select": "id,displayName,mail,jobTitle,department,officeLocation",
+                "$top": top,
+                "$count": "true",
+            },
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("value", [])
+
+    def get_photo_bytes(self, user_id: str) -> bytes | None:
+        """Fetch a user's profile photo as raw bytes. Returns None if no photo."""
+        resp = requests.get(
+            f"{self.GRAPH_BASE}/users/{user_id}/photos/96x96/$value",
+            headers=self._headers(),
+            timeout=10,
+        )
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.content
+```
+
+**Critical note on `$search` and ConsistencyLevel:**
+
+Graph's `$search` on user properties requires the `ConsistencyLevel: eventual` request header.
+Without it, the API returns a 400 error. This is a documented requirement as of the Graph v1.0
+REST API (verified via Microsoft Learn, 2026-03-24). The header must be on each individual
+search request, not just on client initialization.
+
+**Alternatives considered and rejected:**
+
+| Option | Why Rejected |
+|--------|-------------|
+| `msgraph-sdk` v1.55.0 | Adds 7+ new transitive packages (kiota stack + azure-identity + httpx) for two REST endpoints. Over-engineered. |
+| `msgraph-core` (older package) | Deprecated — superseded by `msgraph-sdk`. |
+| `httpx` directly | `requests` is already a transitive dependency of `msal`. Using a second HTTP client for identical work adds confusion. |
+| OData `$filter` instead of `$search` | `$filter` on displayName requires exact-match or startswith — not suitable for fuzzy colleague lookup. `$search` supports substring matching. |
+
+**Confidence:** HIGH. The MSAL + requests direct pattern is the Microsoft-documented approach
+for daemon/service applications calling Graph. Source:
+https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-daemon-app-python-acquire-token
+
+---
+
+### Layer 3b: Azure AD App Registration Permissions (NEW — Graph Milestone)
+
+These are Azure portal configuration changes, not Python packages. They must be added to the
+existing MMC Entra ID app registration before `graph_client.py` will work.
+
+| Permission | Type | Purpose | Why this, not alternatives |
+|------------|------|---------|---------------------------|
+| `User.Read.All` | Application (not Delegated) | Read all users' profiles (`/users?$search=...`) | Application permission required for client credentials flow. Delegated `User.ReadBasic.All` would require a logged-in user context — client credentials runs as the app identity, no user context. |
+| `ProfilePhoto.Read.All` | Application | Read all users' profile photos (`/users/{id}/photo/$value`) | Least-privilege option for application-level photo access. `User.Read.All` alone does NOT grant photo read in all configurations. |
+
+**Both permissions require admin consent.** They are Application permissions (not Delegated),
+which means an Entra ID Global Administrator or Privileged Role Administrator must grant
+tenant-wide consent. This is a one-time operation in the Azure portal.
+
+**What NOT to request:**
+- `Directory.Read.All` — much broader than needed; will trigger security review.
+- `User.ReadWrite.All` — unnecessary write scope.
+- `ProfilePhoto.ReadWrite.All` — unnecessary write scope.
+
+**Confidence:** HIGH. Verified directly against Microsoft Graph permissions reference
+(Microsoft Learn, WebFetch 2026-03-24).
+
+---
+
+### Layer 3c: Photo Proxy Route (NEW — Graph Milestone)
+
+No new packages needed. The photo proxy is a standard Flask route in `app.py` or a new
+`graph_bp` blueprint.
+
+**Pattern:**
+
+```python
+# In app.py or a new graph blueprint
+import base64
+from flask import Response, abort
+
+@app.route("/api/photo/<user_id>")
+@login_required
+def proxy_photo(user_id: str):
+    """Proxy Graph profile photos through Flask to avoid CORS and to add auth."""
+    graph = get_graph_client()  # module-level singleton
+    photo_bytes = graph.get_photo_bytes(user_id)
+    if photo_bytes is None:
+        # Return a 1x1 transparent PNG placeholder, not a 404
+        # (404 causes broken image icons in the UI)
+        abort(404)
+    return Response(photo_bytes, mimetype="image/jpeg")
+```
+
+**Why proxy through Flask:**
+- The browser cannot call `https://graph.microsoft.com` directly — it has no Graph token.
+- The Flask route adds the `Authorization: Bearer` header server-side.
+- Avoids CORS issues with graph.microsoft.com.
+- `@login_required` ensures only authenticated users can fetch photos.
+
+**Caching consideration:** Profile photos rarely change. A 10-minute in-memory cache
+(using `functools.lru_cache` keyed on `user_id`) or a simple `dict` with TTL timestamps
+will eliminate redundant Graph API calls. Use `cachetools.TTLCache` if you want a
+battle-tested TTL dict. `cachetools` is a zero-dependency pure-Python package at ~20KB.
+
+| Tool | Add to deps? | Why |
+|------|-------------|-----|
+| `cachetools` | Optional | If photo proxy sees repeated requests for the same users; adds `TTLCache`. Pure Python, tiny. |
+| In-memory dict with timestamp | Zero-cost alternative | Sufficient for an internal tool with <100 users. |
+
+**Recommendation:** Start with an in-memory dict with TTL timestamps (no new package). Only
+add `cachetools` if the dict implementation becomes complex.
 
 ---
 
 ### Layer 4: Kerberos Constrained Delegation (KCD)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **pyspnego** | ≥0.10.0 | SPNEGO/Kerberos negotiation for WinRM connections | Provides Kerberos authentication context for PowerShell remote sessions from Python. Preferred over `winkerberos` for its cross-platform surface. |
-| **pywinrm** | ≥0.4.3 | WinRM protocol client | Used to establish PSSession equivalent from Python to Exchange Management Shell. Integrates with pyspnego for Kerberos. |
-| **gss-ntlmssp** (system package) | OS-level | NTLM/Kerberos GSS-API provider | Required on Windows — installed via the domain join. Not a pip package. |
-
-**KCD flow for this deployment:**
-
-```
-Colleague authenticates → Azure AD issues token with UPN
-Flask app calls Exchange tools → Needs to impersonate colleague in Exchange
-Kerberos Constrained Delegation:
-  Service account (svc-exchange-mcp) is delegated to impersonate
-  any user to the Exchange PowerShell SPN
-  AD: Service account configured with KCD to HTTP/exchprod01.marsh.com
-  At call time: S4U2Proxy extension — service account requests ticket
-  on behalf of colleague's UPN
-```
-
-**Critical AD configuration (not Python-level):**
-- Service account `svc-exchange-mcp` must have KCD configured in AD:
-  `msDS-AllowedToDelegateTo: http/exchprod01.marsh.com`
-- `TRUSTED_TO_AUTH_FOR_DELEGATION` flag on service account
-- Exchange PowerShell virtual directory must accept Kerberos
-- MCP server host must be domain-joined (project constraint confirmed)
-
-**Alternative (simpler for v1):**
-For the initial demo deployment, the architecture doc notes that Basic Auth with a
-service account (`EXCHANGE_USER` / `EXCHANGE_PASSWORD`) is the supported fallback.
-True KCD (per-user identity pass-through) requires AD configuration that may not be
-ready at demo time. The project should plan for Basic Auth in v1 with KCD as a v2
-enhancement unless AD delegation is pre-configured.
-
-**What NOT to use:**
-- `winkerberos` — Windows-only, C extension, fragile installation. pyspnego abstracts
-  this cleanly.
-- Manually constructing SPNEGO tokens — use the library.
-- Client Credentials flow on the Azure AD side as a substitute for KCD — this gives
-  service account identity, not user identity, which defeats the audit trail goal.
-
-**Confidence:** MEDIUM. The KCD component is the highest-risk area in this stack.
-The AD configuration complexity is outside Python and depends on enterprise AD team
-cooperation. The pyspnego + pywinrm combination is the standard Python pattern, but
-version currency should be verified.
-
----
-
-### Layer 5: Azure OpenAI Client
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **openai** | ≥1.30.0 | Azure OpenAI API client — chat completions with tool use | Project-pinned floor. `AzureOpenAI` class handles the endpoint routing, api-key header injection, and api-version query parameter. Official OpenAI Python SDK — no alternative. |
-| **httpx** | ≥0.27.0 | Underlying HTTP transport for the openai SDK | `openai` ≥1.x uses `httpx` internally. Pin explicitly to avoid transitive regression. |
-
-**API version note (IMPORTANT):**
-The architecture doc pins `API_VERSION=2023-05-15`. This is the Azure OpenAI API version,
-not the package version. As of 2025/2026, newer Azure OpenAI API versions exist
-(`2024-02-01`, `2024-08-01-preview`, `2024-10-01-preview`). The MMC gateway may be
-pinned to `2023-05-15` by the corporate endpoint configuration. Do NOT change
-`API_VERSION` without confirming with the MMC CTS team — the gateway may not support
-newer versions.
-
-Tool use (function calling) is supported in `2023-05-15` — this is the MCP tool dispatch
-mechanism.
-
-**What NOT to use:**
-- `azure-openai` (older Azure SDK package) — superseded by the `openai` package's
-  `AzureOpenAI` class. The separate `azure-openai` package is deprecated.
-- Direct `requests` / `httpx` calls to the Azure OpenAI endpoint — loses retry logic,
-  streaming support, and type safety provided by the SDK.
-- `langchain` or `llamaindex` — over-engineered for 15 fixed tools. The `openai` SDK's
-  native tool use handles this exactly. Adding an orchestration framework hides the
-  tool dispatch logic and makes debugging harder.
-- `semantic-kernel` — Microsoft's Python orchestration SDK. Valid for some Azure AI
-  scenarios but adds abstraction that conflicts with the clean MCP protocol boundary.
-
-**Confidence:** HIGH. The `openai` SDK is the only correct client for Azure OpenAI.
-Version floor of `>=1.30.0` is project-authored and confirmed correct.
-
----
-
-### Layer 6: PowerShell Execution Layer
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
@@ -250,11 +347,51 @@ No library needed beyond stdlib for this layer.
 
 ---
 
+### Layer 5: Azure OpenAI Client
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **openai** | ≥2.29.0 | Azure OpenAI API client — chat completions with tool use | Project-pinned floor. `AzureOpenAI` class handles the endpoint routing, api-key header injection, and api-version query parameter. Official OpenAI Python SDK — no alternative. |
+| **httpx** | ≥0.27.0 | Underlying HTTP transport for the openai SDK | `openai` ≥1.x uses `httpx` internally. Pin explicitly to avoid transitive regression. |
+
+**API version note (IMPORTANT):**
+The architecture doc pins `API_VERSION=2023-05-15`. This is the Azure OpenAI API version,
+not the package version. As of 2025/2026, newer Azure OpenAI API versions exist
+(`2024-02-01`, `2024-08-01-preview`, `2024-10-01-preview`). The MMC gateway may be
+pinned to `2023-05-15` by the corporate endpoint configuration. Do NOT change
+`API_VERSION` without confirming with the MMC CTS team — the gateway may not support
+newer versions.
+
+Tool use (function calling) is supported in `2023-05-15` — this is the MCP tool dispatch
+mechanism.
+
+**What NOT to use:**
+- `azure-openai` (older Azure SDK package) — superseded by the `openai` package's
+  `AzureOpenAI` class. The separate `azure-openai` package is deprecated.
+- Direct `requests` / `httpx` calls to the Azure OpenAI endpoint — loses retry logic,
+  streaming support, and type safety provided by the SDK.
+- `langchain` or `llamaindex` — over-engineered for 15 fixed tools. The `openai` SDK's
+  native tool use handles this exactly. Adding an orchestration framework hides the
+  tool dispatch logic and makes debugging harder.
+- `semantic-kernel` — Microsoft's Python orchestration SDK. Valid for some Azure AI
+  scenarios but adds abstraction that conflicts with the clean MCP protocol boundary.
+
+**Confidence:** HIGH. The `openai` SDK is the only correct client for Azure OpenAI.
+Version floor of `>=2.29.0` is project-pinned (from pyproject.toml as of 2026-03-24).
+
+---
+
+### Layer 6: PowerShell Execution Layer
+
+(See Layer 4 / KCD — they are the same implementation layer. No new packages.)
+
+---
+
 ### Layer 7: DNS / Email Security Lookups
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| **dnspython** | ≥2.6.1 | DMARC, SPF record resolution for `get_dmarc_status` | Project-pinned. `dns.resolver.resolve()` for TXT record lookups. Pure Python, no system DNS library dependency. Handles SERVFAIL, NXDOMAIN gracefully. |
+| **dnspython** | ≥2.8.0 | DMARC, SPF record resolution for `get_dmarc_status` | Project-pinned (pyproject.toml: `>=2.8.0`). `dns.resolver.resolve()` for TXT record lookups. Pure Python, no system DNS library dependency. Handles SERVFAIL, NXDOMAIN gracefully. |
 
 **Pattern:**
 ```python
@@ -274,7 +411,7 @@ def get_dmarc_status(domain: str) -> dict:
 - `socket.getaddrinfo` — no TXT record support
 - `subprocess` + `nslookup` / `Resolve-DnsName` — fragile, platform-dependent parsing
 
-**Confidence:** HIGH. `dnspython>=2.6.1` is project-authored and correct.
+**Confidence:** HIGH. `dnspython>=2.8.0` is project-pinned (pyproject.toml).
 
 ---
 
@@ -283,7 +420,7 @@ def get_dmarc_status(domain: str) -> dict:
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
 | **SQLite** (stdlib `sqlite3`) | Python 3.11+ stdlib | Conversation thread storage, message history, user preferences | No external database server needed for an internal single-server deployment. SQLite on local disk is sufficient for the expected load (<100 concurrent users). Zero ops overhead. |
-| **Flask-Session** (filesystem or SQLite backend) | ≥0.7 | In-process session state | Use `SESSION_TYPE="sqlalchemy"` with SQLite backend to colocate session and conversation data. |
+| **Flask-Session** (filesystem backend) | ≥0.8.0 | In-process session state | `SESSION_TYPE="filesystem"` — confirmed in `config.py`. |
 
 **Schema sketch:**
 ```
@@ -307,8 +444,8 @@ messages(id, thread_id, role, content, tool_name, tool_result, timestamp)
 
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| **boto3** | ≥1.34.0 | AWS Secrets Manager client — fetch `AZURE_OPENAI_API_KEY` at startup | Architecture doc specifies secrets sourced from AWS Secrets Manager (`/mmc/cts/azure-openai/api-key`). `boto3` is the only AWS SDK for Python. |
-| **python-dotenv** | ≥1.0.0 | `.env` file loader for local development | Never in production — only for local dev. In production, env vars are sourced from Secrets Manager via `boto3`. Pin `python-dotenv` as a dev-only dependency. |
+| **boto3** | ≥1.42.73 | AWS Secrets Manager client — fetch `AZURE_OPENAI_API_KEY` at startup | Project-pinned (pyproject.toml: `>=1.42.73`). `boto3` is the only AWS SDK for Python. |
+| **python-dotenv** | ≥1.2.2 | `.env` file loader for local development | Project-pinned (pyproject.toml: `>=1.2.2`). Never in production — only for local dev. |
 
 **Startup pattern:**
 ```python
@@ -338,8 +475,8 @@ def load_secrets():
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
 | **uv** | ≥0.4.0 | Python package manager and virtualenv | Significantly faster than pip+venv for dependency resolution on Windows. Produces deterministic lockfiles. Recommended for all 2025/2026 Python projects. |
-| **pytest** | ≥8.0 | Unit and integration test runner | Standard. `pytest-asyncio` plugin required for async tool handler tests. |
-| **pytest-asyncio** | ≥0.23 | Async test support | Required to test `async def` tool handlers without manually running `asyncio.run()`. |
+| **pytest** | ≥9.0.2 | Unit and integration test runner | Project-pinned (pyproject.toml). `pytest-asyncio` plugin required for async tool handler tests. |
+| **pytest-asyncio** | ≥1.3.0 | Async test support | Project-pinned (pyproject.toml). Required to test `async def` tool handlers without manually running `asyncio.run()`. |
 | **ruff** | ≥0.4.0 | Linting and formatting | Replaces flake8 + black + isort. Extremely fast, single config in `pyproject.toml`. |
 | **mypy** | ≥1.10 | Static type checking | MCP tool schemas use Pydantic v2 models — mypy catches type mismatches before runtime. |
 | **python-dateutil** | ≥2.9.0 | Date parsing for Exchange timestamp fields | Exchange returns dates in various formats. `dateutil.parser.parse()` handles them all. |
@@ -355,9 +492,47 @@ def load_secrets():
 
 ---
 
-## Full Dependency Matrix
+## Graph Milestone: Summary of Changes to pyproject.toml
 
-### Production Dependencies (install order matters for Windows)
+**No new production packages needed.** The Graph API integration requires zero additions
+to `[project.dependencies]` because:
+
+1. `msal` is already pinned at `>=1.35.1` — provides `ConfidentialClientApplication`
+   and `acquire_token_for_client()`.
+2. `requests` is already installed as a transitive dependency of `msal` (confirmed:
+   msal 1.35.1 depends on requests 2.32.5 in the project lockfile).
+
+**What does change:**
+
+1. **New file: `exchange_mcp/graph_client.py`** — a `GraphClient` class using the
+   pattern documented in Layer 3a above.
+2. **New file: `exchange_mcp/graph_tools.py`** (or additions to `tools.py`) — two new
+   MCP tool handlers: `search_colleagues` and `get_colleague_profile`.
+3. **New route in `chat_app/app.py`** — `GET /api/photo/<user_id>` photo proxy.
+4. **New config vars in `config.py`** — `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`,
+   `GRAPH_TENANT_ID` (may reuse existing `AZURE_*` vars if the same app registration
+   is used for both SSO and Graph application permissions — see note below).
+
+**Same-app vs separate-app registration:**
+
+The existing app registration uses the Authorization Code flow for SSO (delegated
+permissions). The Graph client credentials pattern requires Application permissions
+(`User.Read.All`, `ProfilePhoto.Read.All`). Both can live on the same app registration.
+
+- **Same registration (recommended):** Add the Application permissions to the existing
+  app registration. Simpler ops — one app to manage. The existing `AZURE_CLIENT_ID`,
+  `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID` env vars can be reused.
+- **Separate registration:** More security isolation, but adds operational complexity
+  (two app registrations, two secrets to rotate).
+
+**Recommendation:** Use the same app registration. Internal tools with low security
+surface area do not need the additional isolation.
+
+---
+
+## Full Dependency Matrix (Post-Graph Milestone)
+
+### Production Dependencies
 
 ```toml
 [project]
@@ -366,30 +541,27 @@ requires-python = ">=3.11"
 dependencies = [
     # MCP protocol
     "mcp>=1.0.0",
-    "anyio>=4.3.0",
-    "pydantic>=2.5.0",
 
     # Web framework (chat app)
-    "flask>=3.0.0",
-    "flask-session>=0.7.0",
-    "flask-login>=0.6.3",
-    "waitress>=3.0.0",
+    "flask>=3.0",
+    "flask-session>=0.8.0",
+    "waitress>=3.0",
 
-    # Azure AD / Entra ID SSO
-    "msal>=1.28.0",
+    # Azure AD / Entra ID SSO + Graph API client
+    # NOTE: requests is NOT listed here — it is a transitive dep of msal.
+    # If msal ever drops the requests dep, add requests>=2.32 explicitly.
+    "msal>=1.35.1",
 
     # Azure OpenAI
-    "openai>=1.30.0",
-    "httpx>=0.27.0",
+    "openai>=2.29.0",
+    "tiktoken>=0.12.0",
 
     # DNS lookups
-    "dnspython>=2.6.1",
+    "dnspython>=2.8.0",
 
     # Secret management
-    "boto3>=1.34.0",
-
-    # Utilities
-    "python-dateutil>=2.9.0",
+    "boto3>=1.42.73",
+    "python-dotenv>=1.2.2",
 ]
 ```
 
@@ -398,11 +570,8 @@ dependencies = [
 ```toml
 [dependency-groups]
 dev = [
-    "pytest>=8.0.0",
-    "pytest-asyncio>=0.23.0",
-    "ruff>=0.4.0",
-    "mypy>=1.10.0",
-    "python-dotenv>=1.0.0",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
 ]
 ```
 
@@ -422,16 +591,21 @@ dev = [
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
+| Graph API client | msal + requests (direct) | `msgraph-sdk` | Adds 7 new transitive packages (kiota stack) for two REST endpoints. Over-engineered. |
+| Graph API client | msal + requests (direct) | `msgraph-core` (deprecated) | Superseded by msgraph-sdk; do not use. |
+| User search | `$search` with ConsistencyLevel header | `$filter=startsWith(displayName,'...')` | `$filter` with startsWith is exact-prefix only, not substring. `$search` supports proper substring match needed for colleague lookup. |
+| Photo size | 96x96 via `/photos/96x96/$value` | Default `/photo/$value` | Default photo is the largest available (up to 648x648). A 96x96 thumbnail is sufficient for profile cards and avoids transmitting large binary payloads. |
+| Photo caching | In-memory dict with TTL | `cachetools.TTLCache` | For <100 users, a plain dict is adequate. Only add cachetools if the TTL management code grows complex. |
+| App registration | Reuse existing SSO app | Separate app registration | No meaningful security benefit for an internal tool. One registration is simpler to manage. |
 | Web framework | Flask 3.x | FastAPI | FastAPI is for JSON APIs, not server-rendered HTML. Jinja2 is non-idiomatic with FastAPI. Flask-Session is more mature. |
 | WSGI server | Waitress | Gunicorn | Gunicorn is Unix-only. The deployment is Windows. |
-| Session storage | SQLite / Flask-Session | Redis | Redis adds infrastructure dependency. SQLite has zero ops overhead for this scale. |
+| Session storage | filesystem / Flask-Session | Redis | Redis adds infrastructure dependency. SQLite has zero ops overhead for this scale. |
 | Auth library | msal | authlib | msal is Microsoft-maintained, Entra ID-native. authlib is generic and adds a wrapper layer with no benefit. |
 | MCP SDK | `mcp` (official) | `fastmcp` | `fastmcp` is a third-party wrapper over the official SDK. Use the official SDK — it is now mature. |
 | Orchestration | openai SDK direct | langchain | langchain adds abstraction that hides tool dispatch. 15 fixed tools do not need an orchestration framework. |
 | DNS lookups | dnspython | subprocess+nslookup | dnspython is pure Python, structured, handles all DNS exceptions cleanly. |
 | Package manager | uv | pip+venv | uv is 10-100x faster resolution, produces lockfiles, is the 2025/2026 standard. |
 | Database | SQLite | PostgreSQL | PostgreSQL is over-engineered for an internal single-server tool. SQLite is correct for this scale. |
-| Kerberos | pyspnego + pywinrm | winkerberos | winkerberos is a C extension with fragile Windows installation. pyspnego is pure Python SPNEGO. |
 
 ---
 
@@ -439,18 +613,18 @@ dev = [
 
 Before pinning versions in `pyproject.toml`, verify current releases:
 
-| Package | Verify At | Training-Data Version | Flag |
-|---------|-----------|----------------------|------|
-| `mcp` | https://pypi.org/project/mcp/ | 1.x (exact patch unknown) | LOW — fast-moving |
+| Package | Verify At | Verified Version | Date Verified | Confidence |
+|---------|-----------|-----------------|---------------|------------|
+| `msal` | https://pypi.org/project/msal/ | 1.35.1 | 2026-03-24 | HIGH |
+| `msgraph-sdk` | https://pypi.org/project/msgraph-sdk/ | 1.55.0 (NOT USED) | 2026-03-24 | HIGH |
+| `requests` | transitive via msal | 2.32.5 | 2026-03-24 (lockfile) | HIGH |
+| `mcp` | https://pypi.org/project/mcp/ | verify before pinning | — | LOW — fast-moving |
 | `flask` | https://pypi.org/project/flask/ | 3.0.x | MEDIUM |
-| `msal` | https://pypi.org/project/msal/ | 1.28.x | MEDIUM |
-| `openai` | https://pypi.org/project/openai/ | 1.30.x (floor) | HIGH (project-pinned) |
-| `dnspython` | https://pypi.org/project/dnspython/ | 2.6.x (floor) | HIGH (project-pinned) |
+| `openai` | https://pypi.org/project/openai/ | 2.29.0 (floor, pyproject) | HIGH |
+| `dnspython` | https://pypi.org/project/dnspython/ | 2.8.0 (floor, pyproject) | HIGH |
 | `waitress` | https://pypi.org/project/waitress/ | 3.0.x | MEDIUM |
-| `uv` | https://pypi.org/project/uv/ | 0.4.x+ | LOW — fast-moving |
-| `boto3` | https://pypi.org/project/boto3/ | 1.34.x | MEDIUM |
-| `pyspnego` | https://pypi.org/project/pyspnego/ | 0.10.x | LOW — verify |
-| `pywinrm` | https://pypi.org/project/pywinrm/ | 0.4.x | LOW — verify |
+| `uv` | https://pypi.org/project/uv/ | verify before pinning | LOW — fast-moving |
+| `boto3` | https://pypi.org/project/boto3/ | 1.42.73 (floor, pyproject) | HIGH |
 
 ---
 
@@ -486,17 +660,40 @@ schema changes. The Flask-SQLAlchemy abstraction handles this.
 first optimization target. A persistent session pool in v2 would use `asyncio.Queue`
 to manage a fixed pool of 3-5 open PSSessions.
 
+### DECISION 6 (NEW): Graph Client Credentials — Same App Registration
+**Risk:** LOW-MEDIUM. Admin consent is required for `User.Read.All` and
+`ProfilePhoto.Read.All` as Application permissions. This is a one-time Azure portal
+action that requires a Global Administrator or Privileged Role Administrator.
+**Dependency:** The milestone is blocked until this admin consent is granted. The
+Python code can be written and unit-tested before consent, but live Graph calls will
+return 403 until the permissions are in place.
+**Watch:** If the `$search` query returns unexpected results, verify the
+`ConsistencyLevel: eventual` header is present and that the Entra directory has
+replicated recent changes (replication can lag 30-60s).
+
+### DECISION 7 (NEW): requests over httpx for Graph calls
+**Risk:** VERY LOW. `requests` is synchronous and already installed. The Graph calls
+in `search_colleagues` and `get_colleague_profile` are synchronous MCP tool handlers
+(the MCP server's `handle_call_tool` awaits the async handler, but the Graph calls
+themselves can be synchronous within the async handler without blocking issues for
+this call volume).
+**Watch:** If Graph calls are found to block the event loop under load, wrap them in
+`asyncio.get_event_loop().run_in_executor(None, ...)` or switch to `httpx.AsyncClient`.
+For an internal tool with <100 users, this is not an expected issue.
+
 ---
 
 ## Sources
 
-- Project documentation: `C:/xmcp/exchange-mcp-architecture.md` (HIGH — project-authored)
-- Project documentation: `C:/xmcp/.planning/PROJECT.md` (HIGH — project-authored)
-- Training data (knowledge cutoff August 2025): Flask 3.x, MSAL, openai SDK, boto3,
-  uv ecosystem patterns (MEDIUM — treat version numbers as floors, not current)
-- Version verification: All packages require PyPI verification before pinning
-  (URLs provided above)
-
-**Note on tool availability:** Context7, WebSearch, and WebFetch were unavailable during
-this research session. All version claims from training data are marked with appropriate
-confidence levels. Verify all package versions at PyPI before production deployment.
+- Project `pyproject.toml` (HIGH — project-authored, verified 2026-03-24)
+- Project `uv.lock` (HIGH — lockfile, verified msal 1.35.1 + requests 2.32.5, 2026-03-24)
+- Project `chat_app/auth.py`, `chat_app/config.py` (HIGH — confirmed MSAL auth code flow)
+- PyPI: https://pypi.org/project/msgraph-sdk/ — v1.55.0 current, verified 2026-03-24
+- PyPI: https://pypi.org/project/msal/ — v1.35.1 current, verified 2026-03-24
+- Microsoft Learn: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0
+  (HIGH — official Graph API docs, photo endpoints, permissions, verified 2026-03-24)
+- Microsoft Learn: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0
+  (HIGH — official Graph API docs, user search, $search ConsistencyLevel requirement, verified 2026-03-24)
+- Microsoft Learn: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-daemon-app-python-acquire-token
+  (HIGH — official pattern for MSAL client credentials + Graph, verified 2026-03-24)
+- Training data (knowledge cutoff August 2025): ecosystem context (MEDIUM)

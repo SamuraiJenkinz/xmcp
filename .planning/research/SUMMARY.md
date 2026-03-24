@@ -1,283 +1,207 @@
 # Project Research Summary
 
-**Project:** Exchange Infrastructure MCP Server — Marsh McLennan Companies (xmcp)
-**Domain:** Enterprise MCP Server + Python Chat Application + Exchange Management Shell Integration
-**Researched:** 2026-03-19
-**Confidence:** HIGH (all four research areas draw primarily from project-owned architecture docs and official Microsoft/MCP documentation)
+**Project:** Exchange Infrastructure MCP Server — v1.1 Colleague Lookup Milestone
+**Domain:** MCP Server + Enterprise Chat App — Microsoft Graph API Integration
+**Researched:** 2026-03-24
+**Confidence:** HIGH
 
 ---
 
 ## Executive Summary
 
-This project builds two cooperating systems on a single domain-joined Windows server: an MCP server that exposes 15 Exchange 2019 management tools to any MCP-compatible client, and a Python chat application that connects those tools to Azure OpenAI (gpt-4o-mini) behind an Azure AD / Entra ID SSO login. The primary user-facing value is replacing a 31,246-row Excel-driven governance process with live, natural-language queries to Exchange. The architecture is well-specified in existing project documentation — the build is principally an execution challenge, not a design challenge.
+The v1.1 milestone adds Microsoft Graph colleague lookup to an existing, shipped system. V1.0 delivered 15 Exchange management tools plus a Flask chat app with Azure AD SSO, conversation history, and inline tool panels. The new feature is well-scoped: two new MCP tools (`search_colleagues`, `get_colleague_profile`), one new module (`graph_client.py`), one new Flask route (`/api/photo/<user_id>`), and frontend profile card rendering. All four research files agree on the architecture and approach — there are no significant conflicts between researchers.
 
-The recommended implementation approach follows a bottom-up dependency chain: Exchange client first, then MCP server, then chat app core, then UI polish. All four researchers agree on this ordering. The critical path dependency is the Exchange PowerShell subprocess layer — every one of the 15 tools depends on it, and its latency (2-4 seconds per call due to per-call PSSession creation) is the dominant user experience constraint that must be accepted as a design reality, not deferred as a later optimization problem.
+The recommended implementation uses `msal` + `requests` directly for Graph API calls, deliberately avoiding the `msgraph-sdk` package. This keeps the dependency footprint at zero new packages (requests is already a transitive dependency of msal). The key structural constraint is that the Graph client must be a module-level singleton with its own `ConfidentialClientApplication` instance, completely isolated from the existing user auth flow in `auth.py`. Mixing the two token flows causes subtle, hard-to-diagnose bugs that only appear after both flows have run at least once.
 
-The two highest-risk areas are Kerberos Constrained Delegation and the stdout/stderr discipline for the MCP stdio transport. KCD requires Active Directory team cooperation outside the Python code and should be planned as a v2 enhancement, with Basic Auth service account as the v1 fallback. stdout pollution can silently render the entire MCP server non-functional and must be addressed in the first line of scaffold code. Both risks are mitigable with known patterns; neither requires a change of direction.
+The critical prerequisite is Azure AD app registration: `User.Read.All` and `ProfilePhoto.Read.All` Application permissions must have admin consent granted before any Graph code can be tested. This is an infrastructure dependency that blocks the entire feature and must be secured before code is written. The photo proxy pattern — serving binary JPEG from Graph through a Flask route — keeps the bearer token server-side, prevents CORS issues, and is the correct architecture for this codebase. The highest-risk pitfall unique to this milestone is the two-MSAL-instance separation; get that wrong and SSO breaks in subtle ways.
 
 ---
 
 ## Key Findings
 
-### Recommended Stack
+### Recommended Stack (v1.1 delta only)
 
-The stack is almost entirely constrained by the deployment environment: domain-joined Windows Server, Exchange 2019, AWS Secrets Manager, and the MMC CTS Azure OpenAI gateway. These constraints eliminate Django, Gunicorn, uvicorn, and any Unix-only tooling. The official `mcp` Python SDK (not the third-party `fastmcp` wrapper) is the correct MCP protocol implementation. `boto3` is the only option for AWS Secrets Manager. `dnspython` is the only reasonable path for DMARC/SPF TXT lookups. `subprocess` + `asyncio` is the correct pattern for PowerShell process management on Windows — no library beyond stdlib is needed.
+All four research files agree: zero new packages are needed. The existing stack handles the Graph integration.
 
-The only genuinely open stack decision is Flask vs FastAPI for the chat application, which is addressed in the Conflicts section below. All other decisions have a single correct answer given the constraints.
+**Core technologies for this milestone:**
+- `msal` (>=1.35.1, already pinned): Client credentials flow for Graph — `acquire_token_for_client(["https://graph.microsoft.com/.default"])`. The scope string is exact; substitutions fail silently.
+- `requests` (>=2.32, already a transitive dep of msal): Direct REST calls to Graph API. The `msgraph-sdk` alternative was evaluated and rejected — it adds 7+ new transitive packages for two REST endpoints.
+- Flask (existing): One new `GET /api/photo/<user_id>` route added inline in `app.py`, not a new blueprint.
+- `httpx` (already installed as openai SDK dep): Available as async alternative for `graph_client.py` method signatures; synchronous `requests` is simpler for the photo proxy route specifically.
 
-See `.planning/research/STACK.md` for the full dependency matrix with version floors and verification URLs.
+**What NOT to add:**
+- `msgraph-sdk`: 7 new transitive packages (kiota stack, azure-identity, httpx) for two REST endpoints. STACK.md and ARCHITECTURE.md are in full agreement.
+- `cachetools`: An in-memory dict with TTL timestamps is sufficient for photo caching at this scale. Add only if the dict implementation grows complex.
 
-**Core technologies:**
-- Python 3.11/3.12: Runtime — 3.11 project-mandated floor; 3.13 not yet safe (pywinpty lag)
-- `mcp >= 1.0.0`: MCP protocol — official Anthropic SDK, stdio transport for v1
-- Flask 3.x + Waitress 3.x: Web framework — Windows-compatible WSGI stack (DISPUTED: see Conflicts)
-- MSAL >= 1.28.0: Azure AD / Entra ID SSO — only Microsoft-maintained Python auth library for Entra ID
-- `openai >= 1.30.0`: Azure OpenAI client — project-pinned floor; no alternative
-- `dnspython >= 2.6.1`: DNS lookups — project-pinned; pure Python TXT record resolution
-- `boto3 >= 1.34.0`: AWS Secrets Manager — project-specified secret source
-- SQLite (stdlib): Conversation history — zero-ops, correct for <100 concurrent users
-- `uv`: Package management — 10-100x faster than pip+venv, produces lockfiles
-- PowerShell 5.1 (system): Exchange Management Shell host — built-in on Windows; Exchange 2019 requires PS 5.1
+**Confidence:** HIGH — verified against official Microsoft Learn docs (2026-03-24) and the project lockfile confirming `requests` is already present.
 
 ### Expected Features
 
-The project has three distinct feature domains: MCP server tool exposure, enterprise chat UI, and Exchange management tooling. The 15 Exchange tools are fully specified in the architecture document and are not in question — they are the core deliverable.
+The v1.1 feature set is defined in PROJECT.md and confirmed by FEATURES.md domain research. There is no ambiguity about scope.
 
-See `.planning/research/FEATURES.md` for complete table stakes / differentiators / anti-features breakdown per domain.
+**Must have (table stakes — v1.1 launch requirements):**
+- `search_colleagues` MCP tool — name/partial name search, up to 10 results
+- `get_colleague_profile` MCP tool — detailed profile by user ID
+- Photo proxy route — `/api/photo/<user_id>` returning JPEG or placeholder on 404
+- Profile card rendering inline in chat — photo + name + title + department + email
+- Graceful photo fallback — initials avatar or SVG placeholder when no photo exists
+- Empty state for no-results queries — explicit message, not blank space
+- `@login_required` on photo proxy route — personal data protection requirement
 
-**Must have (v1 — already in scope per PROJECT.md):**
-- All 15 Exchange tools with JSON schemas and structured JSON responses
-- Azure AD / Entra ID SSO with MSAL (no unauthenticated access, ever)
-- Per-call PSSession with Kerberos auth + Basic Auth fallback
-- Conversation history persisting across sessions (DB-backed, scoped to user identity)
-- Multiple conversation threads with sidebar navigation
-- Tool visibility — collapsible panel showing tool name, parameters, and raw result
-- Copy/export per-response (clipboard minimum)
-- Structured error messages visible to the user
-- Loading indicator during tool execution (3-8 second wait is visible)
+**Should have (add if time permits — low complexity, high value):**
+- Operating company badge derived from `companyName` AAD field (Mercer, Marsh, Oliver Wyman, Guy Carpenter)
+- Office location on card — render only when populated (many AAD records are null)
+- Copy email to clipboard button — existing clipboard pattern already in codebase
+- Single vs multi-result card layout differentiation (larger card for one confident match)
 
-**Should have (v1 if time permits):**
-- Conversation auto-naming from first query
-- Queue backlog threshold configurable (not hardcoded 100)
-- Keyboard shortcuts (Ctrl+Enter to send)
-- Dark mode toggle
+**Defer to post-v1.1:**
+- Manager field (separate Graph call, adds complexity)
+- Combined name + department search (`$search` + `$filter` combo — tricky to test)
+- Phone numbers on card (validate population rate in MMC AAD first)
+- Usage analytics for colleague lookup queries
 
-**Defer to post-v1:**
-- Write operations (create/modify/delete) — requires separate privileged account and confirmation gates; explicit out-of-scope per PROJECT.md
-- Exchange Online Graph API tools — separate auth flow, explicit out-of-scope per PROJECT.md
-- Per-user Kerberos identity pass-through (full S4U2Proxy) — requires AD team engagement; v1 uses service account with app-level audit log
-- PSSession pooling — benchmark first; add only if measured p50 latency > 4 seconds
-- Conversation search, read-only share links, usage analytics, BPA integration
-
-**Anti-features (deliberately excluded):**
-- Accepting free-form PowerShell input from the model (bypasses RBAC)
-- Returning raw PowerShell output to the model (noisy, wastes context tokens)
-- Mailbox content retrieval (privacy/e-discovery violation)
-- DAG failover or database activation via chat (blast radius too large for conversational UI)
+**Anti-features (do not build):**
+- Presence/availability status — requires higher-sensitivity Graph scope, data is ephemeral
+- Bulk export of colleague data — data exfiltration risk
+- Photo caching in SQLite — binary blobs in DB create stale-photo problem
+- Autocomplete/typeahead in chat input — high API cost, breaks conversational model
+- Account status or license details — AD admin data, not appropriate for this tool
 
 ### Architecture Approach
 
-The system is four cooperating processes on a single server with no distributed deployment in v1. The architecture is cleanly layered: Chat App (app.py) — MCP Client (embedded in app.py) — MCP Server (server.py, stdio subprocess) — Exchange Client (exchange_client.py, direct Python calls) — PowerShell subprocess — Exchange Management Shell. Each layer has a single responsibility and a clear interface. The MCP server is explicitly stateless between calls. All conversation state lives in the chat app. The authoritative data source is Exchange itself.
+The integration is additive and follows the existing patterns exactly. `graph_client.py` is a new peer module to `exchange_client.py` — same constructor pattern, same error conventions (`RuntimeError` on API failure), same `verify_connection()` startup check. The MCP server gets two new tool definitions in `tools.py` and a module-level `_graph_client` singleton initialized in `main()`, mirroring `_exchange_client`.
 
-See `.planning/research/ARCHITECTURE.md` for complete component boundaries, data flow diagrams, interface contracts, and anti-patterns.
+**New or modified files:**
+1. `exchange_mcp/graph_client.py` (NEW) — complete Graph API client: user search, profile retrieval, photo bytes. Module-level `ConfidentialClientApplication` singleton. Must be isolated from `auth.py`'s user auth CCA.
+2. `exchange_mcp/tools.py` (MODIFIED) — add `search_colleagues` and `get_colleague_profile` tool definitions with descriptions under 800 chars, and dispatch entries.
+3. `exchange_mcp/server.py` (MODIFIED) — add `_graph_client` module-level reference, initialize in `main()`, update tool count banner from 15 to 17.
+4. `chat_app/app.py` (MODIFIED) — add `GET /api/photo/<user_id>` route with `@login_required`. Use existing background asyncio loop for async Graph call, or synchronous `requests` for simplicity.
+5. `chat_app/static/app.js` (MODIFIED) — add `addProfileCard()` function that fires on SSE `tool` events with `name === "search_colleagues"` or `"get_colleague_profile"`. Parses tool result JSON; constructs DOM elements (not innerHTML/markdown injection).
+6. `chat_app/static/style.css` (MODIFIED) — profile card CSS: photo dimensions, layout, operating company badge colors.
+7. `chat_app/openai_client.py` (MODIFIED) — expand Atlas system prompt to describe colleague lookup capabilities and when to call each tool.
 
-**Major components:**
-1. Chat Application (app.py) — HTTP server, Azure AD auth, Azure OpenAI tool-call loop, conversation persistence, SSE streaming
-2. MCP Server (server.py) — Protocol boundary; 15 tool registrations, input schema validation, error mapping; stateless
-3. Exchange Client (exchange_client.py) — Only component touching Exchange; PowerShell subprocess management, Kerberos auth, JSON parsing, DNS lookups
-4. Azure OpenAI Integration (inside app.py) — Multi-turn chat completions loop with tool calling; format translation between MCP tools/list and OpenAI function schema
+**Token caching architecture — two separate flows, never share:**
+
+| Token Purpose | Where Cached | Flow | Scope |
+|---|---|---|---|
+| SSO login (user identity) | Flask session per-user `SerializableTokenCache` | Auth code flow | `User.Read` |
+| Graph API calls (app-level) | Module-level singleton in `graph_client.py` | Client credentials | `https://graph.microsoft.com/.default` |
+
+**Data flow summary:** User query → Atlas selects `search_colleagues` → MCP JSON-RPC → `graph_client.search_users()` → Graph API → JSON results → SSE `tool` event → `addProfileCard()` builds DOM → `<img src="/api/photo/{id}">` → Flask proxy → Graph photo endpoint → JPEG bytes with `Cache-Control: max-age=3600`.
+
+**Build order confirmed by ARCHITECTURE.md:**
+1. `graph_client.py` (foundation — test in isolation before touching anything else)
+2. `tools.py` + `server.py` (MCP integration)
+3. `/api/photo/<user_id>` route (photo proxy)
+4. `app.js` + `style.css` (profile card frontend)
+5. System prompt update (tune after seeing real tool behavior)
 
 ### Critical Pitfalls
 
-See `.planning/research/PITFALLS.md` for all 15 pitfalls with prevention checklists and phase warnings.
+The v1.1 milestone has 10 documented pitfalls (Pitfalls 16–25). The five most critical:
 
-1. **stdout pollution breaks the MCP stdio transport** — Configure `logging.basicConfig(stream=sys.stderr)` as the first act in server.py; never use `print()` in MCP server code; suppress all library banners. A single rogue print() silently destroys the JSON-RPC stream and the entire server becomes non-functional with no clear error.
+1. **Wrong scope for client credentials (Pitfall 16)** — `acquire_token_for_client` must receive `["https://graph.microsoft.com/.default"]` exactly. Passing `["User.Read.All"]` issues a token that Graph rejects with 401. The error message does not indicate the scope is wrong. Prevention: use `.default` scope and decode the returned token to verify the `roles` claim contains permission names (not `scp`).
 
-2. **PSSession 2-4 second overhead must be designed around, not ignored** — Document latency in tool descriptions; set explicit timeouts at every layer (PS open, cmdlet, MCP call, HTTP); always use try/finally for `Remove-PSSession`; cap ResultSize on listing cmdlets. The 18-session-per-user Exchange limit turns orphaned sessions into a production incident.
+2. **Admin consent not granted for Application permissions (Pitfall 17)** — Adding `User.Read.All` and `ProfilePhoto.Read.All` in the Azure portal requires a tenant admin to separately click "Grant admin consent for [tenant]". Graph returns 403 `Authorization_RequestDenied` until this is done. Prevention: obtain admin consent before writing any Graph code; this is a day-1 infrastructure action.
 
-3. **Kerberos negative cache causes "working configuration looks broken"** — After any KCD/RBCD change, wait 15 minutes or run `klist purge` before retesting; verify SPNs separately from application code; prefer RBCD over traditional KCD; never use CredSSP (credential exposure on intermediate server, violates enterprise security policy).
+3. **Two MSAL instances sharing state corrupts both token flows (Pitfall 18)** — The Graph `ConfidentialClientApplication` must be a completely separate instance from the user auth CCA in `auth.py`. Sharing the same instance or cache causes user SSO to silently break after Graph calls start. Prevention: `graph_client.py` owns its own module-level CCA with no shared state with `auth.py`.
 
-4. **Azure AD token not validated server-side enables identity spoofing** — The MCP server or its gateway must independently validate JWT signature, issuer, audience, and expiry using MSAL; never trust a client-supplied UPN; configure tenant-specific (not `common`) MSAL authority.
+4. **`$search` requires `ConsistencyLevel: eventual` header (Pitfall 19)** — Graph returns 400 `Bad Request` if this header is omitted on any user `$search` request. Must be re-sent on every paginated follow-up request. Prevention: add to the module's default headers dict on day one.
 
-5. **Exchange .NET objects truncated at ConvertTo-Json depth 2 produces silent data loss** — Always use `Select-Object` to explicitly name output fields; use `ConvertTo-Json -Depth 10` for nested objects; convert ProxyAddressCollection explicitly; define and test output schema per tool before implementation.
+5. **Photo 404 must be absorbed by the proxy, never forwarded (Pitfall 20)** — In an 80,000-user tenant, a significant fraction will have no photo. If the proxy forwards the 404, every profile card without a photo shows a broken image icon. Prevention: proxy catches Graph 404 and returns a placeholder SVG/PNG with HTTP 200. Add `onerror` fallback in `<img>` tags as belt-and-suspenders.
+
+**Additional pitfall inherited from v1.0 (Pitfall 1):** stdout pollution kills the MCP protocol. `graph_client.py` must not introduce any `print()` statements or library output to stdout.
 
 ---
 
 ## Implications for Roadmap
 
-### Phase 1: Infrastructure Foundation and Exchange Client
+This milestone is a clean, well-defined feature addition. The research supports a 3-phase implementation plan.
 
-**Rationale:** Zero application code can be tested without proving the Exchange connection works. The PSSession pattern, Kerberos auth, JSON output parsing, and timeout handling are the foundation every tool depends on. Infrastructure setup (CredSSP prohibition, WinRM port, SPN verification, service account RBAC roles) must be completed and documented before any application code is written.
+### Phase 1: Infrastructure Prerequisites + Graph Client Foundation
 
-**Delivers:**
-- Verified service account with correct Exchange RBAC roles (View-Only Management role group minimum)
-- Working PowerShell subprocess runner: `asyncio.create_subprocess_exec` + `ProactorEventLoop` validation
-- Single proof-of-concept tool (`Get-ExchangeServer` or `Get-MailboxStatistics`) with JSON output
-- DNS utility functions via `dnspython`
-- Infrastructure checklist: WinRM port, SPNs, service account delegation, Exchange PS VDir auth
+**Rationale:** Nothing else can be tested until Azure AD permissions are consented and the Graph client token acquisition is verified. Admin consent requires another person (a tenant admin) — this is outside the development team's control and must be started on day 1 to avoid blocking later phases.
 
-**Addresses:** Per-call PSSession lifecycle (table stakes), timeout handling (table stakes), Kerberos auth (table stakes)
+**Delivers:** Working `graph_client.py` with verified token acquisition, user search, profile retrieval, and photo bytes retrieval (including 404 handling). Azure AD app registration updated with admin consent.
 
-**Avoids:** CredSSP (Pitfall 8), WinRM port mismatch (Pitfall 14), Kerberos negative cache trap (Pitfall 3)
+**Must do:**
+- Obtain admin consent for `User.Read.All` and `ProfilePhoto.Read.All` Application permissions — blocker, get it before writing code
+- Implement `graph_client.py` as a module-level singleton, fully isolated from `auth.py`
+- Verify client credentials scope is `["https://graph.microsoft.com/.default"]` — decode the token to confirm `roles` claim
+- Verify `ConsistencyLevel: eventual` header is in default request headers
+- Test `search_users("test")`, `get_user_profile(known_id)`, `get_user_photo_bytes(known_id)` in isolation
+- Test `get_user_photo_bytes()` with a user who has NO photo (verify returns `None`, not raises)
 
-**Research flag:** Needs active infrastructure validation with MMC AD team. The KCD / RBCD configuration cannot be verified from code alone. Document the Basic Auth fallback path for v1 before spending time on KCD.
+**Pitfalls to avoid:** P16 (wrong scope), P17 (missing admin consent), P18 (shared MSAL instance), P19 (missing ConsistencyLevel header), P25 (CCA not singleton)
 
----
+**Research flag:** No further research needed — Graph API docs are authoritative and were verified 2026-03-24.
 
-### Phase 2: MCP Server — All 15 Tools
+### Phase 2: MCP Server Integration + Photo Proxy
 
-**Rationale:** The MCP server is the protocol boundary between the chat app and Exchange. The chat app cannot enumerate tools until the server exists. Building all 15 tools before integrating the chat app allows the server to be tested in isolation with `mcp dev` or the MCP Inspector — catching output schema bugs and error handling gaps before they are obscured by the OpenAI layer.
+**Rationale:** Depends on Phase 1 `graph_client.py` being proven. Adding tools to the MCP server follows established patterns from v1.0 — lowest-risk phase.
 
-**Delivers:**
-- `server.py` with all 15 tools registered using the official `mcp` SDK
-- Explicit output schemas per tool (verified with `Select-Object` and `ConvertTo-Json -Depth 10`)
-- Error handling pattern applied uniformly: `isError: true` on all failure paths, sanitized error messages
-- All tool descriptions written and tested for LLM tool-selection accuracy (<800 characters each)
-- MCP server validated end-to-end with a test MCP client before chat app integration
+**Delivers:** Two new MCP tools verified with `mcp dev` or direct MCP client. Photo proxy route live and tested in browser under authenticated and unauthenticated conditions.
 
-**Addresses:** All 15 Exchange tools (must-have), structured JSON responses (table stakes), error wrapping (table stakes)
+**Must do:**
+- Add tool definitions to `tools.py` with descriptions under 800 chars — write descriptions before implementing handlers
+- Add `_graph_client` module-level reference in `server.py`, initialize in `main()`
+- Add `/api/photo/<user_id>` route to `app.py` with `@login_required` — never skip this decorator
+- Proxy absorbs Graph 404 and returns placeholder (200 response, not 404 forward)
+- Validate `user_id` path parameter is GUID or UPN format before passing to Graph (path injection prevention)
+- Use existing background asyncio loop for the photo proxy async call — do not call `asyncio.run()` inside Flask route
+- Test: authenticated user with photo, authenticated user without photo, unauthenticated request (should be blocked)
 
-**Avoids:** stdout pollution (Pitfall 1 — configure stderr logging at server scaffold), .NET object serialization (Pitfall 5 — define output schemas before implementation), vague tool descriptions (Pitfall 6 — write descriptions before implementation), isError flag omission (Pitfall 10 — template first tool with error pattern)
+**Pitfalls to avoid:** P20 (photo 404 forwarded to browser), P23 (photo binary in MCP tool result — return `photo_url` string, not base64 bytes), P24 (unauthenticated photo proxy)
 
-**Research flag:** Well-documented patterns; `mcp` SDK documentation is current (verified 2026-03-19). No additional research phase needed. The 15 tool specifications are already fully documented in the architecture doc.
+### Phase 3: Profile Card Frontend + System Prompt
 
----
+**Rationale:** Depends on Phase 2 tool results being correctly shaped. Frontend work is the most iterative and must come after the tool result JSON contract is established.
 
-### Phase 3: Chat Application Core — Auth, OpenAI, MCP Client
+**Delivers:** Inline profile cards in chat with photo, name, title, department, email. Atlas system prompt updated to use colleague lookup tools correctly.
 
-**Rationale:** The chat app is the orchestration layer. It depends on the MCP server (Phase 2) for tool enumeration and the Exchange client (Phase 1) for all data. Building the full auth + OpenAI + MCP client integration in one phase ensures the end-to-end tool-calling loop is validated before UI polish begins.
+**Must do:**
+- Add `addProfileCard()` in `app.js` triggered by SSE `tool` events — build as DOM elements (same pattern as existing `addToolPanel()`)
+- Parse tool result JSON in `app.js` for card data (do not embed card data in Atlas text response — fragile)
+- Each `<img>` must have `onerror="this.src='/static/no-photo.svg'"` as fallback
+- Test multi-result rendering (search returning multiple cards)
+- Update Atlas system prompt — describe when to call `search_colleagues` vs `get_colleague_profile`
+- Test tool selection: "Find Jane Smith", "Who is Jane?", "Find people in Finance" — verify consistent tool selection
 
-**Delivers:**
-- Flask/FastAPI skeleton with Waitress production server (never the dev server)
-- Azure AD / Entra ID SSO: MSAL auth code flow, `/auth/login`, `/auth/callback`, `SerializableTokenCache` with persistent backend
-- Azure OpenAI integration: connectivity to MMC stg1 endpoint, chat completions without tool calling (connectivity validation)
-- MCP client integration: spawn `server.py` on app startup, `tools/list`, inject tools into OpenAI requests in OpenAI function schema format
-- Tool-calling loop: detect `tool_calls` in response, route to MCP server, append assistant + tool result messages in correct order, make second completion call
-- SSE streaming of final response to browser
-- Context window management: `tiktoken` token counting before each API call, conversation pruning strategy (summarize older turns, hard cap on tool result size)
-- Conditional Access claims challenge handler (`interaction_required` → interactive re-auth with claims)
+**Optional for this phase (time permitting):**
+- Operating company badge from `companyName` field (validate field population with CTS first)
+- Office location (render only if populated)
+- Copy email to clipboard button (existing clipboard pattern)
 
-**Uses:** Flask 3.x + Waitress (or FastAPI — see Conflicts), MSAL, `openai` SDK, `mcp` ClientSession + stdio_client, `tiktoken`
-
-**Implements:** Chat Application (app.py) component, Azure OpenAI Integration component, MCP Client component
-
-**Avoids:** Dev server in production (Pitfall 15 — use Waitress from day one), MSAL cache not persisted (Pitfall 7 — SerializableTokenCache in this phase), Azure AD token not validated (Pitfall 4 — validate before any protected endpoint is reachable), Messages array mis-ordering (Pitfall 9 — implement helper function and test with two consecutive tool calls), Context growth (Pitfall 11 — implement token counting before first end-to-end test), Conditional Access (Pitfall 13)
-
-**Research flag:** Flask vs FastAPI choice must be resolved before this phase begins. See Conflicts section below.
-
----
-
-### Phase 4: Conversation Persistence and UI
-
-**Rationale:** Persistence and UI are the only layers with no upward dependencies. They make the tool usable, not functional. This phase can begin only after the end-to-end tool-calling loop is verified in Phase 3.
-
-**Delivers:**
-- SQLite conversation storage (threads + messages schema with tool call metadata)
-- Multi-conversation thread sidebar with navigation
-- Collapsible tool call panel (tool name, parameters, raw Exchange result) per message
-- Response copy-to-clipboard
-- Error messages surfaced to user from structured tool error responses
-- Loading indicator / "Querying Exchange..." status during tool execution
-- Mobile-responsive layout (Bootstrap or Tailwind; not a custom framework)
-
-**Addresses:** Conversation history (must-have), multiple threads (must-have), tool visibility (must-have), copy/export (must-have), error messages to user (must-have), loading indicator (must-have)
-
-**Avoids:** Building a custom chat UI framework (anti-feature), storing raw Exchange data without TTL (anti-feature — implement data retention policy in this phase)
-
-**Research flag:** Standard patterns. Flask + Jinja2 + SQLite + vanilla JS or a minimal JS library is well-documented. No research phase needed.
-
----
-
-### Phase 5: Polish and v1 Hardening
-
-**Rationale:** Post-integration polish that improves adoption without gating core functionality.
-
-**Delivers:**
-- Conversation auto-naming from first query text
-- Configurable queue backlog threshold (remove hardcoded 100)
-- Keyboard shortcuts (Ctrl+Enter, Esc to cancel)
-- Dark mode toggle
-- Production deployment checklist: AWS Secrets Manager integration, Waitress thread tuning (`threads=8`), SQLite WAL mode, audit log review
-- Exchange cmdlet throttling validation against the service account's throttling policy
-
-**Research flag:** No additional research needed for polish items. Throttling policy check (`Get-ThrottlingPolicy`) is a one-time infrastructure verification.
-
----
+**Pitfalls to avoid:** P6 (vague tool descriptions degrade LLM tool selection), P23 (no photo binary in tool results)
 
 ### Phase Ordering Rationale
 
-- Infrastructure first because Phases 2-4 all depend on a proven Exchange connection
-- MCP server before chat app because the chat app cannot enumerate tools until the server exists, and the server is easier to debug in isolation
-- Auth + OpenAI + MCP client in one phase because they form an inseparable loop: auth provides user identity needed to scope conversations; the OpenAI loop needs tools from the MCP client; the MCP client calls the server built in Phase 2
-- UI last because it adds no new integrations — all dependencies are resolved by Phase 3
-- The 2-4 second PSSession latency is a Phase 1 discovery that shapes every subsequent phase (timeout values, loading indicators, UX copy) — discovering it late is expensive
+- Phase 1 must come first because admin consent is a human dependency — starting it on day 1 eliminates the risk of being blocked mid-implementation.
+- Phase 1 also proves `graph_client.py` in isolation before it touches the MCP server, following the same incremental pattern used for `exchange_client.py` in v1.0 development.
+- Phase 2 before Phase 3 because the frontend card renderer must parse the actual tool result JSON shape — building the card renderer before knowing the exact JSON keys is wasted work.
+- System prompt update goes last because prompt tuning requires seeing real model behavior with live tools, not guessing in advance.
 
 ### Research Flags
 
-Phases likely needing deeper research or active validation during planning:
-- **Phase 1:** Kerberos/RBCD configuration requires hands-on validation with the MMC Active Directory team. Cannot be resolved from code alone. Document the Basic Auth fallback path before KCD is attempted.
-- **Phase 3:** The Flask vs FastAPI decision (see Conflicts below) must be resolved before this phase begins. Wrong choice here causes a rewrite.
+No phases need deeper research. All four research files are based on official Microsoft documentation verified 2026-03-24. The architecture follows existing codebase patterns throughout.
 
-Phases with standard patterns (can proceed without additional research):
-- **Phase 2:** MCP SDK patterns are well-documented and verified. All 15 tools are fully specified in the architecture document.
-- **Phase 4:** Flask + Jinja2 + SQLite patterns are mature and well-documented.
-- **Phase 5:** Polish and hardening items have no novel technical dependencies.
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Graph client):** Official MSAL Python docs and Graph REST docs cover the entire implementation.
+- **Phase 2 (MCP + proxy):** Mirrors existing `exchange_client.py` and existing Flask routes in `app.py`.
+- **Phase 3 (frontend):** Mirrors existing `addToolPanel()` DOM builder pattern in `app.js`.
 
 ---
 
-## Conflicts Between Researchers
+## Conflicts and Agreements Between Research Files
 
-### PRIMARY CONFLICT: Flask vs FastAPI for the Chat Application
+**No conflicts identified.** All four researchers agree on:
+- Zero new packages required
+- `graph_client.py` as a module-level singleton, isolated from `auth.py`
+- Photo proxy as an inline Flask route (not a blueprint), with `@login_required`
+- Profile card DOM injection from SSE tool event data (not from AI text output)
+- Admin consent as a day-1 prerequisite before writing code
 
-This is the most important unresolved question in the research. The two researchers reached opposite conclusions.
-
-**Stack researcher recommendation: Flask 3.x + Waitress**
-
-Rationale:
-- Jinja2 server-side rendering is idiomatic Flask; FastAPI is designed for JSON API services
-- `flask.session` and `Flask-Session` are first-class; FastAPI starlette session middleware is less battle-tested for this pattern
-- MSAL + Flask integration (`flask-dance`, direct MSAL usage) has established, well-documented patterns
-- The internal tool load (not many concurrent users) means Flask's synchronous model is simpler and sufficient
-- Both run under Waitress on Windows; FastAPI's async benefits only materialize under high concurrency
-
-**Architecture researcher recommendation: FastAPI**
-
-Rationale:
-- `asyncio.create_subprocess_exec` for PowerShell calls requires an async context. In Flask (synchronous), calling `asyncio.run()` inside a route handler that is already in a synchronous thread raises `RuntimeError` on Python 3.10+
-- FastAPI is async-native; the PowerShell subprocess calls can be awaited directly without workarounds
-- The architecture doc states: "Flask's dev server does not use asyncio — PowerShell subprocess calls must be run via `asyncio.run()` or in a thread pool if the web framework is synchronous (Flask). FastAPI is async-native and is the preferred choice for this reason."
-
-**Synthesis and recommendation:**
-
-Both researchers are correct about their respective concerns. The async/sync mismatch is a real pitfall (documented as Pitfall 6 in PITFALLS.md and Anti-Pattern 6 in ARCHITECTURE.md). The workaround for Flask is to use `concurrent.futures.ThreadPoolExecutor` with `loop.run_in_executor()`, which is documented and functional but adds indirection. The Jinja2 + session management ergonomics favor Flask.
-
-**Decision required before Phase 3.** The recommended resolution is:
-
-Option A (Flask + thread executor): Stay with Flask for the superior Jinja2/session/MSAL ergonomics. Run async PowerShell calls in a thread pool via `asyncio.get_event_loop().run_in_executor()`. This is the workaround described in Anti-Pattern 6. More boilerplate, but all the Flask ecosystem benefits remain.
-
-Option B (FastAPI + Jinja2Templates): Use FastAPI with `Jinja2Templates` for HTML rendering. The async mismatch problem disappears. Jinja2 integration with FastAPI is non-standard but functional. MSAL wiring requires more manual work. Session management requires Starlette SessionMiddleware.
-
-Neither option is wrong. The choice should be made by the person who will maintain the code. **If this team is more familiar with Flask, choose Option A. If async Python is preferred, choose Option B.** Flag this as an open decision for the roadmapper and document the chosen path in Phase 3 plan.
-
----
-
-## Areas of Agreement Across All Researchers
-
-All four research files agree on the following without qualification:
-
-| Decision | Agreement |
-|----------|-----------|
-| Waitress as WSGI/ASGI server | Unanimous — Gunicorn is Unix-only; this is non-negotiable |
-| Per-call PSSession, no pooling in v1 | Unanimous — accept the latency; benchmark before adding pooling |
-| Basic Auth fallback for v1, KCD for v2 | Unanimous — KCD requires AD team cooperation outside the code |
-| SQLite for conversation history | Unanimous — correct for <100 concurrent users; zero ops overhead |
-| Official `mcp` SDK, not `fastmcp` | Unanimous — official SDK is now mature; wrapper adds no value |
-| `openai` SDK direct, no LangChain/LlamaIndex | Unanimous — 15 fixed tools do not need an orchestration framework |
-| No write operations in v1 | Unanimous — explicit out-of-scope in PROJECT.md |
-| No Exchange Online Graph API tools in v1 | Unanimous — explicit out-of-scope in PROJECT.md |
-| All logging to stderr in server.py | Unanimous — stdout pollution kills the MCP stdio transport |
-| `isError: true` on all execution failures | Unanimous — omitting it causes LLM to treat errors as valid data |
-| `ConvertTo-Json -Depth 10` + explicit Select-Object | Unanimous — default depth 2 produces silent data loss |
+**One minor discrepancy in implementation detail (resolved):** STACK.md favors synchronous `requests` for the photo proxy route. ARCHITECTURE.md notes both synchronous and async approaches but recommends synchronous for the proxy specifically. Recommendation: use synchronous `requests` for the photo proxy to avoid the asyncio bridge; use async methods in `graph_client.py` for the search and profile calls that go through the MCP server's async `handle_call_tool`.
 
 ---
 
@@ -285,54 +209,49 @@ All four research files agree on the following without qualification:
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Core technology choices are project-specified or forced by Windows deployment constraint. Only Flask/FastAPI and version currency for fast-moving packages (mcp SDK, uv) carry MEDIUM confidence. Verify all PyPI versions before pinning. |
-| Features | HIGH | 15 Exchange tools are fully specified in the architecture document. Chat app feature set is well-understood enterprise tooling. Anti-features are clearly motivated by the 80K+ mailbox environment. |
-| Architecture | HIGH | Component boundaries, interfaces, and data flows are verified against official MCP, Azure OpenAI, and MSAL documentation (2026-03-19). asyncio subprocess behavior on Windows is MEDIUM (behavior is documented and consistent but environment-specific). |
-| Pitfalls | HIGH | All 15 pitfalls sourced from official documentation. The Kerberos and MSAL pitfalls are validated against current Microsoft identity platform documentation. |
+| Stack | HIGH | Zero new packages — verified msal and requests are already present in lockfile. msgraph-sdk evaluated and rejected with clear rationale. |
+| Features | HIGH | Table stakes verified against official Graph API docs. Differentiators from domain knowledge — `companyName` population rate in MMC AAD is unverified (see Gaps). |
+| Architecture | HIGH | Integration points verified against existing codebase source (auth.py, mcp_client.py, app.js patterns reviewed). All design decisions have clear rationale. |
+| Pitfalls | HIGH | 10 v1.1-specific pitfalls, all sourced from official Microsoft documentation. Pitfalls are specific and testable. |
 
 **Overall confidence: HIGH**
 
 ### Gaps to Address
 
-- **Flask vs FastAPI choice:** Must be resolved before Phase 3 planning. See Conflicts section. Recommend the team make an explicit decision and document it in the Phase 3 plan.
-- **KCD / RBCD AD configuration:** Cannot be validated without active engagement with the MMC Active Directory team. The Python code is straightforward; the risk is entirely in AD configuration and the Kerberos ticket acquisition chain. Plan for Basic Auth in v1 demo. Start KCD engagement early for v2.
-- **MMC Azure OpenAI gateway API version lock:** The architecture doc pins `API_VERSION=2023-05-15`. Newer Azure OpenAI API versions exist. Verify with the MMC CTS team whether the gateway supports newer versions before attempting to upgrade. Do not change this without confirmation.
-- **mcp SDK version currency:** The official `mcp` package moves fast. Verify the current release at https://pypi.org/project/mcp/ before pinning. The `>=1.0.0` floor is confirmed; the current patch is not.
-- **Exchange throttling policy for the service account:** Verify the throttling policy before Phase 2 tool testing. An overly restrictive policy will cause intermittent failures that look like code bugs. Run `Get-ThrottlingPolicyAssociation` against the service account before integration testing.
+- **`companyName` population rate in MMC AAD:** The operating company badge depends on this field being consistently populated across 80,000 users. Validate with CTS team before building the badge. If unreliable, derive operating company from the mail domain pattern instead.
+
+- **Phone number population rate in MMC AAD:** FEATURES.md recommends validating `businessPhones`/`mobilePhone` population before adding phone numbers to profile cards. Many enterprise AAD tenants have low mobile phone population — validate before committing to this feature.
+
+- **Graph throttling headroom at MMC tenant scale:** Pitfall 21 documents that an 80K+ user tenant is "L" tier with 8,000 RU per 10 seconds. A burst of 10 search results each triggering a photo fetch costs 20+ RU. For v1.1 with a small internal user base, throttling is unlikely but the retry-after handler should be implemented before any load testing.
 
 ---
 
 ## Sources
 
-### Primary (HIGH confidence — project-authored or official documentation verified 2026-03-19)
+### Primary (HIGH confidence — verified 2026-03-24)
+- Microsoft Graph List Users: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0
+- Microsoft Graph Get profilePhoto: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0
+- Microsoft Graph Get User: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0
+- Microsoft Graph advanced query capabilities ($search, ConsistencyLevel): https://learn.microsoft.com/en-us/graph/aad-advanced-queries
+- Microsoft Graph throttling guidance: https://learn.microsoft.com/en-us/graph/throttling
+- Microsoft Graph service-specific throttling limits: https://learn.microsoft.com/en-us/graph/throttling-limits
+- MSAL Python acquiring tokens: https://learn.microsoft.com/en-us/entra/msal/python/getting-started/acquiring-tokens
+- Microsoft Entra: Get access without a user (client credentials): https://learn.microsoft.com/en-us/graph/auth-v2-service
+- Microsoft Entra: Grant tenant-wide admin consent: https://learn.microsoft.com/en-us/entra/identity/enterprise-apps/grant-admin-consent
+- PyPI: msal 1.35.1 (verified on PyPI 2026-03-24)
 
-- `C:\xmcp\exchange-mcp-architecture.md` — All 15 tool specifications, component design, auth model, extensibility patterns
-- `C:\xmcp\.planning\PROJECT.md` — Project requirements, constraints, out-of-scope items, key decisions
-- MCP Specification: https://modelcontextprotocol.io/docs/concepts/architecture
-- MCP Tools: https://modelcontextprotocol.io/docs/concepts/tools
-- MCP Python Server quickstart: https://modelcontextprotocol.io/docs/develop/build-server
-- Azure OpenAI Function Calling: https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/function-calling
-- OAuth 2.0 OBO Flow: https://learn.microsoft.com/en-us/entra/identity-platform/v2-oauth2-on-behalf-of-flow
-- Azure AD Seamless SSO / Kerberos: https://learn.microsoft.com/en-us/entra/identity/hybrid/connect/how-to-connect-sso-how-it-works
-- MSAL Python: https://learn.microsoft.com/en-us/entra/msal/python/
-- Microsoft Docs: Making the second hop in PowerShell Remoting (CredSSP prohibition, RBCD)
-- Microsoft Docs: Azure OpenAI Quotas and Limits (tool description 1024-char limit, 128 tool limit)
+### Secondary (MEDIUM confidence)
+- Operating company badge pattern: derived from project context (MMC 4-company structure, AAD `companyName` field). Requires validation that `companyName` is consistently populated in MMC AAD.
+- Card layout for single vs multi-result: enterprise search UX convention (ClearBox Consulting, search UX best practices).
+- Initials fallback for missing photos: industry standard pattern (Primer, shadcn — not Graph-specific documentation).
 
-### Secondary (MEDIUM confidence — training data, knowledge cutoff August 2025)
-
-- Flask 3.x documentation patterns (version numbers require PyPI verification)
-- Waitress 3.x Windows deployment patterns
-- `uv` package manager ecosystem trajectory
-- MSAL SerializableTokenCache patterns for server-side web apps
-- Exchange Management Shell throttling policy documentation
-
-### Tertiary (LOW confidence — require verification before use)
-
-- `pyspnego >= 0.10.0` and `pywinrm >= 0.4.3` version currency — verify at PyPI before pinning
-- `mcp` SDK patch version — verify at https://pypi.org/project/mcp/
-- `uv` current version — verify at https://pypi.org/project/uv/
+### Project sources (HIGH confidence — this codebase)
+- `chat_app/auth.py` — verified MSAL pattern, `SerializableTokenCache` per-user in Flask session
+- `chat_app/mcp_client.py` — verified asyncio bridge pattern (`run_coroutine_threadsafe`)
+- `chat_app/static/app.js` — verified `addToolPanel()` DOM builder pattern
+- `exchange_mcp/server.py` — verified module-level `_exchange_client` singleton pattern
 
 ---
 
-*Research completed: 2026-03-19*
-*Ready for roadmap: yes — pending Flask vs FastAPI decision*
+*Research completed: 2026-03-24*
+*Ready for roadmap: yes*
