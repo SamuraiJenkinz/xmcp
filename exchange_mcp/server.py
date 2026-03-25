@@ -10,8 +10,8 @@ Usage
     uv run mcp dev exchange_mcp/server.py
 
 The server validates Exchange connectivity at startup and refuses to start
-if the connection check fails.  After startup it enumerates all 15 registered
-tools (14 Exchange tools + ping) via the list_tools handler.
+if the connection check fails.  After startup it enumerates all 17 registered
+tools (14 Exchange + ping + 2 Graph colleague tools) via the list_tools handler.
 """
 
 # ---------------------------------------------------------------------------
@@ -144,8 +144,8 @@ async def handle_list_tools() -> list[types.Tool]:
     """Return the list of all registered Exchange MCP tools.
 
     Delegates to TOOL_DEFINITIONS from exchange_mcp.tools, which enumerates
-    all 15 tools (14 Exchange tools + ping).  Phases 3-6 replace stub handlers
-    in TOOL_DISPATCH without changing this registration list.
+    all 17 tools (14 Exchange + ping + 2 Graph colleague tools).  Phases 3-6
+    replace stub handlers in TOOL_DISPATCH without changing this registration list.
     """
     return TOOL_DEFINITIONS
 
