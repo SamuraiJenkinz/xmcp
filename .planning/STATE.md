@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 
 ## Current Position
 
-Phase: 11 of 12 (MCP Tools + Photo Proxy)
-Plan: 3 of 3 in current phase
-Status: Phase 11 verified ✓ — ready for Phase 12 (Profile Card Frontend + System Prompt)
-Last activity: 2026-03-24 — Completed Phase 11 (MCP Tools + Photo Proxy)
+Phase: 12 of 12 (Profile Card Frontend + System Prompt)
+Plan: 1 of 2 in current phase
+Status: In progress — 12-01 complete, ready for 12-02 (System Prompt)
+Last activity: 2026-03-25 — Completed 12-01-PLAN.md (Profile Card Frontend)
 
-Progress: [███████████░] v1.0 complete, v1.1 Phases 10-11 done
+Progress: [████████████] v1.0 complete, v1.1 Phases 10-12 in progress (12-01 done)
 
 ## Performance Metrics
 
@@ -58,6 +58,7 @@ None.
 - [RESOLVED — 2026-03-25]: get_user_profile() and get_user_photo_96() added to graph_client. search_colleagues and get_colleague_profile schemas in TOOL_DEFINITIONS. 11-01 complete.
 - [RESOLVED — 2026-03-25]: _search_colleagues_handler and _get_colleague_profile_handler implemented in TOOL_DISPATCH (17 entries). asyncio.to_thread + lazy imports. 11-02 complete.
 - [RESOLVED — 2026-03-25]: Flask /api/photo/<user_id> proxy route with TTL cache and SVG placeholder. @login_required protection. 11-03 complete. Phase 11 done.
+- [RESOLVED — 2026-03-25]: addProfileCard DOM builder + insertCard method + processLine conditional branch. Profile card CSS classes. 12-01 complete.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
 
@@ -71,6 +72,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24T22:30Z
-Stopped at: Phase 11 complete and verified — ready for Phase 12
+Last session: 2026-03-25T11:24Z
+Stopped at: Completed 12-01-PLAN.md (Profile Card Frontend DOM + CSS)
 Resume file: None
