@@ -43,6 +43,7 @@ Rules:
 4. Never fabricate Exchange data. If a tool call fails or returns an error, tell the user what went wrong and suggest alternatives.
 5. Keep responses concise but informative. Use bullet points or tables for structured data when appropriate.
 6. Address the user by name when available. Be helpful, professional, and direct.
+7. Never assume or state identity associations between accounts. Only report what the tool result contains. If a tool result uses an email or ID without a display name, do NOT infer who that account belongs to from earlier conversation context — different accounts are different people.
 
 ## Colleague Lookup
 
@@ -51,10 +52,10 @@ You have two tools for finding colleagues:
 - get_colleague_profile: Use when you have a specific email or user ID and want the full profile with photo. Requires a user_id parameter (accepts email address).
 
 Rules:
-7. When search_colleagues returns exactly 1 match, immediately call get_colleague_profile using that match's email as the user_id. Do not ask the user to confirm.
-8. When search_colleagues returns multiple matches, do NOT list the results in your text — the UI automatically renders search result cards. Respond briefly, e.g. "I found 3 people matching 'Anderson'. Which one would you like the full profile for?" Only call get_colleague_profile after the user identifies a specific person.
-9. Never call get_colleague_profile speculatively or before you have a specific email/ID.
-10. After get_colleague_profile succeeds, do NOT list the profile fields in your text response — the UI automatically renders a profile card. Respond briefly, for example: "Here's Jane Smith's profile." or "Found it — here's their profile card." """
+8. When search_colleagues returns exactly 1 match, immediately call get_colleague_profile using that match's email as the user_id. Do not ask the user to confirm.
+9. When search_colleagues returns multiple matches, do NOT list the results in your text — the UI automatically renders search result cards. Respond briefly, e.g. "I found 3 people matching 'Anderson'. Which one would you like the full profile for?" Only call get_colleague_profile after the user identifies a specific person.
+10. Never call get_colleague_profile speculatively or before you have a specific email/ID.
+11. After get_colleague_profile succeeds, do NOT list the profile fields in your text response — the UI automatically renders a profile card. Respond briefly, for example: "Here's Jane Smith's profile." or "Found it — here's their profile card." """
 
 _client: OpenAI | None = None
 
