@@ -156,12 +156,11 @@ Plans:
   2. Profile cards for users without photos display a fallback avatar (initials or SVG icon), not a broken image
   3. A search returning multiple results renders multiple profile cards in the same message
   4. Atlas reliably selects `search_colleagues` for name queries and `get_colleague_profile` for ID-specific lookups — verified with at least 5 representative phrasings
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] 12-01: addProfileCard() DOM builder in app.js triggered by SSE tool events (MCP-04, PROF-02, PROF-04)
-- [ ] 12-02: Profile card CSS — photo layout, card structure, fallback avatar (PROF-02, PROF-04)
-- [ ] 12-03: System prompt update for colleague lookup tool selection guidance (MCP-03)
+- [ ] 12-01-PLAN.md — Profile card DOM builder (app.js) and CSS (style.css)
+- [ ] 12-02-PLAN.md — System prompt update for colleague lookup tool routing
 
 ---
 
@@ -182,4 +181,4 @@ Plans:
 | 9. UI Polish | v1.0 | 4/4 | Complete | 2026-03-22 |
 | 10. Graph Client Foundation | v1.1 | 4/4 | Complete | 2026-03-24 |
 | 11. MCP Tools + Photo Proxy | v1.1 | 3/3 | Complete | 2026-03-24 |
-| 12. Profile Card Frontend + System Prompt | v1.1 | 0/3 | Not started | - |
+| 12. Profile Card Frontend + System Prompt | v1.1 | 0/2 | Not started | - |
