@@ -1,6 +1,6 @@
 # Atlas User Guide
 
-Atlas is an internal chat application that lets you query Exchange infrastructure using natural language. Instead of writing PowerShell cmdlets or asking an Exchange engineer, you can ask Atlas questions like "What's the mailbox size for jane.doe@mmc.com?" and get an immediate answer from live Exchange data.
+Atlas is an internal chat application that lets you query Exchange infrastructure and look up colleagues using natural language. Instead of writing PowerShell cmdlets or asking an Exchange engineer, you can ask Atlas questions like "What's the mailbox size for jane.doe@mmc.com?" or "Look up Jane Smith" and get an immediate answer from live data.
 
 ## Getting Started
 
@@ -27,14 +27,16 @@ Once signed in, you will see a welcome screen with four example queries. Click a
 - "Show me the hybrid connector status"
 - "List all shared mailboxes on database MBX-DB01"
 - "What mobile devices are connected to jane.doe@mmc.com?"
+- "Look up Jane Smith"
+- "Find someone in the IT department named Taylor"
 
 ### Understanding Responses
 
 When you ask a question, Atlas:
 
-1. **Identifies the right Exchange tool** — you will see a tool chip appear (e.g., "get_mailbox_stats")
-2. **Queries live Exchange data** — a loading indicator shows while the query runs (typically 2-4 seconds)
-3. **Composes a natural language answer** — the response streams in real-time, summarizing what was found
+1. **Identifies the right tool** — you will see a tool chip appear (e.g., "get_mailbox_stats" or "search_colleagues")
+2. **Queries live data** — a loading indicator shows while the query runs (typically 2-4 seconds)
+3. **Composes a response** — the answer streams in real-time with formatted text, and for colleague lookups, inline profile cards or search result cards render automatically
 
 ## Features
 
@@ -82,9 +84,26 @@ If you press Escape while a response is streaming, the partial text will remain 
 
 Click the theme toggle button (sun/moon icon) in the top-right corner of the header to switch between light and dark themes. Your preference is saved and will persist across sessions. On your first visit, Atlas will match your operating system's theme preference.
 
-## Available Exchange Tools
+### Colleague Lookup
 
-Atlas has access to 15 Exchange tools, organized by category:
+Atlas can search for colleagues by name and display their profile as an inline card.
+
+- **Search** — ask "Look up Jane Smith" or "Find someone named Taylor". If multiple matches are found, Atlas displays search result cards showing each person's name, title, department, and email. Click an email to open a mailto link.
+- **Profile card** — when Atlas identifies a specific colleague, a profile card renders inline with their photo, name, job title, department, and email. Photos are served via a secure proxy — users without photos get a placeholder avatar.
+- **Disambiguation** — if your search returns multiple results, Atlas will ask you to clarify which person you mean before loading the full profile.
+
+### Formatted Responses
+
+Atlas renders assistant messages with formatted text:
+
+- **Bold text**, *italic text*, and `inline code` render properly
+- Bullet point and numbered lists display as structured lists
+- Code blocks render with syntax highlighting
+- Headers and horizontal rules create visual structure
+
+## Available Tools
+
+Atlas has access to 17 tools, organized by category:
 
 ### Mailbox Tools
 
@@ -94,7 +113,7 @@ Atlas has access to 15 Exchange tools, organized by category:
 | **search_mailboxes** | Find mailboxes by database, type, or name pattern | "List all shared mailboxes on MBX-DB01" |
 | **get_shared_mailbox_owners** | Full access, send-as, and send-on-behalf delegates | "Who has access to the HR shared mailbox?" |
 
-### DAG and Database Tools
+### DAG and Database Tools (On-Premises Only)
 
 | Tool | What it does | Example question |
 |------|-------------|-----------------|
@@ -107,8 +126,8 @@ Atlas has access to 15 Exchange tools, organized by category:
 | Tool | What it does | Example question |
 |------|-------------|-----------------|
 | **check_mail_flow** | Trace routing path between sender and recipient | "Can alice@mmc.com email bob@external.com?" |
-| **get_transport_queues** | Queue depths and backlog detection | "Are there any mail queues backing up?" |
-| **get_smtp_connectors** | Send and receive connector configuration | "Show me the SMTP connector settings" |
+| **get_transport_queues** | Queue depths and backlog detection (on-prem only) | "Are there any mail queues backing up?" |
+| **get_smtp_connectors** | On-prem Send/Receive connector configuration (on-prem only) | "Show me the on-prem SMTP connector settings" |
 
 ### Security Tools
 
@@ -123,13 +142,22 @@ Atlas has access to 15 Exchange tools, organized by category:
 | Tool | What it does | Example question |
 |------|-------------|-----------------|
 | **get_hybrid_config** | Full hybrid topology and federation trust details | "How is Exchange hybrid configured?" |
-| **get_connector_status** | Hybrid connector health and TLS certificate status | "Are the hybrid connectors up?" |
+| **get_connector_status** | Exchange Online inbound/outbound connectors | "Show EXO outbound connectors" |
+
+### Colleague Lookup Tools
+
+| Tool | What it does | Example question |
+|------|-------------|-----------------|
+| **search_colleagues** | Search for colleagues by name via Microsoft Graph | "Look up Jane Smith" |
+| **get_colleague_profile** | Detailed profile with photo for a specific colleague | "Show me Jane's full profile" |
 
 ### Connectivity
 
 | Tool | What it does | Example question |
 |------|-------------|-----------------|
 | **ping** | Test server connectivity | "Is the Exchange server connected?" |
+
+> **Note:** Some tools are on-premises only (DAG, database copies, transport queues, SMTP connectors). If you are connected to Exchange Online and try these tools, Atlas will let you know they require an on-premises connection. For connectors, Atlas will ask whether you want on-premises or Exchange Online connectors.
 
 ## Tips
 
@@ -138,6 +166,8 @@ Atlas has access to 15 Exchange tools, organized by category:
 - **Use the tool panels** — expand them to verify the raw Exchange data if something looks unexpected
 - **Copy for tickets** — use the Copy buttons to grab data for ServiceNow tickets or reports
 - **One topic per thread** — start a New Chat when switching to a different topic for cleaner conversation history
+- **Colleague lookup** — just say "Look up" followed by a name. If multiple results appear, tell Atlas which person you want (e.g., "the one in IT" or "Kevin Taylor")
+- **Connector queries** — Atlas will ask you to clarify on-premises vs Exchange Online when you ask about connectors
 
 ## Troubleshooting
 
@@ -146,6 +176,9 @@ Atlas has access to 15 Exchange tools, organized by category:
 | "Sign in with Microsoft" loops back to login page | Session expired or cookies blocked | Clear browser cookies for the Atlas URL and try again |
 | Tool call takes more than 10 seconds | Exchange server under load or network issue | Wait for it to complete; Atlas has a 60-second timeout |
 | "Exchange error: not found" | Mailbox or DAG name does not exist | Double-check the email address or DAG name spelling |
+| "This tool requires an on-premises Exchange connection" | You used a DAG/queue/SMTP connector tool against Exchange Online | These tools only work with on-prem Exchange; use EXO equivalents |
+| Colleague search returns "Graph API not configured" | Microsoft Graph credentials are missing or invalid | Contact your admin to verify Azure AD app permissions (User.Read.All, ProfilePhoto.Read.All) |
+| Profile card shows placeholder instead of photo | The colleague has no photo in Azure AD | This is expected — a placeholder avatar is shown instead |
 | Response is blank | Network interruption during streaming | Refresh the page and try again in a new message |
 | Dark mode reverts on reload | localStorage is disabled in your browser | Enable localStorage or use the toggle each time |
 
@@ -155,3 +188,5 @@ Atlas has access to 15 Exchange tools, organized by category:
 - Atlas does **not** read email content or attachments.
 - Your conversation history is stored in a local SQLite database on the Atlas server, scoped to your Azure AD identity. Other users cannot see your threads.
 - Exchange queries run under the Atlas service account's permissions, not your personal Exchange permissions. The service account has view-only access.
+- Colleague lookups use Microsoft Graph API with application-level permissions (User.Read.All, ProfilePhoto.Read.All). Atlas can view directory profiles and photos but cannot modify any Azure AD data.
+- Colleague photos are served through a secure proxy route that requires authentication. Photo data never enters the AI model context.
