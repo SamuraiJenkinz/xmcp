@@ -247,6 +247,10 @@
                 scrollToBottom();
                 return details;
             },
+            insertCard: function(cardEl) {
+                els.content.insertBefore(cardEl, textNode);
+                scrollToBottom();
+            },
             markToolDone: function (panel) {
                 if (panel) {
                     panel.classList.add('done');
@@ -263,6 +267,61 @@
                 scrollToBottom();
             }
         };
+    }
+
+    // ---- Profile card builder ----
+    function addProfileCard(assistantMsg, resultJson) {
+        var profile;
+        try {
+            profile = JSON.parse(resultJson);
+        } catch (e) {
+            return;
+        }
+        if (!profile || typeof profile !== 'object' || !profile.name) {
+            return;
+        }
+
+        var card = document.createElement('div');
+        card.className = 'profile-card';
+
+        var img = document.createElement('img');
+        img.className = 'profile-card-photo';
+        img.alt = profile.name;
+        img.src = (profile.photo_url || '') + '?name=' + encodeURIComponent(profile.name);
+
+        var info = document.createElement('div');
+        info.className = 'profile-card-info';
+
+        var nameEl = document.createElement('div');
+        nameEl.className = 'profile-card-name';
+        nameEl.textContent = profile.name;
+        info.appendChild(nameEl);
+
+        if (profile.jobTitle) {
+            var titleEl = document.createElement('div');
+            titleEl.className = 'profile-card-field';
+            titleEl.textContent = profile.jobTitle;
+            info.appendChild(titleEl);
+        }
+
+        if (profile.department) {
+            var deptEl = document.createElement('div');
+            deptEl.className = 'profile-card-field profile-card-dept';
+            deptEl.textContent = profile.department;
+            info.appendChild(deptEl);
+        }
+
+        if (profile.email) {
+            var emailEl = document.createElement('a');
+            emailEl.className = 'profile-card-email';
+            emailEl.href = 'mailto:' + profile.email;
+            emailEl.textContent = profile.email;
+            info.appendChild(emailEl);
+        }
+
+        card.appendChild(img);
+        card.appendChild(info);
+        assistantMsg.insertCard(card);
     }
 
     // ---- Welcome message ----
@@ -312,12 +371,17 @@
                 if (activeChip) {
                     assistantMsg.markToolDone(activeChip);
                 }
-                activeChip = assistantMsg.addToolPanel(
-                    event.name,
-                    event.params || {},
-                    event.result || null,
-                    event.status || 'success'
-                );
+                if (event.name === 'get_colleague_profile' && event.status === 'success') {
+                    addProfileCard(assistantMsg, event.result || '');
+                    activeChip = null;
+                } else {
+                    activeChip = assistantMsg.addToolPanel(
+                        event.name,
+                        event.params || {},
+                        event.result || null,
+                        event.status || 'success'
+                    );
+                }
             } else if (event.type === 'text') {
                 // Once text starts arriving, mark last tool chip done
                 assistantMsg.removeDots();
