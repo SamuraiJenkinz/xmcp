@@ -21,17 +21,17 @@
 ### Profile Display
 
 - [x] **PROF-01**: User can request detailed profile for a specific colleague
-- [ ] **PROF-02**: Profile is rendered as an inline card with photo, name, job title, department, and email
+- [x] **PROF-02**: Profile is rendered as an inline card with photo, name, job title, department, and email
 - [x] **PROF-03**: Photo is served via Flask proxy route (`GET /api/photo/<user_id>`) with `@login_required`
-- [ ] **PROF-04**: Users without photos get a fallback avatar (initials or generic icon)
+- [x] **PROF-04**: Users without photos get a fallback avatar (initials or generic icon)
 - [x] **PROF-05**: Photo binary data never enters the LLM context — tools return `photo_url` string only
 
 ### MCP Integration
 
 - [x] **MCP-01**: `search_colleagues` tool registered in MCP server with input schema
 - [x] **MCP-02**: `get_colleague_profile` tool registered in MCP server with input schema
-- [ ] **MCP-03**: System prompt updated to describe colleague lookup capabilities
-- [ ] **MCP-04**: Profile card rendered as DOM element from tool result JSON (not AI-generated markdown)
+- [x] **MCP-03**: System prompt updated to describe colleague lookup capabilities
+- [x] **MCP-04**: Profile card rendered as DOM element from tool result JSON (not AI-generated markdown)
 
 ## Future Requirements
 
@@ -65,14 +65,14 @@
 | SRCH-03 | Phase 11 | Complete |
 | SRCH-04 | Phase 10 | Complete |
 | PROF-01 | Phase 11 | Complete |
-| PROF-02 | Phase 12 | Pending |
+| PROF-02 | Phase 12 | Complete |
 | PROF-03 | Phase 11 | Complete |
-| PROF-04 | Phase 12 | Pending |
+| PROF-04 | Phase 12 | Complete |
 | PROF-05 | Phase 11 | Complete |
 | MCP-01 | Phase 11 | Complete |
 | MCP-02 | Phase 11 | Complete |
-| MCP-03 | Phase 12 | Pending |
-| MCP-04 | Phase 12 | Pending |
+| MCP-03 | Phase 12 | Complete |
+| MCP-04 | Phase 12 | Complete |
 
 **Coverage:**
 - v1.1 requirements: 16 total
@@ -81,4 +81,4 @@
 
 ---
 *Requirements defined: 2026-03-24*
-*Last updated: 2026-03-24 — phase assignments added*
+*Last updated: 2026-03-25 — Phase 12 requirements marked Complete*

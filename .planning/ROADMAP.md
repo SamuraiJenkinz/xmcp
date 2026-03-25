@@ -3,7 +3,7 @@
 ## Milestones
 
 - ✅ **v1.0 MVP** — Phases 1-9 (shipped 2026-03-22)
-- 🚧 **v1.1 Colleague Lookup** — Phases 10-12 (in progress)
+- ✅ **v1.1 Colleague Lookup** — Phases 10-12 (shipped 2026-03-25)
 
 ## Phases
 
@@ -101,7 +101,7 @@ Plans:
 
 ---
 
-### 🚧 v1.1 Colleague Lookup (In Progress)
+### ✅ v1.1 Colleague Lookup (Shipped 2026-03-25)
 
 **Milestone Goal:** Enable colleague search and profile display via Microsoft Graph API, rendered as inline profile cards in the chat UI.
 
@@ -159,8 +159,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 12-01-PLAN.md — Profile card DOM builder (app.js) and CSS (style.css)
-- [ ] 12-02-PLAN.md — System prompt update for colleague lookup tool routing
+- [x] 12-01-PLAN.md — Profile card DOM builder (app.js) and CSS (style.css)
+- [x] 12-02-PLAN.md — System prompt update for colleague lookup tool routing
 
 ---
 
@@ -181,4 +181,4 @@ Plans:
 | 9. UI Polish | v1.0 | 4/4 | Complete | 2026-03-22 |
 | 10. Graph Client Foundation | v1.1 | 4/4 | Complete | 2026-03-24 |
 | 11. MCP Tools + Photo Proxy | v1.1 | 3/3 | Complete | 2026-03-24 |
-| 12. Profile Card Frontend + System Prompt | v1.1 | 0/2 | Not started | - |
+| 12. Profile Card Frontend + System Prompt | v1.1 | 2/2 | Complete | 2026-03-25 |
