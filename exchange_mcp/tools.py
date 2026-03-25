@@ -364,7 +364,20 @@ TOOL_DEFINITIONS: list[types.Tool] = [
             "'Is mail flowing between on-premises and cloud?'. "
             "Does NOT return the hybrid topology or federation settings — use get_hybrid_config for that."
         ),
-        inputSchema={"type": "object", "properties": {}, "required": []},
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "connector_type": {
+                    "type": "string",
+                    "enum": ["inbound", "outbound", "all"],
+                    "description": (
+                        "Which connectors to return: 'inbound', 'outbound', or 'all'. "
+                        "Default is 'all'."
+                    ),
+                }
+            },
+            "required": [],
+        },
     ),
     # ------------------------------------------------------------------
     # Colleague lookup tools (Phase 11 — Graph API)
@@ -1775,108 +1788,94 @@ def _assess_connector_health(
 async def _get_connector_status_handler(
     arguments: dict[str, Any], client: ExchangeClient | None
 ) -> dict[str, Any]:
-    """Return hybrid connector health with per-connector status and certificate details.
+    """Return Exchange Online inbound and outbound connectors.
 
-    Fetches hybrid send connectors (CloudServicesMailEnabled) and receive
-    connectors (TlsCertificateName non-empty), then per-connector resolves
-    the TLS certificate via Get-ExchangeCertificate.  Each connector gets
-    a healthy/unhealthy boolean and an error message if unhealthy.
+    Uses Get-InboundConnector and Get-OutboundConnector (EXO cmdlets).
     """
     if client is None:
         raise RuntimeError("Exchange client is not available.")
 
-    # --- Hybrid send connectors ---
-    send_cmdlet = (
-        "Get-SendConnector | Where-Object { $_.CloudServicesMailEnabled -eq $true } | Select-Object "
-        "Name, Enabled, CloudServicesMailEnabled, RequireTLS, TlsCertificateName, TlsDomain, Fqdn, MaxMessageSize, "
-        "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
-        "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}"
-    )
-    try:
-        send_raw = await client.run_cmdlet_with_retry(send_cmdlet)
-    except RuntimeError:
-        raise
+    connector_type = (arguments.get("connector_type") or "all").strip().lower()
 
-    send_list = send_raw if isinstance(send_raw, list) else (
-        [send_raw] if isinstance(send_raw, dict) and send_raw else []
-    )
+    outbound_connectors = []
+    inbound_connectors = []
 
-    send_results = []
-    for c in send_list:
-        fqdn = c.get("Fqdn") or ""
-        cert = None
-        if fqdn:
-            cert = await _lookup_cert_for_fqdn(client, fqdn)
+    if connector_type in ("outbound", "all"):
+        out_cmdlet = (
+            "Get-OutboundConnector | Select-Object "
+            "Name, Enabled, ConnectorType, ConnectorSource, "
+            "@{Name='RecipientDomains';Expression={$_.RecipientDomains -join ', '}}, "
+            "@{Name='SmartHosts';Expression={$_.SmartHosts -join ', '}}, "
+            "TlsSettings, UseMXRecord, RouteAllMessagesViaOnPremises, "
+            "CloudServicesMailEnabled, Comment"
+        )
+        try:
+            out_raw = await client.run_cmdlet_with_retry(out_cmdlet)
+        except RuntimeError:
+            raise
 
-        healthy, error_msg = _assess_connector_health(c, cert)
-        send_results.append({
-            "name": c.get("Name"),
-            "type": "send",
-            "enabled": c.get("Enabled"),
-            "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
-            "require_tls": c.get("RequireTLS"),
-            "tls_certificate_name": c.get("TlsCertificateName"),
-            "tls_domain": c.get("TlsDomain"),
-            "fqdn": fqdn or None,
-            "max_message_size": c.get("MaxMessageSize"),
-            "address_spaces": c.get("AddressSpaces"),
-            "smart_hosts": c.get("SmartHosts"),
-            "certificate": cert,
-            "healthy": healthy,
-            "error": error_msg,
-        })
+        out_list = out_raw if isinstance(out_raw, list) else (
+            [out_raw] if isinstance(out_raw, dict) and out_raw else []
+        )
+        outbound_connectors = [
+            {
+                "name": c.get("Name"),
+                "enabled": c.get("Enabled"),
+                "connector_type": c.get("ConnectorType"),
+                "connector_source": c.get("ConnectorSource"),
+                "recipient_domains": c.get("RecipientDomains"),
+                "smart_hosts": c.get("SmartHosts"),
+                "tls_settings": c.get("TlsSettings"),
+                "use_mx_record": c.get("UseMXRecord"),
+                "route_via_on_premises": c.get("RouteAllMessagesViaOnPremises"),
+                "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
+                "comment": c.get("Comment"),
+            }
+            for c in out_list
+        ]
 
-    # --- Hybrid receive connectors (TlsCertificateName non-empty) ---
-    recv_cmdlet = (
-        "Get-ReceiveConnector | Where-Object { $_.TlsCertificateName -ne $null -and $_.TlsCertificateName -ne '' } | Select-Object "
-        "Name, Enabled, RequireTLS, TlsCertificateName, Fqdn, "
-        "@{Name='Bindings';Expression={@($_.Bindings | ForEach-Object { $_.ToString() })}}, "
-        "@{Name='RemoteIPRanges';Expression={@($_.RemoteIPRanges | ForEach-Object { $_.ToString() })}}, "
-        "AuthMechanism, PermissionGroups, TransportRole, Server"
-    )
-    try:
-        recv_raw = await client.run_cmdlet_with_retry(recv_cmdlet)
-    except RuntimeError:
-        raise
+    if connector_type in ("inbound", "all"):
+        in_cmdlet = (
+            "Get-InboundConnector | Select-Object "
+            "Name, Enabled, ConnectorType, ConnectorSource, "
+            "@{Name='SenderDomains';Expression={$_.SenderDomains -join ', '}}, "
+            "@{Name='SenderIPAddresses';Expression={$_.SenderIPAddresses -join ', '}}, "
+            "RequireTls, TlsSenderCertificateName, "
+            "CloudServicesMailEnabled, Comment"
+        )
+        try:
+            in_raw = await client.run_cmdlet_with_retry(in_cmdlet)
+        except RuntimeError:
+            raise
 
-    recv_list = recv_raw if isinstance(recv_raw, list) else (
-        [recv_raw] if isinstance(recv_raw, dict) and recv_raw else []
-    )
+        in_list = in_raw if isinstance(in_raw, list) else (
+            [in_raw] if isinstance(in_raw, dict) and in_raw else []
+        )
+        inbound_connectors = [
+            {
+                "name": c.get("Name"),
+                "enabled": c.get("Enabled"),
+                "connector_type": c.get("ConnectorType"),
+                "connector_source": c.get("ConnectorSource"),
+                "sender_domains": c.get("SenderDomains"),
+                "sender_ip_addresses": c.get("SenderIPAddresses"),
+                "require_tls": c.get("RequireTls"),
+                "tls_sender_certificate": c.get("TlsSenderCertificateName"),
+                "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
+                "comment": c.get("Comment"),
+            }
+            for c in in_list
+        ]
 
-    recv_results = []
-    for c in recv_list:
-        fqdn = c.get("Fqdn") or ""
-        cert = None
-        if fqdn:
-            cert = await _lookup_cert_for_fqdn(client, fqdn)
+    result: dict[str, Any] = {}
+    if connector_type in ("outbound", "all"):
+        result["outbound_connectors"] = outbound_connectors
+        result["outbound_connector_count"] = len(outbound_connectors)
+    if connector_type in ("inbound", "all"):
+        result["inbound_connectors"] = inbound_connectors
+        result["inbound_connector_count"] = len(inbound_connectors)
 
-        healthy, error_msg = _assess_connector_health(c, cert)
-        recv_results.append({
-            "name": c.get("Name"),
-            "type": "receive",
-            "enabled": c.get("Enabled"),
-            "require_tls": c.get("RequireTLS"),
-            "tls_certificate_name": c.get("TlsCertificateName"),
-            "fqdn": fqdn or None,
-            "bindings": c.get("Bindings"),
-            "remote_ip_ranges": c.get("RemoteIPRanges"),
-            "auth_mechanism": c.get("AuthMechanism"),
-            "permission_groups": c.get("PermissionGroups"),
-            "transport_role": c.get("TransportRole"),
-            "server": c.get("Server"),
-            "certificate": cert,
-            "healthy": healthy,
-            "error": error_msg,
-        })
-
-    all_connectors = send_results + recv_results
-    return {
-        "send_connectors": send_results,
-        "send_connector_count": len(send_results),
-        "receive_connectors": recv_results,
-        "receive_connector_count": len(recv_results),
-        "all_healthy": all(c["healthy"] for c in all_connectors) if all_connectors else True,
-    }
+    return result
 
 
 # ---------------------------------------------------------------------------
