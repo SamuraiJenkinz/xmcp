@@ -303,3 +303,78 @@ def get_user_photo_bytes(user_id: str) -> bytes | None:
     except Exception as exc:  # noqa: BLE001
         logger.error("Graph get_user_photo_bytes failed for user %r: %s", user_id, exc)
         return None
+
+
+def get_user_profile(user_id: str) -> dict | None:
+    """Retrieve detailed profile for a user including manager display name.
+
+    Fetches user properties plus the manager's display name in a single
+    Graph API call using ``$expand=manager($select=displayName)``.
+
+    Args:
+        user_id: The Graph user object ID (GUID).  Empty string returns
+            ``None`` without a network request.
+
+    Returns:
+        A dict containing user profile fields on success, ``None`` if the
+        user is not found (HTTP 404), Graph is disabled, or any error occurs.
+        Never raises an exception to the caller.
+    """
+    if not _graph_enabled or not user_id:
+        return None
+
+    headers = _make_headers()
+    if headers is None:
+        return None
+
+    url = f"{Config.GRAPH_BASE_URL}/users/{user_id}"
+    params = {
+        "$select": "id,displayName,mail,jobTitle,department,officeLocation,businessPhones",
+        "$expand": "manager($select=displayName)",
+    }
+
+    try:
+        resp = _graph_request_with_retry("GET", url, headers=headers, params=params)
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.json()
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Graph get_user_profile failed for user %r: %s", user_id, exc)
+        return None
+
+
+def get_user_photo_96(user_id: str) -> bytes | None:
+    """Retrieve the 96x96 profile photo for a user as raw bytes.
+
+    Uses the ``/photos/96x96/$value`` endpoint which returns a consistently
+    sized thumbnail suitable for display in the chat UI.  Returns ``None``
+    silently when the user has no photo (HTTP 404) — missing photos are normal
+    in large organisations and must not generate log noise.
+
+    Args:
+        user_id: The Graph user object ID (GUID).  Empty string returns
+            ``None`` without a network request.
+
+    Returns:
+        JPEG bytes on success, ``None`` if the user has no photo or Graph is
+        disabled.  Never raises an exception to the caller.
+    """
+    if not _graph_enabled or not user_id:
+        return None
+
+    headers = _make_headers()
+    if headers is None:
+        return None
+
+    url = f"{Config.GRAPH_BASE_URL}/users/{user_id}/photos/96x96/$value"
+
+    try:
+        resp = _graph_request_with_retry("GET", url, headers=headers)
+        if resp.status_code == 404:
+            return None
+        resp.raise_for_status()
+        return resp.content
+    except Exception as exc:  # noqa: BLE001
+        logger.error("Graph get_user_photo_96 failed for user %r: %s", user_id, exc)
+        return None
