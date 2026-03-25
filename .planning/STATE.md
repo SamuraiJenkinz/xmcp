@@ -2,40 +2,26 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-24)
+See: .planning/PROJECT.md (updated 2026-03-25)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.1 complete — Phase 12 done: Profile Card Frontend + System Prompt
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 12 of 12 (Profile Card Frontend + System Prompt)
-Plan: 2 of 2 in current phase
-Status: Phase 12 verified ✓ — v1.1 milestone complete
-Last activity: 2026-03-25 — Completed 12-02-PLAN.md (System Prompt Colleague Lookup Rules)
+Phase: 12 of 12 (all phases complete)
+Plan: N/A
+Status: Ready to plan next milestone
+Last activity: 2026-03-25 — v1.1 milestone archived
 
-Progress: [████████████] v1.0 complete, v1.1 Phases 10-12 done — project complete
+Progress: [████████████] v1.0 + v1.1 complete (12 phases, 44 plans shipped)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 35 (v1.0)
-- Total execution time: ~4 days (2026-03-19 → 2026-03-22)
-- Git commits: 139
-
-**By Phase (v1.0):**
-
-| Phase | Plans | Completed |
-|-------|-------|-----------|
-| 01-exchange-client-foundation | 4/4 | 2026-03-19 |
-| 02-mcp-server-scaffold | 3/3 | 2026-03-19 |
-| 03-mailbox-tools | 3/3 | 2026-03-20 |
-| 04-dag-and-database-tools | 3/3 | 2026-03-20 |
-| 05-mail-flow-and-security-tools | 5/5 | 2026-03-20 |
-| 06-hybrid-tools | 2/2 | 2026-03-20 |
-| 07-chat-app-core | 6/6 | 2026-03-21 |
-| 08-conversation-persistence | 3/3 | 2026-03-22 |
-| 09-ui-polish | 4/4 | 2026-03-22 |
+- v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
+- v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
+- Total: 44 plans, 12 phases, 2 milestones
 
 ## Accumulated Context
 
@@ -43,38 +29,20 @@ Progress: [████████████] v1.0 complete, v1.1 Phases 10-1
 
 All decisions logged in PROJECT.md Key Decisions table with outcomes.
 
-Key v1.1 decision: Use `msal` + `requests` directly — `msgraph-sdk` rejected (7 new transitive packages for two REST endpoints, already have both deps).
-
-Key 12-02 decision: Rules 7-10 numbered as continuation of 1-6; rule 10 names the UI behavior explicitly to justify model brevity.
-
 ### Pending Todos
 
 None.
 
 ### Blockers/Concerns
 
-- [RESOLVED — 2026-03-24]: Admin consent for User.Read.All and ProfilePhoto.Read.All granted. 10-01 complete.
-- [RESOLVED — 2026-03-24]: Token layer (_get_token, _make_headers, _graph_request_with_retry) implemented. 10-02 complete.
-- [RESOLVED — 2026-03-24]: search_users() and get_user_photo_bytes() implemented. 10-03 complete. Phase 10 done.
-- [RESOLVED — 2026-03-24]: Phase 10 verification gap closed. 10 unit tests added for graph_client core ops. 10-04 complete.
-- [RESOLVED — 2026-03-25]: get_user_profile() and get_user_photo_96() added to graph_client. search_colleagues and get_colleague_profile schemas in TOOL_DEFINITIONS. 11-01 complete.
-- [RESOLVED — 2026-03-25]: _search_colleagues_handler and _get_colleague_profile_handler implemented in TOOL_DISPATCH (17 entries). asyncio.to_thread + lazy imports. 11-02 complete.
-- [RESOLVED — 2026-03-25]: Flask /api/photo/<user_id> proxy route with TTL cache and SVG placeholder. @login_required protection. 11-03 complete. Phase 11 done.
-- [RESOLVED — 2026-03-25]: addProfileCard DOM builder + insertCard method + processLine conditional branch. Profile card CSS classes. 12-01 complete.
-- [RESOLVED — 2026-03-25]: SYSTEM_PROMPT Colleague Lookup section (rules 7-10). Rule 1 scope expanded. Auto-chain, disambiguation, no-speculation, no-duplication rules in place. 12-02 complete. Phase 12 done.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
-
-### Post-v1.0 Fixes (2026-03-24)
-
-- Switched powershell.exe → pwsh.exe (PS7)
-- Fixed env var propagation to child processes
-- Fixed MCP subprocess env passing
-- Fixed conversation pruning (8K buffer, prune after tool results, atomic group removal)
-- Added start.py, deployed to usdf11v1784.mercer.com:5050
+- [Tech Debt — v1.1]: 3 test regressions (description phrasing, tool count assertion)
+- [Tech Debt — v1.1]: get_user_photo_bytes() dead code
+- [Tech Debt — v1.1]: get_colleague_profile user_id schema description misleading
 
 ## Session Continuity
 
-Last session: 2026-03-25T11:24Z
-Stopped at: Completed 12-02-PLAN.md (System Prompt Colleague Lookup Rules) — project v1.1 complete
+Last session: 2026-03-25
+Stopped at: v1.1 milestone archived
 Resume file: None

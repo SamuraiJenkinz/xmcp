@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A complete Exchange management system for Marsh McLennan — an MCP server exposing 15 Exchange infrastructure tools paired with a polished Python chat application. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, and hybrid configuration through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD SSO, multi-thread conversation history, collapsible tool visibility panels, copy-to-clipboard, keyboard shortcuts, and dark mode. No direct PowerShell access or cmdlet knowledge required.
+A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a polished Python chat application. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history, collapsible tool visibility panels, copy-to-clipboard, keyboard shortcuts, and dark mode. No direct PowerShell access or cmdlet knowledge required.
 
 ## Core Value
 
@@ -22,19 +22,17 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 - Async PowerShell execution layer with per-call PSSession lifecycle — v1.0
 - DNS-based security lookups (DMARC/SPF/DKIM) via dnspython — v1.0
 - All operations read-only in v1 — v1.0
+- Microsoft Graph API client with MSAL client credentials, token caching, auto-refresh — v1.1
+- Azure AD app permissions: User.Read.All, ProfilePhoto.Read.All with admin consent — v1.1
+- MCP tools: search_colleagues and get_colleague_profile (17 tools total) — v1.1
+- Colleague search by name with ConsistencyLevel: eventual header — v1.1
+- Secure photo proxy route with TTL cache and SVG placeholder fallback — v1.1
+- Inline profile card DOM rendering (photo, name, title, department, email) — v1.1
+- System prompt colleague lookup routing with auto-chain and deduplication — v1.1
 
 ### Active
 
-#### Current Milestone: v1.1 — Colleague Lookup
-
-**Goal:** Enable colleague search and profile display via Microsoft Graph API, rendered as inline profile cards in the chat UI.
-
-- [ ] Microsoft Graph API client module (MSAL client credentials flow, same app registration)
-- [ ] MCP tool: search_colleagues (query by name/department)
-- [ ] MCP tool: get_colleague_profile (detailed user info)
-- [ ] Photo proxy route (GET /api/photo/<user_id>) in Flask
-- [ ] Inline profile card rendering in chat UI (photo + name + title + department + email)
-- [ ] Azure AD app permissions: User.Read.All, ProfilePhoto.Read.All
+(No active requirements — next milestone not yet defined)
 
 ### Out of Scope
 
@@ -48,14 +46,14 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
-- **Current state:** v1.0 MVP shipped 2026-03-22. 12,016 LOC (Python + JS/CSS/HTML/SQL). 9 phases, 35 plans complete.
+- **Current state:** v1.1 Colleague Lookup shipped 2026-03-25. ~20K LOC (Python + JS/CSS/HTML/SQL). 12 phases, 44 plans complete across 2 milestones.
 - **Environment:** Hybrid Exchange (Exchange 2019 on-prem + Exchange Online), 80,000+ mailboxes, multiple DAGs, AWS-hosted mailbox servers
 - **Organization:** Marsh McLennan Companies (MMC) — Colleague Tech Services (CTS) team
 - **Strategic alignment:** Supports One Marsh 2026 infrastructure consolidation and MMC Corporate AI Platform initiatives
 - **Existing pain point:** Shared mailbox governance (31,246 rows in ExoNotes.xlsx) currently requires batch exports — this enables on-demand live queries
 - **AI backend:** MMC-approved Azure OpenAI deployment at Dallas non-prod ingress (stg1), gpt-4o-mini-128k model, API version 2023-05-15
 - **Architecture doc:** `exchange-mcp-architecture.md` in project root — comprehensive reference for all tool schemas, data flows, and security model
-- **Known tech debt:** Tool events not persisted to SQLite (historical messages lose tool panels); copy button not on historical messages; CHATGPT_ENDPOINT not in secrets pipeline
+- **Known tech debt:** Tool events not persisted to SQLite (historical messages lose tool panels); copy button not on historical messages; CHATGPT_ENDPOINT not in secrets pipeline; v1.1 test regressions (description phrasing, tool count assertion); get_user_photo_bytes() dead code; get_colleague_profile user_id schema description misleading
 
 ## Constraints
 
@@ -80,6 +78,11 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | openai.OpenAI (not AzureOpenAI) | MMC gateway URL format incompatible with Azure SDK auto-routing | Good — working with gateway |
 | SQLite for conversation persistence | Zero ops, correct for <100 concurrent users, auto-bootstrap | Good — working cleanly |
 | get_migration_batches removed | MMC does not use migration batches; confirmed during Phase 6 research | Good — scope correctly reduced |
+| msal + requests over msgraph-sdk | 7 new transitive packages for two REST endpoints; already have both deps | Good — minimal dependency footprint |
+| photo_url proxy indirection | Binary photo data must never enter LLM context; proxy absorbs 404s with SVG placeholder | Good — clean separation |
+| asyncio.to_thread for sync graph calls | graph_client uses sync requests; MCP server is async; to_thread keeps event loop non-blocking | Good — no blocking |
+| Lazy graph_client imports in handlers | Avoids Config evaluation at module import time; fails gracefully if Azure creds missing | Good — startup resilience |
+| System prompt rules 7-10 for colleague lookup | Auto-chain on single result, disambiguate on multiple, suppress text duplication of card fields | Good — reliable tool routing |
 
 ---
-*Last updated: 2026-03-24 after v1.1 milestone started*
+*Last updated: 2026-03-25 after v1.1 milestone*

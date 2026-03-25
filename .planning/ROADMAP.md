@@ -99,74 +99,16 @@ Plans:
 
 </details>
 
----
+<details>
+<summary>v1.1 Colleague Lookup (Phases 10-12) — SHIPPED 2026-03-25</summary>
 
-### ✅ v1.1 Colleague Lookup (Shipped 2026-03-25)
+- [x] Phase 10: Graph Client Foundation (4/4 plans) — completed 2026-03-24
+- [x] Phase 11: MCP Tools + Photo Proxy (3/3 plans) — completed 2026-03-24
+- [x] Phase 12: Profile Card Frontend + System Prompt (2/2 plans) — completed 2026-03-25
 
-**Milestone Goal:** Enable colleague search and profile display via Microsoft Graph API, rendered as inline profile cards in the chat UI.
-
----
-
-#### Phase 10: Graph Client Foundation
-**Goal**: A verified, isolated Graph API client exists with confirmed admin consent, correct token acquisition, and all three core operations tested in isolation
-**Depends on**: Phase 9 (v1.0 shipped — additive work)
-**Requirements**: GRAPH-01, GRAPH-02, GRAPH-03, SRCH-04
-**Success Criteria** (what must be TRUE):
-  1. Graph API token is acquired via client credentials using `["https://graph.microsoft.com/.default"]` scope and the decoded token's `roles` claim contains `User.Read.All` and `ProfilePhoto.Read.All`
-  2. `graph_client.py` is a module-level singleton with its own `ConfidentialClientApplication` — it shares no state with `auth.py`'s user auth CCA
-  3. Token is cached at module level and refreshed automatically before expiry — no 401 errors after the first successful call
-  4. `search_users("test")` returns structured results with `ConsistencyLevel: eventual` header on every request
-  5. `get_user_photo_bytes()` returns `None` (not an exception) when the target user has no photo
-**Plans**: 4 plans
-
-Plans:
-- [x] 10-01: Azure AD app permissions + admin consent verification (GRAPH-02)
-- [x] 10-02: graph_client.py — MSAL singleton, token acquisition, caching (GRAPH-01, GRAPH-03)
-- [x] 10-03: User search and profile methods with ConsistencyLevel header (SRCH-04)
-- [x] 10-04: Unit tests for graph_client.py core operations (gap closure)
-
----
-
-#### Phase 11: MCP Tools + Photo Proxy
-**Goal**: Two new MCP tools are registered and callable, and authenticated users can retrieve colleague photos through a secure Flask proxy that absorbs 404s
-**Depends on**: Phase 10 (graph_client.py verified in isolation)
-**Requirements**: MCP-01, MCP-02, SRCH-01, SRCH-02, SRCH-03, PROF-01, PROF-03, PROF-05
-**Success Criteria** (what must be TRUE):
-  1. `search_colleagues` tool is callable via MCP and returns up to 10 results each with name, job title, department, and email
-  2. `get_colleague_profile` tool is callable via MCP and returns detailed profile fields plus a `photo_url` string — no binary photo data in the tool result
-  3. Searching for a name with no matches returns a clear "no results" message, not an empty array or silence
-  4. `GET /api/photo/<user_id>` returns the JPEG photo for an authenticated user who has a photo
-  5. `GET /api/photo/<user_id>` returns a placeholder image with HTTP 200 (not 404) when the user has no photo
-  6. `GET /api/photo/<user_id>` returns 401/302-to-login for unauthenticated requests
-**Plans**: 3 plans
-
-Plans:
-- [x] 11-01: MCP tool definitions in tools.py — search_colleagues and get_colleague_profile schemas (MCP-01, MCP-02)
-- [x] 11-02: Tool dispatch + server.py graph client singleton initialization (SRCH-01, SRCH-02, SRCH-03, PROF-01, PROF-05)
-- [x] 11-03: Photo proxy route in app.py with @login_required and 404 absorption (PROF-03)
-
----
-
-#### Phase 12: Profile Card Frontend + System Prompt
-**Goal**: Users see inline profile cards with photo, name, title, department, and email when they ask about colleagues, and Atlas consistently selects the right tool
-**Depends on**: Phase 11 (tool result JSON shape confirmed)
-**Requirements**: MCP-03, MCP-04, PROF-02, PROF-04
-**Success Criteria** (what must be TRUE):
-  1. Asking "look up Jane Smith" in the chat renders an inline profile card with photo, name, job title, department, and email — the card is built from DOM elements, not markdown
-  2. Profile cards for users without photos display a fallback avatar (initials or SVG icon), not a broken image
-  3. A search returning multiple results renders multiple profile cards in the same message
-  4. Atlas reliably selects `search_colleagues` for name queries and `get_colleague_profile` for ID-specific lookups — verified with at least 5 representative phrasings
-**Plans**: 2 plans
-
-Plans:
-- [x] 12-01-PLAN.md — Profile card DOM builder (app.js) and CSS (style.css)
-- [x] 12-02-PLAN.md — System prompt update for colleague lookup tool routing
-
----
+</details>
 
 ## Progress
-
-**Execution Order:** 10 → 11 → 12
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|

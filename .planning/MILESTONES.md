@@ -1,5 +1,32 @@
 # Project Milestones: Exchange Infrastructure MCP Server
 
+## v1.1 Colleague Lookup (Shipped: 2026-03-25)
+
+**Delivered:** Colleague search and profile display via Microsoft Graph API — users ask about a colleague by name, Atlas auto-chains search to profile lookup, and an inline profile card renders with photo, name, title, department, and email.
+
+**Phases completed:** 10-12 (9 plans total)
+
+**Key accomplishments:**
+
+- Microsoft Graph API client with MSAL client credentials flow, module-level token caching, and automatic refresh
+- Two new MCP tools (search_colleagues, get_colleague_profile) bringing the server total to 17
+- Secure Flask photo proxy route (`/api/photo/<user_id>`) with TTL cache and SVG placeholder fallback for users without photos
+- Inline profile card DOM rendering in chat UI — photo, name, job title, department, and email built from tool result JSON (not AI-generated markdown)
+- System prompt colleague lookup rules: auto-chain on single result, disambiguation on multiple, text deduplication contract with UI
+
+**Stats:**
+
+- 60 files created/modified
+- 8,118 lines added across Python/JS/CSS/HTML
+- 3 phases, 9 plans
+- 3 days from milestone start to ship (2026-03-23 → 2026-03-25)
+
+**Git range:** `711547c` (milestone start) → `b7e2425` (phase 12 complete)
+
+**What's next:** v1.2 — address carried tech debt (test regressions, schema descriptions), expanded profile fields (office, phone, manager), department search
+
+---
+
 ## v1.0 MVP (Shipped: 2026-03-22)
 
 **Delivered:** A complete Exchange management system — 15-tool MCP server paired with a polished Python chat application backed by Azure AD SSO and Azure OpenAI, enabling any authorized colleague to query Exchange infrastructure through natural language.
