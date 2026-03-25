@@ -248,11 +248,12 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_smtp_connectors",
         description=(
-            "Returns Send and Receive connectors configured in Exchange: address spaces, "
+            "Returns ON-PREMISES Send and Receive connectors: address spaces, "
             "permissions, authentication settings, and enabled status. "
-            "Use when asked about SMTP connector configuration: 'What connectors are set up?', "
-            "'How is outbound email routed?', 'What relays or smart hosts are configured?', "
-            "'Show me the Receive connector settings'."
+            "Uses Get-SendConnector and Get-ReceiveConnector (on-prem only — will fail against Exchange Online). "
+            "Use when asked about on-prem SMTP connector configuration: 'What on-prem connectors are set up?', "
+            "'What relays or smart hosts are configured on-prem?', "
+            "'Show me the on-prem Receive connector settings'."
         ),
         inputSchema={
             "type": "object",
@@ -355,11 +356,12 @@ TOOL_DEFINITIONS: list[types.Tool] = [
     types.Tool(
         name="get_connector_status",
         description=(
-            "Checks whether Exchange hybrid connectors are currently working by running "
-            "a live test against Exchange Online: reports inbound and outbound connector "
-            "health, last successful mail time, and any recent errors. "
-            "Use when asked if hybrid mail flow is working right now: 'Are the hybrid connectors up?', "
-            "'Is mail flowing between on-premises and cloud?', 'Test the hybrid connector health'. "
+            "Returns EXCHANGE ONLINE inbound and outbound connectors by running "
+            "Get-InboundConnector and Get-OutboundConnector against Exchange Online. "
+            "Shows connector names, enabled status, sender/recipient domains, and TLS settings. "
+            "Use when asked about Exchange Online / EXO / cloud connectors: 'Show EXO connectors', "
+            "'What outbound connectors are in Exchange Online?', 'Are the hybrid connectors up?', "
+            "'Is mail flowing between on-premises and cloud?'. "
             "Does NOT return the hybrid topology or federation settings — use get_hybrid_config for that."
         ),
         inputSchema={"type": "object", "properties": {}, "required": []},
