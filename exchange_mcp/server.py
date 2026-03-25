@@ -107,7 +107,8 @@ def _sanitize_error(exc: Exception) -> str:
     Returns:
         A clean, LLM-friendly error message string.
     """
-    raw = str(exc)
+    original = str(exc)
+    raw = original
 
     # Strip PowerShell traceback — keep only the part before 'stderr:'
     if "stderr:" in raw:
@@ -116,13 +117,20 @@ def _sanitize_error(exc: Exception) -> str:
     # Remove PowerShell exit code prefix (e.g. "PowerShell exited with code 1.")
     for prefix in ("PowerShell exited with code 1.", "PowerShell exited with code"):
         if prefix in raw:
-            # Remove up to and including the period after the code number
             idx = raw.find(prefix)
             end = raw.find(".", idx + len(prefix))
             if end != -1:
-                raw = raw[end + 1:].strip()
+                cleaned = raw[end + 1:].strip()
             else:
-                raw = raw[idx + len(prefix):].strip()
+                cleaned = raw[idx + len(prefix):].strip()
+            if cleaned:
+                raw = cleaned
+
+    # If stripping produced an empty string, fall back to original
+    if not raw.strip():
+        raw = original.split("stderr:")[0].strip() if "stderr:" in original else original
+    if not raw.strip():
+        raw = "The Exchange cmdlet failed. Check server logs for details"
 
     lower = raw.lower()
 
