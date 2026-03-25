@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-24)
 
 ## Current Position
 
-Phase: 10 of 12 (Graph Client Foundation)
-Plan: 4 of 4 in current phase (complete — all plans including gap closure done)
-Status: Phase 10 verified ✓ — ready for Phase 11 (MCP Tools + Photo Proxy)
-Last activity: 2026-03-24 — Completed 10-04-PLAN.md (graph_client unit tests)
+Phase: 11 of 12 (MCP Tools + Photo Proxy)
+Plan: 1 of 3 in current phase
+Status: In progress — 11-01 complete, ready for 11-02 (MCP handlers)
+Last activity: 2026-03-25 — Completed 11-01-PLAN.md (Graph data layer + tool schemas)
 
-Progress: [██████████░░] v1.0 complete, v1.1 Phase 10 done
+Progress: [███████████░] v1.0 complete, v1.1 Phase 10 done, Phase 11 in progress
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ None.
 - [RESOLVED — 2026-03-24]: Token layer (_get_token, _make_headers, _graph_request_with_retry) implemented. 10-02 complete.
 - [RESOLVED — 2026-03-24]: search_users() and get_user_photo_bytes() implemented. 10-03 complete. Phase 10 done.
 - [RESOLVED — 2026-03-24]: Phase 10 verification gap closed. 10 unit tests added for graph_client core ops. 10-04 complete.
+- [RESOLVED — 2026-03-25]: get_user_profile() and get_user_photo_96() added to graph_client. search_colleagues and get_colleague_profile schemas in TOOL_DEFINITIONS. 11-01 complete.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
 
@@ -68,6 +69,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-24T20:07Z
-Stopped at: 10-04-PLAN.md complete — graph_client unit tests added, Phase 10 verification gap closed
+Last session: 2026-03-25T00:08Z
+Stopped at: 11-01-PLAN.md complete — Graph data layer (get_user_profile, get_user_photo_96) + tool schemas (search_colleagues, get_colleague_profile)
 Resume file: None
