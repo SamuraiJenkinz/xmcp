@@ -1,7 +1,7 @@
 """Tool definitions and dispatch table for the Exchange MCP server.
 
 Provides:
-    TOOL_DEFINITIONS  -- list of all 15 mcp.types.Tool objects (14 Exchange + ping)
+    TOOL_DEFINITIONS  -- list of all 17 mcp.types.Tool objects (14 Exchange + ping + 2 Graph)
     TOOL_DISPATCH     -- dict mapping tool name to async handler callable
 
 The dispatch table is the single point of truth for routing:
@@ -362,6 +362,46 @@ TOOL_DEFINITIONS: list[types.Tool] = [
             "Does NOT return the hybrid topology or federation settings — use get_hybrid_config for that."
         ),
         inputSchema={"type": "object", "properties": {}, "required": []},
+    ),
+    # ------------------------------------------------------------------
+    # Colleague lookup tools (Phase 11 — Graph API)
+    # ------------------------------------------------------------------
+    types.Tool(
+        name="search_colleagues",
+        description=(
+            "Search for colleagues by name or email address. "
+            "Use for name lookups like 'find John Smith' or 'who is alice@company.com'. "
+            "Returns up to 10 results with name, job title, department, and email. "
+            "Use get_colleague_profile for detailed info or photo."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Name or email address to search for",
+                },
+            },
+            "required": ["query"],
+        },
+    ),
+    types.Tool(
+        name="get_colleague_profile",
+        description=(
+            "Get detailed profile for a specific colleague including photo URL. "
+            "Use when you have a user ID from search_colleagues results and need full details "
+            "like office location, phone numbers, manager, or photo."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The colleague's user ID from search results",
+                },
+            },
+            "required": ["user_id"],
+        },
     ),
 ]
 
