@@ -1,5 +1,12 @@
 """Start the Atlas chat application with HTTPS."""
 
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
+)
+
 from dotenv import load_dotenv
 
 load_dotenv()
