@@ -56,6 +56,7 @@ None.
 - [RESOLVED — 2026-03-24]: search_users() and get_user_photo_bytes() implemented. 10-03 complete. Phase 10 done.
 - [RESOLVED — 2026-03-24]: Phase 10 verification gap closed. 10 unit tests added for graph_client core ops. 10-04 complete.
 - [RESOLVED — 2026-03-25]: get_user_profile() and get_user_photo_96() added to graph_client. search_colleagues and get_colleague_profile schemas in TOOL_DEFINITIONS. 11-01 complete.
+- [RESOLVED — 2026-03-25]: _search_colleagues_handler and _get_colleague_profile_handler implemented in TOOL_DISPATCH (17 entries). asyncio.to_thread + lazy imports. 11-02 complete.
 - [RESOLVED — 2026-03-25]: Flask /api/photo/<user_id> proxy route with TTL cache and SVG placeholder. @login_required protection. 11-03 complete. Phase 11 done.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
