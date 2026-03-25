@@ -1052,6 +1052,65 @@ html, body {
     text-decoration: underline;
 }
 
+/* ---- Search result cards ---- */
+.search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 6px 0;
+    max-width: 460px;
+}
+
+.search-result-card {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 0.15s ease;
+}
+
+.search-result-card:last-child {
+    border-bottom: none;
+}
+
+.search-result-card:hover {
+    background: var(--color-bg-subtle);
+}
+
+.search-result-name {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+}
+
+.search-result-sep {
+    margin: 0 6px;
+    color: var(--color-text-muted);
+    font-size: 13px;
+}
+
+.search-result-title {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+}
+
+.search-result-dept {
+    font-size: 13px;
+    color: var(--color-text-muted);
+}
+
+.search-result-email-row {
+    margin-top: 2px;
+}
+
+.search-result-email {
+    font-size: 12px;
+    color: var(--color-brand);
+    text-decoration: none;
+}
+
+.search-result-email:hover {
+    text-decoration: underline;
+}
+
 /* ---- Responsive: hide sidebar on mobile ---- */
 @media (max-width: 768px) {
     .sidebar {

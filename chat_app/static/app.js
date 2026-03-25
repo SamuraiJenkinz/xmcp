@@ -324,6 +324,74 @@
         assistantMsg.insertCard(card);
     }
 
+    // ---- Search result cards builder ----
+    function addSearchCards(assistantMsg, resultJson) {
+        var data;
+        try {
+            data = JSON.parse(resultJson);
+        } catch (e) {
+            return false;
+        }
+        if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+            return false;
+        }
+
+        var container = document.createElement('div');
+        container.className = 'search-results';
+
+        data.results.forEach(function (item) {
+            if (!item.name) return;
+
+            var card = document.createElement('div');
+            card.className = 'search-result-card';
+
+            var nameEl = document.createElement('span');
+            nameEl.className = 'search-result-name';
+            nameEl.textContent = item.name;
+            card.appendChild(nameEl);
+
+            if (item.jobTitle) {
+                var sep1 = document.createElement('span');
+                sep1.className = 'search-result-sep';
+                sep1.textContent = '\u00B7';
+                card.appendChild(sep1);
+
+                var titleEl = document.createElement('span');
+                titleEl.className = 'search-result-title';
+                titleEl.textContent = item.jobTitle;
+                card.appendChild(titleEl);
+            }
+
+            if (item.department) {
+                var sep2 = document.createElement('span');
+                sep2.className = 'search-result-sep';
+                sep2.textContent = '\u00B7';
+                card.appendChild(sep2);
+
+                var deptEl = document.createElement('span');
+                deptEl.className = 'search-result-dept';
+                deptEl.textContent = item.department;
+                card.appendChild(deptEl);
+            }
+
+            if (item.email) {
+                var emailRow = document.createElement('div');
+                emailRow.className = 'search-result-email-row';
+                var emailEl = document.createElement('a');
+                emailEl.className = 'search-result-email';
+                emailEl.href = 'mailto:' + item.email;
+                emailEl.textContent = item.email;
+                emailRow.appendChild(emailEl);
+                card.appendChild(emailRow);
+            }
+
+            container.appendChild(card);
+        });
+
+        assistantMsg.insertCard(container);
+        return true;
+    }
+
     // ---- Welcome message ----
     function showWelcomeMessage() {
         var msgEl = document.createElement('div');
@@ -373,6 +441,9 @@
                 }
                 if (event.name === 'get_colleague_profile' && event.status === 'success') {
                     addProfileCard(assistantMsg, event.result || '');
+                    activeChip = null;
+                } else if (event.name === 'search_colleagues' && event.status === 'success') {
+                    addSearchCards(assistantMsg, event.result || '');
                     activeChip = null;
                 } else {
                     activeChip = assistantMsg.addToolPanel(
