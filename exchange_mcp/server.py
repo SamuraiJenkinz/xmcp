@@ -262,6 +262,19 @@ async def main() -> None:
             client.auth_mode,
         )
 
+    # -- Initialize Graph client (colleague lookup) --------------------------
+    try:
+        from chat_app.graph_client import init_graph
+        from chat_app.config import Config
+
+        init_graph(
+            client_id=Config.AZURE_CLIENT_ID,
+            client_secret=Config.AZURE_CLIENT_SECRET,
+            tenant_id=Config.AZURE_TENANT_ID,
+        )
+    except Exception as exc:
+        logger.warning("Graph client not available in MCP process: %s", exc)
+
     # -- Startup banner -----------------------------------------------------
     logger.info(
         "exchange-mcp v0.1.0 started | auth=%s | tools=%d | endpoint=Exchange Online",
