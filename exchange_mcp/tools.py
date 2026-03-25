@@ -15,6 +15,7 @@ implemented here.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from typing import TYPE_CHECKING, Any
 
@@ -1886,6 +1887,78 @@ async def _ping_handler(arguments: dict[str, Any], client: ExchangeClient | None
     return {"status": "pong"}
 
 
+async def _search_colleagues_handler(arguments: dict[str, Any], client: ExchangeClient | None) -> dict[str, Any]:
+    """Search for colleagues by name, email, or title using the Graph API."""
+    query = arguments.get("query", "").strip()
+    if not query:
+        return {"message": "Please provide a search query."}
+
+    # Import inside function to avoid module-scope Config evaluation
+    from chat_app.graph_client import is_graph_enabled, search_users
+
+    if not is_graph_enabled():
+        return {"message": "Colleague search is not available (Graph API not configured)."}
+
+    raw = await asyncio.to_thread(search_users, query)
+    if not raw:
+        return {"message": f"No colleagues found matching '{query}'."}
+
+    results = []
+    for item in raw[:10]:
+        entry: dict[str, Any] = {}
+        if item.get("displayName"):
+            entry["name"] = item["displayName"]
+        if item.get("jobTitle"):
+            entry["jobTitle"] = item["jobTitle"]
+        if item.get("department"):
+            entry["department"] = item["department"]
+        if item.get("mail"):
+            entry["email"] = item["mail"]
+        # Deliberately exclude "id" from results per design decision
+        results.append(entry)
+
+    return {"results": results, "count": len(results)}
+
+
+async def _get_colleague_profile_handler(arguments: dict[str, Any], client: ExchangeClient | None) -> dict[str, Any]:
+    """Retrieve a full colleague profile by user ID using the Graph API."""
+    user_id = arguments.get("user_id", "").strip()
+    if not user_id:
+        return {"message": "Please provide a user_id."}
+
+    # Import inside function to avoid module-scope Config evaluation
+    from chat_app.graph_client import is_graph_enabled, get_user_profile
+
+    if not is_graph_enabled():
+        return {"message": "Colleague profiles are not available (Graph API not configured)."}
+
+    raw = await asyncio.to_thread(get_user_profile, user_id)
+    if raw is None:
+        return {"message": f"No profile found for user ID '{user_id}'."}
+
+    profile: dict[str, Any] = {}
+    if raw.get("displayName"):
+        profile["name"] = raw["displayName"]
+    if raw.get("mail"):
+        profile["email"] = raw["mail"]
+    if raw.get("jobTitle"):
+        profile["jobTitle"] = raw["jobTitle"]
+    if raw.get("department"):
+        profile["department"] = raw["department"]
+    if raw.get("officeLocation"):
+        profile["officeLocation"] = raw["officeLocation"]
+    if raw.get("businessPhones"):
+        profile["businessPhones"] = raw["businessPhones"]
+    manager_name = raw.get("manager", {}).get("displayName") if raw.get("manager") else None
+    if manager_name:
+        profile["manager"] = manager_name
+
+    # Always include photo_url — binary photo data never enters the tool result
+    profile["photo_url"] = f"/api/photo/{user_id}"
+
+    return profile
+
+
 def _make_stub(tool_name: str):
     """Return an async stub function that raises NotImplementedError for tool_name."""
 
@@ -1912,4 +1985,6 @@ TOOL_DISPATCH: dict[str, Any] = {
     "check_mobile_devices": _check_mobile_devices_handler,
     "get_hybrid_config": _get_hybrid_config_handler,
     "get_connector_status": _get_connector_status_handler,
+    "search_colleagues": _search_colleagues_handler,
+    "get_colleague_profile": _get_colleague_profile_handler,
 }
