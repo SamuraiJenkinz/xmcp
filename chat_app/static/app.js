@@ -258,6 +258,19 @@
             },
             finalize: function () {
                 cursor.remove();
+                // Convert accumulated markdown text to rendered HTML
+                var raw = textNode.textContent;
+                if (raw.trim()) {
+                    var rendered = document.createElement('div');
+                    rendered.className = 'rendered-markdown';
+                    rendered.innerHTML = renderMarkdown(raw);
+                    els.content.replaceChild(rendered, textNode);
+                    // Update copy button to use the plain text
+                    copyBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        copyText(raw, copyBtn);
+                    });
+                }
                 els.wrapper.classList.add('finalized');
             },
             markError: function (msg) {
@@ -267,6 +280,117 @@
                 scrollToBottom();
             }
         };
+    }
+
+    // ---- Lightweight markdown → HTML renderer ----
+    function renderMarkdown(text) {
+        // Split into lines, process blocks
+        var lines = text.split('\n');
+        var html = '';
+        var inList = false;
+        var inCodeBlock = false;
+        var codeLines = [];
+
+        for (var i = 0; i < lines.length; i++) {
+            var line = lines[i];
+
+            // Fenced code blocks
+            if (line.trim().indexOf('```') === 0) {
+                if (!inCodeBlock) {
+                    inCodeBlock = true;
+                    codeLines = [];
+                } else {
+                    inCodeBlock = false;
+                    html += '<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>';
+                }
+                continue;
+            }
+            if (inCodeBlock) {
+                codeLines.push(line);
+                continue;
+            }
+
+            // Close list if this line isn't a list item
+            if (inList && !/^\s*[-*]\s/.test(line) && !/^\s*\d+\.\s/.test(line)) {
+                html += '</ul>';
+                inList = false;
+            }
+
+            // Blank line → paragraph break
+            if (line.trim() === '') {
+                if (!inList) html += '<br>';
+                continue;
+            }
+
+            // Horizontal rule
+            if (/^---+$/.test(line.trim())) {
+                html += '<hr>';
+                continue;
+            }
+
+            // Headers
+            if (/^### /.test(line)) {
+                html += '<h4>' + inlineFormat(line.slice(4)) + '</h4>';
+                continue;
+            }
+            if (/^## /.test(line)) {
+                html += '<h3>' + inlineFormat(line.slice(3)) + '</h3>';
+                continue;
+            }
+            if (/^# /.test(line)) {
+                html += '<h2>' + inlineFormat(line.slice(2)) + '</h2>';
+                continue;
+            }
+
+            // Unordered list items
+            var ulMatch = line.match(/^\s*[-*]\s+(.*)/);
+            if (ulMatch) {
+                if (!inList) {
+                    html += '<ul>';
+                    inList = true;
+                }
+                html += '<li>' + inlineFormat(ulMatch[1]) + '</li>';
+                continue;
+            }
+
+            // Ordered list items
+            var olMatch = line.match(/^\s*\d+\.\s+(.*)/);
+            if (olMatch) {
+                if (!inList) {
+                    html += '<ul>';
+                    inList = true;
+                }
+                html += '<li>' + inlineFormat(olMatch[1]) + '</li>';
+                continue;
+            }
+
+            // Regular paragraph line
+            html += '<p>' + inlineFormat(line) + '</p>';
+        }
+
+        if (inList) html += '</ul>';
+        if (inCodeBlock) html += '<pre><code>' + escapeHtml(codeLines.join('\n')) + '</code></pre>';
+
+        return html;
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.appendChild(document.createTextNode(text));
+        return div.innerHTML;
+    }
+
+    function inlineFormat(text) {
+        // Escape HTML first
+        text = escapeHtml(text);
+        // Bold: **text** or __text__
+        text = text.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        text = text.replace(/__(.+?)__/g, '<strong>$1</strong>');
+        // Italic: *text* or _text_ (but not inside words for _)
+        text = text.replace(/\*(.+?)\*/g, '<em>$1</em>');
+        // Inline code: `text`
+        text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+        return text;
     }
 
     // ---- Profile card builder ----
@@ -699,9 +823,10 @@
                             appendUserMessage(msg.content);
                         } else if (msg.role === 'assistant' && msg.content) {
                             var els = createMessageEl('assistant');
-                            var p = document.createElement('p');
-                            p.textContent = msg.content;
-                            els.content.appendChild(p);
+                            var rendered = document.createElement('div');
+                            rendered.className = 'rendered-markdown';
+                            rendered.innerHTML = renderMarkdown(msg.content);
+                            els.content.appendChild(rendered);
                             messagesEl.appendChild(els.wrapper);
                         }
                     });
