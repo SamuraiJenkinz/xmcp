@@ -328,11 +328,17 @@
     function addSearchCards(assistantMsg, resultJson) {
         var data;
         try {
-            data = JSON.parse(resultJson);
+            if (typeof resultJson === 'object') {
+                data = resultJson;
+            } else {
+                data = JSON.parse(resultJson);
+            }
         } catch (e) {
+            console.warn('addSearchCards: parse failed', e, resultJson);
             return false;
         }
         if (!data || !Array.isArray(data.results) || data.results.length === 0) {
+            console.warn('addSearchCards: no results array', data);
             return false;
         }
 
