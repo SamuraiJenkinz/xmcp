@@ -371,7 +371,7 @@ TOOL_DEFINITIONS: list[types.Tool] = [
         name="search_colleagues",
         description=(
             "Search for colleagues by name or email address. "
-            "Use for name lookups like 'find John Smith' or 'who is alice@company.com'. "
+            "Use when asked to find a colleague, e.g. 'find John Smith' or 'who is alice@company.com'. "
             "Returns up to 10 results with name, job title, department, and email. "
             "Use get_colleague_profile for detailed info or photo."
         ),
@@ -390,8 +390,8 @@ TOOL_DEFINITIONS: list[types.Tool] = [
         name="get_colleague_profile",
         description=(
             "Get detailed profile for a specific colleague including photo URL. "
-            "Use when you have a user ID from search_colleagues results and need full details "
-            "like office location, phone numbers, manager, or photo."
+            "Use when asked for details about a colleague, e.g. 'show me Jane Doe's profile'. "
+            "Requires a user ID from search_colleagues results."
         ),
         inputSchema={
             "type": "object",
