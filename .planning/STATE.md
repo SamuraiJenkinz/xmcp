@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-24)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.1 — Phase 11 complete, ready for Phase 12: Profile Card Frontend + System Prompt
+**Current focus:** v1.1 complete — Phase 12 done: Profile Card Frontend + System Prompt
 
 ## Current Position
 
 Phase: 12 of 12 (Profile Card Frontend + System Prompt)
-Plan: 1 of 2 in current phase
-Status: In progress — 12-01 complete, ready for 12-02 (System Prompt)
-Last activity: 2026-03-25 — Completed 12-01-PLAN.md (Profile Card Frontend)
+Plan: 2 of 2 in current phase
+Status: Phase 12 complete ✓ — project v1.1 done
+Last activity: 2026-03-25 — Completed 12-02-PLAN.md (System Prompt Colleague Lookup Rules)
 
-Progress: [████████████] v1.0 complete, v1.1 Phases 10-12 in progress (12-01 done)
+Progress: [████████████] v1.0 complete, v1.1 Phases 10-12 done — project complete
 
 ## Performance Metrics
 
@@ -45,6 +45,8 @@ All decisions logged in PROJECT.md Key Decisions table with outcomes.
 
 Key v1.1 decision: Use `msal` + `requests` directly — `msgraph-sdk` rejected (7 new transitive packages for two REST endpoints, already have both deps).
 
+Key 12-02 decision: Rules 7-10 numbered as continuation of 1-6; rule 10 names the UI behavior explicitly to justify model brevity.
+
 ### Pending Todos
 
 None.
@@ -59,6 +61,7 @@ None.
 - [RESOLVED — 2026-03-25]: _search_colleagues_handler and _get_colleague_profile_handler implemented in TOOL_DISPATCH (17 entries). asyncio.to_thread + lazy imports. 11-02 complete.
 - [RESOLVED — 2026-03-25]: Flask /api/photo/<user_id> proxy route with TTL cache and SVG placeholder. @login_required protection. 11-03 complete. Phase 11 done.
 - [RESOLVED — 2026-03-25]: addProfileCard DOM builder + insertCard method + processLine conditional branch. Profile card CSS classes. 12-01 complete.
+- [RESOLVED — 2026-03-25]: SYSTEM_PROMPT Colleague Lookup section (rules 7-10). Rule 1 scope expanded. Auto-chain, disambiguation, no-speculation, no-duplication rules in place. 12-02 complete. Phase 12 done.
 - [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
 - [Tech Debt — v1.0]: Copy button not rendered on historical messages
 
@@ -73,5 +76,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-25T11:24Z
-Stopped at: Completed 12-01-PLAN.md (Profile Card Frontend DOM + CSS)
+Stopped at: Completed 12-02-PLAN.md (System Prompt Colleague Lookup Rules) — project v1.1 complete
 Resume file: None
