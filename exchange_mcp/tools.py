@@ -1047,7 +1047,7 @@ async def _get_dag_health_handler(
 async def _check_mail_flow_handler(
     arguments: dict[str, Any], client: ExchangeClient | None
 ) -> dict[str, Any]:
-    """Trace routing path between sender and recipient via connector config."""
+    """Trace routing path between sender and recipient via EXO connector config."""
     if client is None:
         raise RuntimeError("Exchange client is not available.")
 
@@ -1070,30 +1070,29 @@ async def _check_mail_flow_handler(
     # Call 1: Check accepted domains to detect internal routing
     accepted_cmdlet = "Get-AcceptedDomain | Select-Object DomainName, DomainType, Default"
 
-    # Call 2: Send connectors for outbound route matching
-    # AddressSpaces, SmartHosts, SourceTransportServers are multi-valued collections
-    # -- must use ForEach-Object { $_.ToString() } projection
-    send_cmdlet = (
-        "Get-SendConnector | Select-Object "
-        "Name, Enabled, "
-        "@{Name='AddressSpaces';Expression={@($_.AddressSpaces | ForEach-Object { $_.ToString() })}}, "
-        "DNSRoutingEnabled, "
+    # Call 2: Outbound connectors (EXO)
+    out_cmdlet = (
+        "Get-OutboundConnector | Select-Object "
+        "Name, Enabled, ConnectorType, "
+        "@{Name='RecipientDomains';Expression={@($_.RecipientDomains | ForEach-Object { $_.ToString() })}}, "
         "@{Name='SmartHosts';Expression={@($_.SmartHosts | ForEach-Object { $_.ToString() })}}, "
-        "RequireTLS, TlsDomain, Fqdn, "
-        "@{Name='SourceTransportServers';Expression={@($_.SourceTransportServers | ForEach-Object { $_.Name })}}"
+        "UseMXRecord, RouteAllMessagesViaOnPremises, TlsSettings, "
+        "CloudServicesMailEnabled"
     )
 
-    # Call 3: Receive connectors for inbound context
-    recv_cmdlet = (
-        "Get-ReceiveConnector | Select-Object "
-        "Name, Enabled, AuthMechanism, PermissionGroups, RequireTLS, "
-        "TransportRole, Server, Fqdn"
+    # Call 3: Inbound connectors (EXO)
+    in_cmdlet = (
+        "Get-InboundConnector | Select-Object "
+        "Name, Enabled, ConnectorType, "
+        "@{Name='SenderDomains';Expression={@($_.SenderDomains | ForEach-Object { $_.ToString() })}}, "
+        "@{Name='SenderIPAddresses';Expression={@($_.SenderIPAddresses | ForEach-Object { $_.ToString() })}}, "
+        "RequireTls, TlsSenderCertificateName, CloudServicesMailEnabled"
     )
 
     try:
         accepted_raw = await client.run_cmdlet_with_retry(accepted_cmdlet)
-        send_raw = await client.run_cmdlet_with_retry(send_cmdlet)
-        recv_raw = await client.run_cmdlet_with_retry(recv_cmdlet)
+        out_raw = await client.run_cmdlet_with_retry(out_cmdlet)
+        in_raw = await client.run_cmdlet_with_retry(in_cmdlet)
     except RuntimeError:
         raise
 
@@ -1101,11 +1100,11 @@ async def _check_mail_flow_handler(
     accepted_list = accepted_raw if isinstance(accepted_raw, list) else (
         [accepted_raw] if isinstance(accepted_raw, dict) and accepted_raw else []
     )
-    send_list = send_raw if isinstance(send_raw, list) else (
-        [send_raw] if isinstance(send_raw, dict) and send_raw else []
+    out_list = out_raw if isinstance(out_raw, list) else (
+        [out_raw] if isinstance(out_raw, dict) and out_raw else []
     )
-    recv_list = recv_raw if isinstance(recv_raw, list) else (
-        [recv_raw] if isinstance(recv_raw, dict) and recv_raw else []
+    in_list = in_raw if isinstance(in_raw, list) else (
+        [in_raw] if isinstance(in_raw, dict) and in_raw else []
     )
 
     # Check if recipient domain is an accepted domain (internal routing)
@@ -1115,34 +1114,26 @@ async def _check_mail_flow_handler(
     is_internal = recipient_domain in accepted_domains
     sender_is_internal = sender_domain in accepted_domains
 
-    # Match send connectors for the recipient domain
+    # Match outbound connectors for the recipient domain
     matching_connectors = []
-    for conn in send_list:
+    for conn in out_list:
         if not conn.get("Enabled"):
             continue
-        for addr_space in (conn.get("AddressSpaces") or []):
-            # AddressSpaces are strings like "SMTP:contoso.com;1" or "SMTP:*;1"
-            addr_lower = addr_space.lower()
-            # Extract domain portion (before semicolon cost separator)
-            addr_domain = addr_lower.split(";")[0]
-            # Strip "smtp:" prefix if present
-            if ":" in addr_domain:
-                addr_domain = addr_domain.split(":", 1)[1]
-            addr_domain = addr_domain.strip()
-
-            if (addr_domain == recipient_domain or
-                    addr_domain == "*" or
-                    (addr_domain.startswith("*.") and
-                     recipient_domain.endswith(addr_domain[1:]))):
+        for domain in (conn.get("RecipientDomains") or []):
+            domain_lower = domain.lower().strip()
+            if (domain_lower == recipient_domain or
+                    domain_lower == "*" or
+                    (domain_lower.startswith("*.") and
+                     recipient_domain.endswith(domain_lower[1:]))):
                 matching_connectors.append({
                     "name": conn.get("Name"),
-                    "address_spaces": conn.get("AddressSpaces"),
-                    "dns_routing_enabled": conn.get("DNSRoutingEnabled"),
+                    "connector_type": conn.get("ConnectorType"),
+                    "recipient_domains": conn.get("RecipientDomains"),
                     "smart_hosts": conn.get("SmartHosts"),
-                    "require_tls": conn.get("RequireTLS"),
-                    "tls_domain": conn.get("TlsDomain"),
-                    "fqdn": conn.get("Fqdn"),
-                    "source_transport_servers": conn.get("SourceTransportServers"),
+                    "use_mx_record": conn.get("UseMXRecord"),
+                    "route_via_on_premises": conn.get("RouteAllMessagesViaOnPremises"),
+                    "tls_settings": conn.get("TlsSettings"),
+                    "cloud_services_mail_enabled": conn.get("CloudServicesMailEnabled"),
                 })
                 break
 
@@ -1150,28 +1141,31 @@ async def _check_mail_flow_handler(
     if is_internal:
         routing_type = "internal"
         routing_description = (
-            f"Internal delivery: '{recipient_domain}' is an accepted domain. "
-            "Mail routes directly to the recipient's mailbox database via SmtpDeliveryToMailbox."
+            f"Internal delivery: '{recipient_domain}' is an accepted domain in Exchange Online. "
+            "Mail routes directly within EXO."
         )
     elif matching_connectors:
         primary = matching_connectors[0]
-        if primary.get("smart_hosts"):
-            next_hop = f"Smart host(s): {', '.join(primary['smart_hosts'])}"
-        elif primary.get("dns_routing_enabled"):
-            next_hop = f"DNS routing to {recipient_domain}"
+        if primary.get("route_via_on_premises"):
+            next_hop = "Routed via on-premises Exchange"
+        elif primary.get("smart_hosts"):
+            hosts = primary["smart_hosts"]
+            next_hop = f"Smart host(s): {', '.join(hosts) if isinstance(hosts, list) else hosts}"
+        elif primary.get("use_mx_record"):
+            next_hop = f"MX lookup for {recipient_domain}"
         else:
-            next_hop = "Unknown next hop"
+            next_hop = "Direct delivery"
         routing_type = "external"
         routing_description = (
-            f"Outbound via send connector '{primary['name']}'. "
+            f"Outbound via connector '{primary['name']}'. "
             f"Next hop: {next_hop}. "
-            f"TLS required: {primary.get('require_tls', False)}."
+            f"TLS: {primary.get('tls_settings', 'not specified')}."
         )
     else:
-        routing_type = "unroutable"
+        routing_type = "external_default"
         routing_description = (
-            f"No send connector matches domain '{recipient_domain}'. "
-            "Mail to this domain may be undeliverable."
+            f"No specific outbound connector matches '{recipient_domain}'. "
+            "Mail will route via EXO default outbound (MX lookup)."
         )
 
     return {
@@ -1183,20 +1177,20 @@ async def _check_mail_flow_handler(
         "recipient_is_internal": is_internal,
         "routing_type": routing_type,
         "routing_description": routing_description,
-        "matching_send_connectors": matching_connectors,
+        "matching_outbound_connectors": matching_connectors,
         "matching_connector_count": len(matching_connectors),
-        "receive_connectors": [
+        "inbound_connectors": [
             {
-                "name": r.get("Name"),
-                "enabled": r.get("Enabled"),
-                "auth_mechanism": r.get("AuthMechanism"),
-                "permission_groups": r.get("PermissionGroups"),
-                "require_tls": r.get("RequireTLS"),
-                "transport_role": r.get("TransportRole"),
-                "server": r.get("Server"),
-                "fqdn": r.get("Fqdn"),
+                "name": c.get("Name"),
+                "enabled": c.get("Enabled"),
+                "connector_type": c.get("ConnectorType"),
+                "sender_domains": c.get("SenderDomains"),
+                "sender_ip_addresses": c.get("SenderIPAddresses"),
+                "require_tls": c.get("RequireTls"),
+                "tls_sender_certificate": c.get("TlsSenderCertificateName"),
+                "cloud_services_mail_enabled": c.get("CloudServicesMailEnabled"),
             }
-            for r in recv_list
+            for c in in_list
         ],
         "accepted_domains": sorted(accepted_domains),
     }
