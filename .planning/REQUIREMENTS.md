@@ -13,23 +13,23 @@
 
 ### Colleague Search
 
-- [ ] **SRCH-01**: User can search for colleagues by name via natural language ("look up John Smith")
-- [ ] **SRCH-02**: Search returns top results with name, job title, department, and email
-- [ ] **SRCH-03**: Search handles empty results with a clear message
+- [x] **SRCH-01**: User can search for colleagues by name via natural language ("look up John Smith")
+- [x] **SRCH-02**: Search returns top results with name, job title, department, and email
+- [x] **SRCH-03**: Search handles empty results with a clear message
 - [x] **SRCH-04**: Search uses `$search` with `ConsistencyLevel: eventual` header
 
 ### Profile Display
 
-- [ ] **PROF-01**: User can request detailed profile for a specific colleague
+- [x] **PROF-01**: User can request detailed profile for a specific colleague
 - [ ] **PROF-02**: Profile is rendered as an inline card with photo, name, job title, department, and email
-- [ ] **PROF-03**: Photo is served via Flask proxy route (`GET /api/photo/<user_id>`) with `@login_required`
+- [x] **PROF-03**: Photo is served via Flask proxy route (`GET /api/photo/<user_id>`) with `@login_required`
 - [ ] **PROF-04**: Users without photos get a fallback avatar (initials or generic icon)
-- [ ] **PROF-05**: Photo binary data never enters the LLM context — tools return `photo_url` string only
+- [x] **PROF-05**: Photo binary data never enters the LLM context — tools return `photo_url` string only
 
 ### MCP Integration
 
-- [ ] **MCP-01**: `search_colleagues` tool registered in MCP server with input schema
-- [ ] **MCP-02**: `get_colleague_profile` tool registered in MCP server with input schema
+- [x] **MCP-01**: `search_colleagues` tool registered in MCP server with input schema
+- [x] **MCP-02**: `get_colleague_profile` tool registered in MCP server with input schema
 - [ ] **MCP-03**: System prompt updated to describe colleague lookup capabilities
 - [ ] **MCP-04**: Profile card rendered as DOM element from tool result JSON (not AI-generated markdown)
 
@@ -60,17 +60,17 @@
 | GRAPH-01 | Phase 10 | Complete |
 | GRAPH-02 | Phase 10 | Complete |
 | GRAPH-03 | Phase 10 | Complete |
-| SRCH-01 | Phase 11 | Pending |
-| SRCH-02 | Phase 11 | Pending |
-| SRCH-03 | Phase 11 | Pending |
+| SRCH-01 | Phase 11 | Complete |
+| SRCH-02 | Phase 11 | Complete |
+| SRCH-03 | Phase 11 | Complete |
 | SRCH-04 | Phase 10 | Complete |
-| PROF-01 | Phase 11 | Pending |
+| PROF-01 | Phase 11 | Complete |
 | PROF-02 | Phase 12 | Pending |
-| PROF-03 | Phase 11 | Pending |
+| PROF-03 | Phase 11 | Complete |
 | PROF-04 | Phase 12 | Pending |
-| PROF-05 | Phase 11 | Pending |
-| MCP-01 | Phase 11 | Pending |
-| MCP-02 | Phase 11 | Pending |
+| PROF-05 | Phase 11 | Complete |
+| MCP-01 | Phase 11 | Complete |
+| MCP-02 | Phase 11 | Complete |
 | MCP-03 | Phase 12 | Pending |
 | MCP-04 | Phase 12 | Pending |
 

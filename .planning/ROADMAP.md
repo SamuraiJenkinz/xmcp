@@ -141,9 +141,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 11-01: MCP tool definitions in tools.py — search_colleagues and get_colleague_profile schemas (MCP-01, MCP-02)
-- [ ] 11-02: Tool dispatch + server.py graph client singleton initialization (SRCH-01, SRCH-02, SRCH-03, PROF-01, PROF-05)
-- [ ] 11-03: Photo proxy route in app.py with @login_required and 404 absorption (PROF-03)
+- [x] 11-01: MCP tool definitions in tools.py — search_colleagues and get_colleague_profile schemas (MCP-01, MCP-02)
+- [x] 11-02: Tool dispatch + server.py graph client singleton initialization (SRCH-01, SRCH-02, SRCH-03, PROF-01, PROF-05)
+- [x] 11-03: Photo proxy route in app.py with @login_required and 404 absorption (PROF-03)
 
 ---
 
@@ -181,5 +181,5 @@ Plans:
 | 8. Conversation Persistence | v1.0 | 3/3 | Complete | 2026-03-22 |
 | 9. UI Polish | v1.0 | 4/4 | Complete | 2026-03-22 |
 | 10. Graph Client Foundation | v1.1 | 4/4 | Complete | 2026-03-24 |
-| 11. MCP Tools + Photo Proxy | v1.1 | 0/3 | Not started | - |
+| 11. MCP Tools + Photo Proxy | v1.1 | 3/3 | Complete | 2026-03-24 |
 | 12. Profile Card Frontend + System Prompt | v1.1 | 0/3 | Not started | - |
