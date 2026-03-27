@@ -7,7 +7,7 @@ import os
 import threading
 import time
 
-from flask import Flask, Response, jsonify, redirect, render_template, request, session, url_for
+from flask import Flask, Response, jsonify, redirect, render_template, request, send_from_directory, session, url_for
 from flask_session import Session
 
 from chat_app import db as _db
@@ -85,6 +85,11 @@ def create_app() -> Flask:
     Config.update_from_secrets(secrets)
     app.config.from_object(Config)
 
+    # Absolute path to built React SPA assets (populated by `npm run build`)
+    FRONTEND_DIST = os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "frontend_dist")
+    )
+
     # Ensure session directory exists
     session_dir = app.config.get("SESSION_FILE_DIR", "/tmp/flask-sessions")
     os.makedirs(session_dir, exist_ok=True)
@@ -129,8 +134,10 @@ def create_app() -> Flask:
     except Exception as exc:
         logger.error("Graph client initialization failed (degraded mode): %s", exc)
 
-    # --- Root route ---
-    @app.route("/")
+    # --- Root route (classic Jinja2 mode) ---
+    # NOTE: No @app.route decorator — this function is called by the catch-all
+    # below. In classic mode the catch-all delegates here; in react mode the
+    # catch-all serves frontend_dist/index.html instead.
     def index():
         if session.get("user"):
             return redirect(url_for("chat"))
@@ -213,6 +220,31 @@ def create_app() -> Flask:
                 "oid": user.get("oid", ""),
             }
         )
+
+    # --- Catch-all: React SPA or classic Jinja2 fallback (MUST be last route) ---
+    @app.route("/", defaults={"path": ""})
+    @app.route("/<path:path>")
+    def catch_all(path):
+        """Serve React SPA when ATLAS_UI=react, otherwise fall through to classic UI.
+
+        Guard prefixes ensure API, auth, and chat routes are never intercepted.
+        """
+        _guarded = ("api/", "auth/", "chat/", "login", "logout")
+        if any(path == p.rstrip("/") or path.startswith(p) for p in _guarded):
+            return "Not found", 404
+
+        if app.config.get("ATLAS_UI") != "react":
+            # Classic mode: delegate to the Jinja2 index function
+            if not path:
+                return index()
+            return redirect(url_for("catch_all", path=""))
+
+        # React mode: serve static asset if it exists, otherwise SPA index.html
+        if path:
+            asset = os.path.join(FRONTEND_DIST, path)
+            if os.path.isfile(asset):
+                return send_from_directory(FRONTEND_DIST, path)
+        return send_from_directory(FRONTEND_DIST, "index.html")
 
     logger.info("Flask app created successfully")
     return app
