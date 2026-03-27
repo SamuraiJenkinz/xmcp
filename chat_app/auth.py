@@ -94,7 +94,7 @@ def login_required(f):  # type: ignore[no-untyped-def]
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):  # type: ignore[no-untyped-def]
         if not session.get("user"):
-            return redirect(url_for("index"))
+            return redirect(url_for("catch_all", path=""))
         return f(*args, **kwargs)
 
     return decorated_function
@@ -176,4 +176,4 @@ def auth_callback() -> Any:
 def logout() -> Any:
     """Clear the session and redirect to the splash page."""
     session.clear()
-    return redirect(url_for("index"))
+    return redirect(url_for("catch_all", path=""))
