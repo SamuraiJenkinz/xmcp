@@ -1,0 +1,158 @@
+# Requirements: Exchange Infrastructure MCP Server
+
+**Defined:** 2026-03-27
+**Core Value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
+
+## v1.2 Requirements
+
+Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Microsoft Copilot aesthetic with React + Fluent UI v9 migration.
+
+### Framework Migration
+
+- [ ] **FRAME-01**: Scaffold React 19 + Vite + TypeScript within existing Flask app (hybrid SPA pattern — Flask serves shell, React mounts on #app)
+- [ ] **FRAME-02**: Integrate Fluent UI v9 (@fluentui/react-components) as primary component library
+- [ ] **FRAME-03**: Integrate Tailwind CSS v4 for utility styling alongside Fluent tokens
+- [ ] **FRAME-04**: Port SSE streaming logic to React (fetch + ReadableStream, AbortController in useRef)
+- [ ] **FRAME-05**: Port thread management (CRUD, sidebar, switching) to React components
+- [ ] **FRAME-06**: Port message rendering and markdown to React components
+- [ ] **FRAME-07**: Add /api/me endpoint to replace Jinja2 template variable injection
+- [ ] **FRAME-08**: Achieve functional parity — all existing features work identically before visual changes
+
+### Design System
+
+- [ ] **DSGN-01**: Implement Fluent 2 semantic color token system (CSS custom properties with --atlas- namespace)
+- [ ] **DSGN-02**: Dark mode audit — three-tier surface hierarchy, no ad-hoc grays, WCAG AA contrast
+- [ ] **DSGN-03**: Light mode aligned with Fluent 2 neutral palette
+- [ ] **DSGN-04**: Typography system using Fluent 2 type ramp (Segoe UI Variable)
+
+### Chat Experience
+
+- [ ] **CHAT-01**: Redesigned message bubbles — clear user vs assistant role differentiation (Copilot style)
+- [ ] **CHAT-02**: Smooth message entrance animation (fade-in + translate, 150-200ms)
+- [ ] **CHAT-03**: Stop generation button replaces Send during streaming
+- [ ] **CHAT-04**: Auto-resize textarea with Send on Enter, Shift+Enter for newline
+- [ ] **CHAT-05**: Hover actions on messages — copy, per-message timestamp
+- [ ] **CHAT-06**: Welcome/empty state with Fluent 2 card-style prompt suggestion chips
+
+### Tool Panels
+
+- [ ] **TOOL-01**: Redesigned collapsible tool panels — chevron icon, status badge (running/done/error)
+- [ ] **TOOL-02**: Tool call elapsed time display ("Ran in 1.2s") — requires backend timestamp addition to SSE tool events
+- [ ] **TOOL-03**: Syntax-highlighted JSON with Fluent-aligned dark theme
+- [ ] **TOOL-04**: Per-panel copy button
+
+### Sidebar
+
+- [ ] **SIDE-01**: Thread recency grouping — Today / Yesterday / This Week / Older
+- [ ] **SIDE-02**: Sidebar collapse to icon-only mode (CSS transition, localStorage persistence)
+- [ ] **SIDE-03**: Visual polish — spacing, active state, hover states, new-chat button (pencil-plus icon)
+
+### Profile Cards
+
+- [ ] **PROF-01**: Profile card visual alignment with Fluent 2 card component
+- [ ] **PROF-02**: Search result cards aligned with Fluent 2 list patterns
+
+### Splash Page
+
+- [ ] **SPLA-01**: Redesigned login/splash page — professional landing with Fluent 2 aesthetic
+
+### Accessibility
+
+- [ ] **A11Y-01**: Keyboard navigation with visible focus rings (WCAG AA 3:1 contrast)
+- [ ] **A11Y-02**: Logical tab order across all components
+
+### Tech Debt
+
+- [ ] **DEBT-01**: Persist tool events to SQLite so historical messages retain tool panels
+- [ ] **DEBT-02**: Copy-to-clipboard on historical messages
+- [ ] **DEBT-03**: Fix 3 test regressions (description phrasing, tool count assertion)
+- [ ] **DEBT-04**: Remove get_user_photo_bytes() dead code
+- [ ] **DEBT-05**: Fix get_colleague_profile user_id schema description
+
+## Future Requirements
+
+Deferred to post-v1.2. Tracked but not in current roadmap.
+
+### Feedback & Analytics
+
+- **FEED-01**: Thumbs-up/down feedback on AI responses (needs POST /api/feedback endpoint + storage)
+- **FEED-02**: Usage analytics dashboard (admin view — query log aggregation)
+
+### Enhanced Navigation
+
+- **NAV-01**: Thread search (requires search backend or client-side index)
+- **NAV-02**: Conversation export as Markdown
+
+### Enhanced Animations
+
+- **ANIM-01**: Motion library (formerly Framer Motion) for complex entrance/exit/layout animations
+
+## Out of Scope
+
+Explicitly excluded. Documented to prevent scope creep.
+
+| Feature | Reason |
+|---------|--------|
+| Typewriter / per-character animation | Artificial latency, frustrates fast readers — Copilot streams naturally |
+| Emoji reactions on messages | Consumer chat pattern — undermines enterprise trust |
+| Onboarding wizard / product tour | IT engineers don't want guided tours — let affordances speak |
+| Sound effects on send/receive | No modern enterprise chat uses audio |
+| Floating chat bubble / widget style | Support bot pattern — full-page layout is professional standard |
+| File attachment upload UI | Not applicable to Exchange query domain |
+| Model picker dropdown | Confuses enterprise users — single model, single experience |
+| Animated mesh gradient background | Consumer AI marketing aesthetic — signals startup, not enterprise |
+| Real-time multi-user collaboration | IT engineers investigate solo — adds WebSocket complexity for zero benefit |
+| Chat export as PDF/Word | High implementation cost, low usage — copy-to-clipboard covers 95% |
+| Mobile responsive layout | Desktop-only tool (1080p-1440p), no mobile requirement |
+| "Powered by OpenAI" branding | Signals demo build, not production tool |
+
+## Traceability
+
+Which phases cover which requirements. Updated during roadmap creation.
+
+| Requirement | Phase | Status |
+|-------------|-------|--------|
+| FRAME-01 | — | Pending |
+| FRAME-02 | — | Pending |
+| FRAME-03 | — | Pending |
+| FRAME-04 | — | Pending |
+| FRAME-05 | — | Pending |
+| FRAME-06 | — | Pending |
+| FRAME-07 | — | Pending |
+| FRAME-08 | — | Pending |
+| DSGN-01 | — | Pending |
+| DSGN-02 | — | Pending |
+| DSGN-03 | — | Pending |
+| DSGN-04 | — | Pending |
+| CHAT-01 | — | Pending |
+| CHAT-02 | — | Pending |
+| CHAT-03 | — | Pending |
+| CHAT-04 | — | Pending |
+| CHAT-05 | — | Pending |
+| CHAT-06 | — | Pending |
+| TOOL-01 | — | Pending |
+| TOOL-02 | — | Pending |
+| TOOL-03 | — | Pending |
+| TOOL-04 | — | Pending |
+| SIDE-01 | — | Pending |
+| SIDE-02 | — | Pending |
+| SIDE-03 | — | Pending |
+| PROF-01 | — | Pending |
+| PROF-02 | — | Pending |
+| SPLA-01 | — | Pending |
+| A11Y-01 | — | Pending |
+| A11Y-02 | — | Pending |
+| DEBT-01 | — | Pending |
+| DEBT-02 | — | Pending |
+| DEBT-03 | — | Pending |
+| DEBT-04 | — | Pending |
+| DEBT-05 | — | Pending |
+
+**Coverage:**
+- v1.2 requirements: 35 total
+- Mapped to phases: 0
+- Unmapped: 35
+
+---
+*Requirements defined: 2026-03-27*
+*Last updated: 2026-03-27 after initial definition*
