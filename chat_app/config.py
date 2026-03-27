@@ -38,6 +38,9 @@ class Config:
     GRAPH_SEARCH_MAX_RESULTS: int = 25
     GRAPH_TIMEOUT: int = 10
 
+    # UI mode — set ATLAS_UI=react to serve the React SPA; default is classic Jinja2
+    ATLAS_UI: str = os.environ.get("ATLAS_UI", "classic")
+
     # Server
     HOST: str = os.environ.get("CHAT_HOST", "0.0.0.0")
     PORT: int = int(os.environ.get("CHAT_PORT", "5000"))

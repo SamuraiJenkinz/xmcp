@@ -200,6 +200,20 @@ def create_app() -> Flask:
         svg = _generate_placeholder_svg(user_id, name_hint)
         return Response(svg, status=200, mimetype="image/svg+xml")
 
+    # --- Current user identity endpoint (for React SPA) ---
+    @app.route("/api/me")
+    @login_required
+    def api_me():
+        """Return current user's display name, email, and OID from MSAL session."""
+        user = session.get("user", {})
+        return jsonify(
+            {
+                "displayName": user.get("name", ""),
+                "email": user.get("preferred_username", ""),
+                "oid": user.get("oid", ""),
+            }
+        )
+
     logger.info("Flask app created successfully")
     return app
 
