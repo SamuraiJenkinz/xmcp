@@ -123,11 +123,11 @@ Plans:
   3. `GET /api/me` returns the current user's display name and email as JSON (200) or redirects/401 if unauthenticated
   4. `@fluentui/react-components` FluentProvider renders without errors and applies webDarkTheme to the page shell
   5. `npm run build` produces a bundle in `frontend_dist/` that Flask serves correctly with the catch-all route
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 13-01: Vite + React 19 + TypeScript project scaffold with Fluent UI v9 and Tailwind v4
-- [ ] 13-02: Flask integration — /api/me endpoint, catch-all route, env-var feature flag, IIS ARR smoke test
+- [ ] 13-01-PLAN.md — Vite + React 19 + TypeScript scaffold with Fluent UI v9 and Tailwind v4
+- [ ] 13-02-PLAN.md — Flask integration: /api/me endpoint, catch-all route, ATLAS_UI feature flag
 
 #### Phase 14: Functional Port
 **Goal**: All existing chat features run in React components with identical behavior — SSE streaming, thread management, message rendering, tool panels, profile cards, input area — plus DEBT-01 and DEBT-02 fixed during the port
