@@ -112,47 +112,47 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FRAME-01 | — | Pending |
-| FRAME-02 | — | Pending |
-| FRAME-03 | — | Pending |
-| FRAME-04 | — | Pending |
-| FRAME-05 | — | Pending |
-| FRAME-06 | — | Pending |
-| FRAME-07 | — | Pending |
-| FRAME-08 | — | Pending |
-| DSGN-01 | — | Pending |
-| DSGN-02 | — | Pending |
-| DSGN-03 | — | Pending |
-| DSGN-04 | — | Pending |
-| CHAT-01 | — | Pending |
-| CHAT-02 | — | Pending |
-| CHAT-03 | — | Pending |
-| CHAT-04 | — | Pending |
-| CHAT-05 | — | Pending |
-| CHAT-06 | — | Pending |
-| TOOL-01 | — | Pending |
-| TOOL-02 | — | Pending |
-| TOOL-03 | — | Pending |
-| TOOL-04 | — | Pending |
-| SIDE-01 | — | Pending |
-| SIDE-02 | — | Pending |
-| SIDE-03 | — | Pending |
-| PROF-01 | — | Pending |
-| PROF-02 | — | Pending |
-| SPLA-01 | — | Pending |
-| A11Y-01 | — | Pending |
-| A11Y-02 | — | Pending |
-| DEBT-01 | — | Pending |
-| DEBT-02 | — | Pending |
-| DEBT-03 | — | Pending |
-| DEBT-04 | — | Pending |
-| DEBT-05 | — | Pending |
+| FRAME-01 | Phase 13 | Pending |
+| FRAME-02 | Phase 13 | Pending |
+| FRAME-03 | Phase 13 | Pending |
+| FRAME-07 | Phase 13 | Pending |
+| FRAME-04 | Phase 14 | Pending |
+| FRAME-05 | Phase 14 | Pending |
+| FRAME-06 | Phase 14 | Pending |
+| FRAME-08 | Phase 14 | Pending |
+| DEBT-01 | Phase 14 | Pending |
+| DEBT-02 | Phase 14 | Pending |
+| DSGN-01 | Phase 15 | Pending |
+| DSGN-02 | Phase 15 | Pending |
+| DSGN-03 | Phase 15 | Pending |
+| DSGN-04 | Phase 15 | Pending |
+| CHAT-01 | Phase 16 | Pending |
+| CHAT-02 | Phase 16 | Pending |
+| CHAT-03 | Phase 16 | Pending |
+| CHAT-04 | Phase 16 | Pending |
+| CHAT-05 | Phase 16 | Pending |
+| CHAT-06 | Phase 16 | Pending |
+| SIDE-01 | Phase 17 | Pending |
+| SIDE-02 | Phase 17 | Pending |
+| SIDE-03 | Phase 17 | Pending |
+| TOOL-01 | Phase 17 | Pending |
+| TOOL-02 | Phase 17 | Pending |
+| TOOL-03 | Phase 17 | Pending |
+| TOOL-04 | Phase 17 | Pending |
+| PROF-01 | Phase 18 | Pending |
+| PROF-02 | Phase 18 | Pending |
+| SPLA-01 | Phase 18 | Pending |
+| DEBT-03 | Phase 18 | Pending |
+| DEBT-04 | Phase 18 | Pending |
+| DEBT-05 | Phase 18 | Pending |
+| A11Y-01 | Phase 19 | Pending |
+| A11Y-02 | Phase 19 | Pending |
 
 **Coverage:**
 - v1.2 requirements: 35 total
-- Mapped to phases: 0
-- Unmapped: 35
+- Mapped to phases: 35
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after initial definition*
+*Last updated: 2026-03-27 after v1.2 roadmap creation*
