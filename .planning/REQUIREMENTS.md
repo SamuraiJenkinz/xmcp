@@ -9,13 +9,13 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Framework Migration
 
-- [ ] **FRAME-01**: Scaffold React 19 + Vite + TypeScript within existing Flask app (hybrid SPA pattern — Flask serves shell, React mounts on #app)
-- [ ] **FRAME-02**: Integrate Fluent UI v9 (@fluentui/react-components) as primary component library
-- [ ] **FRAME-03**: Integrate Tailwind CSS v4 for utility styling alongside Fluent tokens
+- [x] **FRAME-01**: Scaffold React 19 + Vite + TypeScript within existing Flask app (hybrid SPA pattern — Flask serves shell, React mounts on #app)
+- [x] **FRAME-02**: Integrate Fluent UI v9 (@fluentui/react-components) as primary component library
+- [x] **FRAME-03**: Integrate Tailwind CSS v4 for utility styling alongside Fluent tokens
 - [ ] **FRAME-04**: Port SSE streaming logic to React (fetch + ReadableStream, AbortController in useRef)
 - [ ] **FRAME-05**: Port thread management (CRUD, sidebar, switching) to React components
 - [ ] **FRAME-06**: Port message rendering and markdown to React components
-- [ ] **FRAME-07**: Add /api/me endpoint to replace Jinja2 template variable injection
+- [x] **FRAME-07**: Add /api/me endpoint to replace Jinja2 template variable injection
 - [ ] **FRAME-08**: Achieve functional parity — all existing features work identically before visual changes
 
 ### Design System
@@ -112,10 +112,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| FRAME-01 | Phase 13 | Pending |
-| FRAME-02 | Phase 13 | Pending |
-| FRAME-03 | Phase 13 | Pending |
-| FRAME-07 | Phase 13 | Pending |
+| FRAME-01 | Phase 13 | Complete |
+| FRAME-02 | Phase 13 | Complete |
+| FRAME-03 | Phase 13 | Complete |
+| FRAME-07 | Phase 13 | Complete |
 | FRAME-04 | Phase 14 | Pending |
 | FRAME-05 | Phase 14 | Pending |
 | FRAME-06 | Phase 14 | Pending |

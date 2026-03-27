@@ -126,8 +126,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — Vite + React 19 + TypeScript scaffold with Fluent UI v9 and Tailwind v4
-- [ ] 13-02-PLAN.md — Flask integration: /api/me endpoint, catch-all route, ATLAS_UI feature flag
+- [x] 13-01-PLAN.md — Vite + React 19 + TypeScript scaffold with Fluent UI v9 and Tailwind v4
+- [x] 13-02-PLAN.md — Flask integration: /api/me endpoint, catch-all route, ATLAS_UI feature flag
 
 #### Phase 14: Functional Port
 **Goal**: All existing chat features run in React components with identical behavior — SSE streaming, thread management, message rendering, tool panels, profile cards, input area — plus DEBT-01 and DEBT-02 fixed during the port
@@ -247,7 +247,7 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 10. Graph Client Foundation | v1.1 | 4/4 | Complete | 2026-03-24 |
 | 11. MCP Tools + Photo Proxy | v1.1 | 3/3 | Complete | 2026-03-24 |
 | 12. Profile Card Frontend + System Prompt | v1.1 | 2/2 | Complete | 2026-03-25 |
-| 13. Infrastructure Scaffold | v1.2 | 0/2 | Not started | - |
+| 13. Infrastructure Scaffold | v1.2 | 2/2 | Complete | 2026-03-27 |
 | 14. Functional Port | v1.2 | 0/5 | Not started | - |
 | 15. Design System | v1.2 | 0/2 | Not started | - |
 | 16. Chat Experience Redesign | v1.2 | 0/3 | Not started | - |

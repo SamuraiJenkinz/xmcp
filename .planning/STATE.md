@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 13: Infrastructure Scaffold
+**Current focus:** v1.2 UI/UX Redesign — Phase 14: Functional Port
 
 ## Current Position
 
@@ -40,6 +40,7 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [13-02]: **index() function kept without @app.route decorator** — called directly by catch-all in classic mode; avoids route conflict with catch-all's @app.route('/')
 - [13-02]: **ATLAS_UI=react toggles SPA mode** — single env var, no code change; default 'classic' ensures zero regression on existing deployments
 - [13-02]: **send_from_directory was NOT pre-imported** — plan stated it was already imported; had to add it (auto-fixed Rule 3)
+- [13-verify]: **auth.py url_for('index') → url_for('catch_all')** — removing @app.route('/') from index() broke login_required redirect and logout; fixed in orchestrator correction
 
 ### Pending Todos
 
