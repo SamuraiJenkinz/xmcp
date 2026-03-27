@@ -32,7 +32,20 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+- Full UI/UX overhaul — Microsoft Copilot / Fluent Design aesthetic, enterprise-ready appearance — v1.2
+- Stitch-designed design system and screen mockups as implementation reference — v1.2
+- Frontend framework evaluation (React/Vue/Svelte) — open to replacing vanilla JS if it delivers better UX — v1.2
+- New landing page / splash screen — professional first impression — v1.2
+- Modernized chat layout, message bubbles, sidebar, input area — v1.2
+- Redesigned tool visibility panels — scannable for both engineers and managers — v1.2
+- Refined profile cards and search result cards — native to chat flow — v1.2
+- Polished loading/streaming states and animations — v1.2
+- Dark mode refresh aligned with new design system — v1.2
+- Fix: Persist tool events to SQLite so historical messages retain tool panels — v1.2
+- Fix: Copy-to-clipboard on historical messages — v1.2
+- Fix: 3 test regressions (description phrasing, tool count assertion) — v1.2
+- Fix: Remove get_user_photo_bytes() dead code — v1.2
+- Fix: get_colleague_profile user_id schema description misleading — v1.2
 
 ### Out of Scope
 
@@ -46,7 +59,8 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
-- **Current state:** v1.1 Colleague Lookup shipped 2026-03-25. ~20K LOC (Python + JS/CSS/HTML/SQL). 12 phases, 44 plans complete across 2 milestones.
+- **Current state:** v1.2 UI/UX Redesign in progress. v1.1 shipped 2026-03-25. ~20K LOC (Python + JS/CSS/HTML/SQL). 12 phases, 44 plans complete across 2 milestones.
+- **Design reference:** `designux.md` in project root — comprehensive design brief for Stitch with component inventory, design tokens, and user flows
 - **Environment:** Hybrid Exchange (Exchange 2019 on-prem + Exchange Online), 80,000+ mailboxes, multiple DAGs, AWS-hosted mailbox servers
 - **Organization:** Marsh McLennan Companies (MMC) — Colleague Tech Services (CTS) team
 - **Strategic alignment:** Supports One Marsh 2026 infrastructure consolidation and MMC Corporate AI Platform initiatives
@@ -57,7 +71,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Constraints
 
-- **Tech stack:** Python 3.11+ (MCP server + chat app), PowerShell 5.1+ (Exchange cmdlets), Flask 3.x + Waitress + Jinja2 (frontend)
+- **Tech stack:** Python 3.11+ (MCP server + chat app), PowerShell 5.1+ (Exchange cmdlets), Flask 3.x + Waitress (backend); frontend stack open to framework (React/Vue/Svelte) or enhanced vanilla JS — decision during v1.2 research
 - **Deployment:** On-premises domain-joined Windows server — required for Kerberos authentication to Exchange
 - **AI endpoint:** Must use MMC corporate Azure OpenAI gateway only — no external AI services
 - **Security:** API keys sourced from AWS Secrets Manager at runtime — never hardcoded or committed. Service account credentials via Kerberos or Windows Credential Manager
@@ -84,5 +98,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | Lazy graph_client imports in handlers | Avoids Config evaluation at module import time; fails gracefully if Azure creds missing | Good — startup resilience |
 | System prompt rules 7-10 for colleague lookup | Auto-chain on single result, disambiguate on multiple, suppress text duplication of card fields | Good — reliable tool routing |
 
+| Open to frontend framework for v1.2 | Current vanilla JS + Jinja2 works but may limit design fidelity for Copilot-style UI; evaluate React/Vue/Svelte during research | — Pending |
+
 ---
-*Last updated: 2026-03-25 after v1.1 milestone*
+*Last updated: 2026-03-27 after v1.2 milestone start*

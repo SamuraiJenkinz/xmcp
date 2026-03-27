@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-25)
+See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Planning next milestone
+**Current focus:** v1.2 UI/UX Redesign — Microsoft Copilot aesthetic, enterprise-ready appearance
 
 ## Current Position
 
-Phase: 12 of 12 (all phases complete)
-Plan: N/A
-Status: Ready to plan next milestone
-Last activity: 2026-03-25 — v1.1 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-03-27 — Milestone v1.2 started
 
 Progress: [████████████] v1.0 + v1.1 complete (12 phases, 44 plans shipped)
 
@@ -35,14 +35,15 @@ None.
 
 ### Blockers/Concerns
 
-- [Tech Debt — v1.0]: Tool events not persisted to SQLite — historical messages lose tool panels
-- [Tech Debt — v1.0]: Copy button not rendered on historical messages
-- [Tech Debt — v1.1]: 3 test regressions (description phrasing, tool count assertion)
-- [Tech Debt — v1.1]: get_user_photo_bytes() dead code
-- [Tech Debt — v1.1]: get_colleague_profile user_id schema description misleading
+- [Tech Debt — carried into v1.2]: Tool events not persisted to SQLite — historical messages lose tool panels
+- [Tech Debt — carried into v1.2]: Copy button not rendered on historical messages
+- [Tech Debt — carried into v1.2]: 3 test regressions (description phrasing, tool count assertion)
+- [Tech Debt — carried into v1.2]: get_user_photo_bytes() dead code
+- [Tech Debt — carried into v1.2]: get_colleague_profile user_id schema description misleading
+- [Design]: Frontend framework decision pending — evaluate during research phase
 
 ## Session Continuity
 
-Last session: 2026-03-25
-Stopped at: v1.1 milestone archived
+Last session: 2026-03-27
+Stopped at: Milestone v1.2 initialized, entering requirements definition
 Resume file: None
