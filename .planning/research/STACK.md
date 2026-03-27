@@ -1,25 +1,29 @@
 # Technology Stack
 
 **Project:** Exchange Infrastructure MCP Server — Marsh McLennan Companies
-**Researched:** 2026-03-19 (original) | Updated: 2026-03-24 (Graph milestone additions)
+**Researched:** 2026-03-19 (original) | Updated: 2026-03-24 (Graph milestone) | Updated: 2026-03-27 (UI/UX milestone — frontend redesign)
 **Researcher:** GSD Project Researcher
 
 ---
 
 ## Research Method & Confidence Note
 
-Context7 MCP, WebSearch, and WebFetch tools were unavailable during the original (2026-03-19)
-research session.
+The 2026-03-27 update was scoped to the frontend redesign milestone only. The existing validated
+backend stack (Python/Flask/Waitress/SQLite/MSAL) is unchanged and not re-researched here.
 
-The 2026-03-24 update used WebSearch and WebFetch to verify Graph API library versions and
-permissions. Sources include:
+Research sources for this update:
+1. Existing codebase inspection (`app.js`, `style.css`, `chat.py`, `app.py`, templates) — HIGH confidence for current implementation.
+2. Design brief (`designux.md`) — HIGH confidence for component inventory and token system.
+3. WebSearch (with 2026 year qualifier) — MEDIUM confidence, cross-verified where possible.
+4. Official npm registry results (via WebSearch) — MEDIUM-HIGH for current versions.
+5. Training data (cutoff August 2025) — flagged where used without external verification.
 
-1. Project-owned documentation (`exchange-mcp-architecture.md`, `PROJECT.md`) — HIGH confidence.
-2. PyPI official pages (WebFetch verified) — HIGH confidence for current versions.
-3. Microsoft Graph official documentation (Microsoft Learn, WebFetch verified) — HIGH confidence
-   for API endpoints and required permissions.
-4. Training data (knowledge cutoff: August 2025) — MEDIUM confidence for ecosystem context.
-   Version numbers from training data alone are flagged LOW confidence.
+---
+
+## Sections in This File
+
+The original sections (Layers 1–4) covering MCP server, Flask, MSAL, Graph, and AI are
+preserved below unchanged. **New Section 5 covers the frontend stack for the UI/UX milestone.**
 
 ---
 
@@ -129,7 +133,7 @@ Browser → Flask app → Redirect to Azure AD /authorize
 
 ---
 
-### Layer 3a: Microsoft Graph API Client (NEW — Graph Milestone)
+### Layer 3a: Microsoft Graph API Client (Graph Milestone)
 
 **Decision: Use `msal` + `requests` directly. Do NOT add `msgraph-sdk`.**
 
@@ -154,436 +158,502 @@ the `msgraph-sdk` dependency tree is engineering overhead with no benefit. The G
 a straightforward JSON REST API. Raw `requests` calls are clearer, simpler to debug, and
 require no additional packages.
 
-**How it works in practice:**
+---
 
+### Layer 4: AI / LLM Integration
+
+| Technology | Version | Purpose | Why |
+|------------|---------|---------|-----|
+| **openai** (Python SDK) | ≥1.60 | Azure OpenAI gpt-4o-mini-128k API client | Project constraint. Azure OpenAI endpoint requires the official `openai` Python SDK with `AzureOpenAI` client class. |
+
+**Confidence:** HIGH. Project constraint.
+
+---
+
+### Layer 5: Frontend Stack (UI/UX Redesign Milestone — NEW)
+
+This section covers the frontend-only question: what framework, CSS approach, build tooling,
+and animation library to use when redesigning the UI to achieve a Microsoft Copilot-style
+aesthetic.
+
+---
+
+#### 5a. Architecture Decision: Hybrid SPA, Not Full SPA
+
+**Decision: Keep Flask/Jinja2 for page routing and authentication. Build chat UI as a
+component-isolated React app mounted inside a Flask-rendered shell.**
+
+**Do NOT do a full SPA migration.** Reasons:
+
+1. **Auth is Jinja2-native.** The splash page (`splash.html`), Azure AD redirect, and the
+   session-gated `/chat` route are already correct and working. A full SPA would require
+   re-implementing MSAL's auth code flow in JavaScript with `@azure/msal-browser` — an
+   entirely separate integration surface. This gains nothing for an on-prem internal tool.
+
+2. **The chat page is a single route.** There is one protected page (`/chat`) and one
+   unprotected page (`/` splash). React Router is not needed. Serving the SPA shell from
+   Flask's `render_template("chat.html", ...)` passes server-side data (user display name,
+   last thread ID) down as props — a clean, proven pattern with zero additional complexity.
+
+3. **Photo proxy is server-side.** The `/user-photo/<user_id>` route proxies Graph API
+   images through Flask with in-memory TTL caching. This stays unchanged. The React
+   frontend calls it as a normal image `src` URL.
+
+4. **SSE streaming stays as-is on the server.** The `POST /chat/stream` endpoint with
+   `text/event-stream` response is already implemented and working. React consumes it
+   identically to how current vanilla JS does — via the Fetch API with a `ReadableStream`
+   reader. No changes to `chat.py` are required.
+
+**Integration pattern:**
+
+```
+Flask renders chat.html (Jinja2)
+  └─ Injects: user display name, last_thread_id as data attributes on #app div
+  └─ Loads: /static/dist/bundle.js (Vite-built React)
+
+React mounts on #app div
+  └─ Reads user/thread props from data attributes
+  └─ All API calls: /api/threads/*, /chat/stream, /user-photo/*
+  └─ All routes: Flask handles, React never uses React Router
+```
+
+---
+
+#### 5b. Frontend Framework: React 19
+
+**Recommendation: React 19 (current: 19.2)**
+
+**Do NOT use Vue 3, Svelte 5, or enhanced vanilla JS for this milestone.**
+
+**Why React wins for this project:**
+
+1. **Fluent UI v9 is React-only from Microsoft.** The `@fluentui/react-components` package
+   (current: v9.73.5, published daily as of March 2026) is the official Microsoft Fluent UI
+   v9 component library. It is React-only. There is no official Fluent UI v9 for Vue or
+   Svelte. This single fact makes React the only framework where you get Microsoft-authentic
+   Copilot-style UI components without building them yourself.
+
+2. **Microsoft ships a Copilot chat package for React.** `@fluentui-copilot/react-copilot-chat`
+   (v0.13.x, published within the last 30 days as of March 2026) is Microsoft's own React
+   package for building Copilot-style chat experiences. It is built on Fluent UI v9 and
+   provides message bubbles, chat containers, and loading states that match the Copilot
+   aesthetic out of the box. This directly addresses the design brief.
+
+3. **shadcn/ui chat components.** Microsoft's `@fluentui-copilot` packages may be too
+   opinionated for Atlas's custom tool panels and profile cards. shadcn/ui (the dominant
+   React copy-paste component ecosystem in 2026) has AI-native chat components that work
+   with Tailwind and can be combined with Fluent tokens. This provides a fallback if
+   Fluent's chat package doesn't fit the exact Atlas component model.
+
+4. **SSE streaming is fully compatible.** React consumes SSE the same way vanilla JS does:
+   `fetch('/chat/stream', { method: 'POST', body: ... })` + `ReadableStream` reader.
+   No framework-level SSE complications. The existing `readSSEStream` function logic
+   migrates directly into a React hook.
+
+5. **Ecosystem depth for single developer.** React has the largest ecosystem of any frontend
+   framework. For a single developer, this means: more StackOverflow answers, more library
+   choices, more shadcn/ui components to copy-paste, and more AI coding assistant training
+   data. Vue and Svelte are excellent but the depth asymmetry is real at 1-developer scale.
+
+**Why NOT Vue 3:**
+- No official Microsoft Fluent UI v9 for Vue. Vue-specific Fluent libraries (`VFluent3`,
+  `Vuent`) are community projects with limited component sets and no connection to the
+  official Microsoft design token system. Building a "Microsoft Copilot style" UI without
+  official Fluent components means doing all token/component work manually.
+- The `@fluentui/web-components` package (Microsoft's Web Components version) works in
+  Vue but is designed for simpler integrations and has fewer chat-specific components.
+- VueUse provides `useEventSource` composable for SSE — SSE is not a blocker for Vue,
+  but the Fluent gap is significant.
+
+**Why NOT Svelte 5:**
+- `fluent-svelte` and `svelte-fui` are the only Svelte Fluent options. Both are community
+  projects with partial component coverage. `fluent-svelte` targets WinUI/desktop aesthetics,
+  not the modern web Copilot look. Neither is maintained by Microsoft.
+- Svelte 5's Runes system is a paradigm shift from Svelte 4. While the framework is
+  production-ready (used at NYT, IKEA), enterprise teams adopting it in 2026 are primarily
+  doing so for new greenfield apps. Migrating to Svelte while simultaneously redesigning
+  complex UI is doubled cognitive load for one developer.
+- Job market and AI coding assistant training data are significantly thinner for Svelte.
+  Practical productivity impact for one developer matters here.
+
+**Why NOT enhanced vanilla JS:**
+- The current app is already 1,012 lines of vanilla JS managing stateful UI: thread
+  selection, streaming cursor, tool panel expansion, inline profile cards, copy buttons.
+  This code works but is already showing signs of complexity that belong in a component
+  model (duplicated DOM manipulation logic, manual event delegation patterns).
+- A "Copilot aesthetic" means rich micro-animations, hover states, transitions, and
+  multi-state loading indicators. Building these in vanilla JS without a component model
+  creates unmaintainable CSS/JS coupling.
+- The key failure mode: vanilla JS scales poorly when new features are added. The
+  upcoming UI phase will add new component types. Each new feature in vanilla JS
+  means more global state, more event listener management, more DOM bookkeeping.
+
+**React version choice: React 19.2**
+
+React 19.2 is current (October 2025). Use React 19 for:
+- New `use()` hook and Actions API (simplifies async state for streaming)
+- Automatic memoization (React Compiler, opt-in)
+- Better TypeScript inference
+
+Do NOT use React Server Components (RSC) or Next.js — this is not a Node.js server.
+Flask is the server. React runs client-side only.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `react` | ^19.2.0 | UI runtime |
+| `react-dom` | ^19.2.0 | DOM renderer |
+| `typescript` | ^5.5.x | Type safety |
+| `@types/react` | ^19.x | React TypeScript types |
+| `@types/react-dom` | ^19.x | DOM types |
+
+**Confidence:** HIGH for React over Vue/Svelte (Fluent UI v9 is React-only from Microsoft —
+verified via WebSearch against npm registry). MEDIUM for specific React 19 sub-version
+(19.2 is current as of October 2025 per WebSearch; patch version may have advanced).
+
+---
+
+#### 5c. UI Component Library: Fluent UI v9 + shadcn/ui (hybrid)
+
+**Recommendation: Use Fluent UI v9 for design tokens and structural components.
+Use shadcn/ui for chat-specific and complex interactive components.**
+
+**Rationale for the hybrid:**
+
+Fluent UI v9 (`@fluentui/react-components`, v9.73.5) provides:
+- Microsoft-authentic design tokens (colors, typography, spacing, shadows)
+- `FluentProvider` + `webLightTheme`/`webDarkTheme` for theme switching
+- Core UI primitives: Button, Input, Tooltip, Badge, Avatar, Spinner, Toast, Divider, Card
+- The `makeStyles` / `mergeStyles` API for consuming Fluent tokens in custom components
+
+shadcn/ui provides:
+- Chat-specific layout components not in Fluent v9 (message lists, chat bubbles, streaming states)
+- AI-native components tuned to match ChatGPT/Copilot UX patterns
+- Copy-paste philosophy — no runtime library, no version lock-in
+- Works with Tailwind CSS v4 tokens that can be mapped to Fluent design values
+
+**The `@fluentui-copilot/react-copilot-chat` option:**
+Microsoft publishes `@fluentui-copilot/react-copilot-chat` (v0.13.x) which provides
+Copilot-style message bubbles and chat containers. This package is actively maintained
+(published within 30 days as of March 2026). However, it is designed for Microsoft's own
+Copilot products and may be opinionated about message structure and theming in ways that
+conflict with Atlas's tool panels and profile cards.
+
+**Recommendation:** Evaluate `@fluentui-copilot/react-copilot-chat` first during the
+initial implementation phase. If it does not accommodate the tool panel / profile card
+component model cleanly, fall back to shadcn/ui chat components styled with Fluent tokens.
+Do not try to use both simultaneously — pick one for the chat container.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `@fluentui/react-components` | ^9.73.5 | Fluent UI v9 core components + theming |
+| `@fluentui/react-icons` | ^2.x | Microsoft Fluent icons (Copilot, chat, UI icons) |
+| shadcn/ui components (copy-paste) | n/a | Chat bubbles, sidebar, command palette |
+
+**What NOT to add:**
+- `@fluentui/react` (v8) — this is the legacy Fluent v8 library. Do not mix v8 and v9.
+  v8 uses a completely different token system. v9 is the current standard.
+- `@fluentui/react-northstar` — EOL as of July 2025. Do not use.
+- `fluent-react` (any third-party) — check package provenance; unofficial Fluent packages
+  exist and some are abandoned.
+
+**Confidence:** HIGH for `@fluentui/react-components` v9 as the correct package (verified
+via npm WebSearch, version 9.73.5 published daily). MEDIUM for Copilot-specific packages
+(actively maintained but intended for Microsoft's own products — fitness for Atlas
+requires hands-on evaluation).
+
+---
+
+#### 5d. CSS Approach: Tailwind CSS v4 + CSS Custom Properties (design tokens)
+
+**Recommendation: Tailwind CSS v4 as the utility layer. CSS custom properties for
+Atlas-specific design tokens. Do NOT use styled-components or CSS Modules.**
+
+**Rationale:**
+
+The Atlas design brief in `designux.md` already defines a complete token system
+(30+ CSS custom properties covering colors, typography, spacing, shadows). This token
+system is the single source of truth for dark/light mode switching. The migration must
+preserve and extend this system, not replace it.
+
+Tailwind CSS v4 (released January 2026, verified via WebSearch) integrates with CSS custom
+properties natively via the `@theme` directive. You define tokens once in CSS, Tailwind
+generates utility classes from them, and they are available at runtime for dark mode
+switching. This eliminates the mismatch between Tailwind's `dark:` utilities and a
+token-based dark mode system.
+
+Tailwind v4 changes that matter:
+- No `tailwind.config.js` — configuration is CSS-first via `@import "tailwindcss"` + `@theme`
+- `dark:` variant defaults to `prefers-color-scheme` (OS preference)
+- Manual dark mode toggle uses `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *))`
+- 5x faster full builds, 100x faster incremental — development experience improvement
+
+**CSS approach for Atlas:**
+
+```css
+/* tokens.css — preserve existing designux.md tokens */
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #2563eb;
+  --color-surface: #ffffff;
+  /* ... all Atlas tokens */
+}
+
+@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *)) {
+  --color-brand: #3b82f6;
+  --color-surface: #1a1d27;
+  /* ... dark mode overrides */
+}
+```
+
+This preserves every existing design decision from `designux.md` while making them
+Tailwind-aware.
+
+**Why NOT styled-components:**
+- Zero-runtime CSS-in-JS is the 2026 direction (Panda CSS, Vanilla Extract, Tailwind).
+  styled-components has runtime overhead: CSS is injected via JavaScript at render time.
+  For a streaming chat app with frequent DOM updates, this matters.
+- styled-components v6 dropped React 18 compatibility changes and requires explicit
+  migration. With React 19, compatibility is unverified at HIGH confidence.
+- For one developer, Tailwind utility classes are faster to write and easier to audit
+  than styled-components template literals.
+
+**Why NOT CSS Modules:**
+- CSS Modules are an excellent choice for large teams preventing class name collisions.
+  For a single developer on a focused internal tool, the file-per-component overhead
+  adds friction without solving a real problem.
+- CSS Modules cannot consume Fluent UI v9's `makeStyles` token system without extra wiring.
+  The Tailwind + CSS custom properties approach is simpler to integrate with Fluent.
+
+**Why NOT vanilla CSS (only):**
+- Maintaining a 1,179-line CSS file with manual utility classes is already approaching
+  the complexity ceiling. The redesign will add more components. Tailwind's utility model
+  prevents that file from growing further.
+- Responsive utilities (`md:`, `lg:`) and state variants (`hover:`, `focus:`, `group-hover:`)
+  in Tailwind replace dozens of hand-crafted CSS rules.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `tailwindcss` | ^4.0.x | Utility CSS layer |
+| `@tailwindcss/vite` | ^4.0.x | Vite plugin for Tailwind v4 |
+
+**Confidence:** HIGH for Tailwind v4 as the correct approach (released and stable as of
+January 2026, verified via WebSearch). MEDIUM for exact version numbers — verify against
+npm before pinning.
+
+---
+
+#### 5e. Build Tooling: Vite 6
+
+**Recommendation: Vite 6 (current as of March 2026). Use the `@vitejs/plugin-react-swc`
+plugin for SWC-based transformation (faster than Babel).**
+
+**Why Vite:**
+- Vite is the de facto standard for React development in 2026. Create React App is
+  unmaintained. Webpack is an option only if the team has existing webpack expertise or
+  complex multi-entry requirements — neither applies here.
+- Vite's Rollup-based production build produces smaller bundles than webpack for this
+  use case.
+- Vite development server starts in milliseconds (compared to webpack's seconds). For
+  daily development, this matters more than theoretical bundle differences.
+- Flask + Vite integration is well-documented (multiple tutorials, `flask-vite` PyPI
+  package, direct manifest-based approach). The proxy pattern — Vite dev server proxies
+  API calls to Flask during development — is the standard approach.
+
+**Flask + Vite integration pattern:**
+
+Development (Vite dev server + Flask API server running in parallel):
+```javascript
+// vite.config.ts
+export default {
+  server: {
+    proxy: {
+      '/api': 'http://localhost:5000',
+      '/chat': 'http://localhost:5000',
+      '/login': 'http://localhost:5000',
+      '/user-photo': 'http://localhost:5000',
+    }
+  }
+}
+```
+
+Production (Flask serves Vite's built output):
 ```python
-# graph_client.py — the only new file needed
-import msal
-import requests
-
-class GraphClient:
-    """Application-identity Microsoft Graph client using client credentials flow.
-
-    A single ConfidentialClientApplication is kept as a module-level singleton.
-    MSAL's built-in in-memory token cache handles expiry and refresh automatically
-    — acquire_token_for_client() returns a cached token until it is within 5 minutes
-    of expiry, then silently refreshes.
-    """
-    GRAPH_BASE = "https://graph.microsoft.com/v1.0"
-    SCOPE = ["https://graph.microsoft.com/.default"]
-
-    def __init__(self, client_id: str, client_secret: str, tenant_id: str) -> None:
-        self._app = msal.ConfidentialClientApplication(
-            client_id,
-            authority=f"https://login.microsoftonline.com/{tenant_id}",
-            client_credential=client_secret,
-        )
-
-    def _get_token(self) -> str:
-        result = self._app.acquire_token_for_client(scopes=self.SCOPE)
-        if "access_token" not in result:
-            raise RuntimeError(f"Graph token acquisition failed: {result.get('error_description')}")
-        return result["access_token"]
-
-    def _headers(self) -> dict[str, str]:
-        return {"Authorization": f"Bearer {self._get_token()}"}
-
-    def search_users(self, query: str, top: int = 10) -> list[dict]:
-        """Search users by displayName, mail, or jobTitle using $search."""
-        resp = requests.get(
-            f"{self.GRAPH_BASE}/users",
-            headers={**self._headers(), "ConsistencyLevel": "eventual"},
-            params={
-                "$search": f'"displayName:{query}" OR "mail:{query}"',
-                "$select": "id,displayName,mail,jobTitle,department,officeLocation",
-                "$top": top,
-                "$count": "true",
-            },
-            timeout=10,
-        )
-        resp.raise_for_status()
-        return resp.json().get("value", [])
-
-    def get_photo_bytes(self, user_id: str) -> bytes | None:
-        """Fetch a user's profile photo as raw bytes. Returns None if no photo."""
-        resp = requests.get(
-            f"{self.GRAPH_BASE}/users/{user_id}/photos/96x96/$value",
-            headers=self._headers(),
-            timeout=10,
-        )
-        if resp.status_code == 404:
-            return None
-        resp.raise_for_status()
-        return resp.content
+# app.py — Flask serves /static/dist/* built by Vite
+# chat.html template loads /static/dist/assets/index-[hash].js
+# A catch-all route is NOT needed — Atlas has a single /chat route, not a multi-route SPA
 ```
 
-**Critical note on `$search` and ConsistencyLevel:**
+The simplest production pattern: Vite builds to `chat_app/static/dist/`. Flask's
+existing static file serving handles it. The `chat.html` Jinja2 template references
+the built asset via a manifest lookup or a fixed output filename.
 
-Graph's `$search` on user properties requires the `ConsistencyLevel: eventual` request header.
-Without it, the API returns a 400 error. This is a documented requirement as of the Graph v1.0
-REST API (verified via Microsoft Learn, 2026-03-24). The header must be on each individual
-search request, not just on client initialization.
+**esbuild vs Vite:**
+esbuild alone is faster but lacks Vite's plugin ecosystem, HMR, and React Fast Refresh.
+For a component-heavy React app, Vite's DX advantages outweigh esbuild's marginal build
+speed improvements. esbuild is Vite's underlying transformer — you get its speed inside Vite.
 
-**Alternatives considered and rejected:**
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `vite` | ^6.x | Build tool + dev server |
+| `@vitejs/plugin-react-swc` | ^3.x | React/JSX transform via SWC (faster than Babel) |
 
-| Option | Why Rejected |
-|--------|-------------|
-| `msgraph-sdk` v1.55.0 | Adds 7+ new transitive packages (kiota stack + azure-identity + httpx) for two REST endpoints. Over-engineered. |
-| `msgraph-core` (older package) | Deprecated — superseded by `msgraph-sdk`. |
-| `httpx` directly | `requests` is already a transitive dependency of `msal`. Using a second HTTP client for identical work adds confusion. |
-| OData `$filter` instead of `$search` | `$filter` on displayName requires exact-match or startswith — not suitable for fuzzy colleague lookup. `$search` supports substring matching. |
-
-**Confidence:** HIGH. The MSAL + requests direct pattern is the Microsoft-documented approach
-for daemon/service applications calling Graph. Source:
-https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-daemon-app-python-acquire-token
+**Confidence:** MEDIUM-HIGH. Vite 6 current status verified via WebSearch (tutorials and
+documentation reference Vite 6 in early 2026). Exact version requires npm verification.
 
 ---
 
-### Layer 3b: Azure AD App Registration Permissions (NEW — Graph Milestone)
+#### 5f. Animation Library: Motion (formerly Framer Motion)
 
-These are Azure portal configuration changes, not Python packages. They must be added to the
-existing MMC Entra ID app registration before `graph_client.py` will work.
+**Recommendation: `motion` package (formerly `framer-motion`, rebranded in 2025),
+version ^12.x. Import from `motion/react`.**
 
-| Permission | Type | Purpose | Why this, not alternatives |
-|------------|------|---------|---------------------------|
-| `User.Read.All` | Application (not Delegated) | Read all users' profiles (`/users?$search=...`) | Application permission required for client credentials flow. Delegated `User.ReadBasic.All` would require a logged-in user context — client credentials runs as the app identity, no user context. |
-| `ProfilePhoto.Read.All` | Application | Read all users' profile photos (`/users/{id}/photo/$value`) | Least-privilege option for application-level photo access. `User.Read.All` alone does NOT grant photo read in all configurations. |
+**Why Motion:**
+- The Atlas design brief specifies micro-animations: thinking dots (bouncing), streaming
+  cursor (blinking), tool spinner (spinning border), collapsible panel transitions,
+  message appearance. These are exactly the animations Motion handles with declarative APIs.
+- Motion (formerly Framer Motion) rebranded in 2025 to become framework-agnostic.
+  The package name changed from `framer-motion` to `motion`. Import path changed from
+  `framer-motion` to `motion/react`. The API is identical.
+- Current version: 12.37.0 (verified via WebSearch, March 2026). Over 30M monthly npm downloads.
+- `AnimatePresence` handles enter/exit animations for message appearance — critical for
+  the streaming effect where new messages appear.
+- `layout` prop handles sidebar resize animations with zero manual positioning code.
+- `motion.div` with `variants` replaces the current CSS keyframe animations for
+  thinking dots and tool spinner.
 
-**Both permissions require admin consent.** They are Application permissions (not Delegated),
-which means an Entra ID Global Administrator or Privileged Role Administrator must grant
-tenant-wide consent. This is a one-time operation in the Azure portal.
+**Why NOT GSAP:**
+- GSAP requires imperative `ref`-based API in React. For a component-driven UI, Motion's
+  declarative approach is significantly simpler.
+- GSAP's license for commercial use requires a paid license for for-profit products.
+  Marsh McLennan is a commercial entity. Motion is MIT-licensed.
 
-**What NOT to request:**
-- `Directory.Read.All` — much broader than needed; will trigger security review.
-- `User.ReadWrite.All` — unnecessary write scope.
-- `ProfilePhoto.ReadWrite.All` — unnecessary write scope.
+**Why NOT CSS-only animations:**
+- CSS animations handle simple looping effects (thinking dots, streaming cursor) well,
+  but enter/exit animations for dynamically mounted React components require JavaScript
+  coordination. AnimatePresence handles this; CSS cannot.
+- Smooth layout transitions when the sidebar collapses or thread list grows require
+  JavaScript measurement. Motion's layout animations handle this automatically.
 
-**Confidence:** HIGH. Verified directly against Microsoft Graph permissions reference
-(Microsoft Learn, WebFetch 2026-03-24).
+**AutoAnimate consideration:**
+`@formkit/auto-animate` adds enter/exit animations to DOM changes with zero config.
+It is worth evaluating for the thread list sidebar where items are added/removed. However,
+it does not handle the streaming cursor, thinking dots, or custom micro-animations.
+Motion is required anyway — avoid adding a second animation library.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `motion` | ^12.x | Animation library (formerly framer-motion) |
+
+Import: `import { motion, AnimatePresence } from 'motion/react'`
+
+**Confidence:** HIGH for `motion` as the correct package (rebranding verified via WebSearch,
+version 12.37.0 confirmed). MEDIUM for version pin — verify on npm before pinning.
 
 ---
 
-### Layer 3c: Photo Proxy Route (NEW — Graph Milestone)
+#### 5g. Syntax Highlighting: Prism.js
 
-No new packages needed. The photo proxy is a standard Flask route in `app.py` or a new
-`graph_bp` blueprint.
+**Recommendation: Prism.js for JSON syntax highlighting in tool panels.**
 
-**Pattern:**
+The Atlas tool panels display JSON (parameters sent to Exchange tools, raw Exchange results).
+The current implementation uses custom CSS for Catppuccin-palette highlighting. The redesign
+should use a maintained library.
 
-```python
-# In app.py or a new graph blueprint
-import base64
-from flask import Response, abort
+**Why Prism.js over highlight.js:**
+- Prism's ~2KB core + language-specific modules means you load only the JSON grammar.
+  highlight.js loads more code by default.
+- Prism's theming system maps to CSS custom properties cleanly — the Catppuccin palette
+  can be expressed as a Prism theme that inherits from Atlas's token system.
+- Prism renders 30% more tokens than highlight.js for the same input, but JSON output
+  from Exchange APIs is typically <5KB per panel — the difference is imperceptible.
 
-@app.route("/api/photo/<user_id>")
-@login_required
-def proxy_photo(user_id: str):
-    """Proxy Graph profile photos through Flask to avoid CORS and to add auth."""
-    graph = get_graph_client()  # module-level singleton
-    photo_bytes = graph.get_photo_bytes(user_id)
-    if photo_bytes is None:
-        # Return a 1x1 transparent PNG placeholder, not a 404
-        # (404 causes broken image icons in the UI)
-        abort(404)
-    return Response(photo_bytes, mimetype="image/jpeg")
+**Alternative: Shiki** (MEDIUM confidence recommendation)
+Shiki is a newer syntax highlighter (used by Vitepress, Astro) that uses TextMate grammars
+for higher fidelity highlighting. It is server-rendered or generates static HTML. For
+React client-side use, Shiki works but adds complexity (async grammar loading, WASM).
+For this use case (small JSON blobs, custom Catppuccin theme), Prism is simpler.
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| `prismjs` | ^1.29.x | JSON syntax highlighting in tool panels |
+| `@types/prismjs` | ^1.26.x | TypeScript types |
+
+**Confidence:** MEDIUM. Prism.js is the pragmatic choice for this use case. Shiki is a
+viable alternative worth evaluating during implementation.
+
+---
+
+#### 5h. Supporting Utilities
+
+Small libraries that address specific Atlas requirements:
+
+| Package | Version | Purpose | Why |
+|---------|---------|---------|-----|
+| `lucide-react` | ^0.400.x | Icon library | Fluent Icons via `@fluentui/react-icons` covers Microsoft-specific icons. Lucide covers generic UI icons (copy, trash, chevron, etc.) with consistent stroke style. Both libraries coexist cleanly. |
+| `clsx` | ^2.x | Conditional className utility | Replaces manual string concatenation for conditional CSS classes. 300 bytes. Used pervasively in shadcn/ui components. |
+| `tailwind-merge` | ^2.x | Merge Tailwind classes without conflicts | Prevents Tailwind class conflicts when combining base + variant classes. Required for shadcn/ui components. |
+
+**What NOT to add:**
+- **React Query / TanStack Query** — The app's API surface is small: thread CRUD
+  (`/api/threads/*`) and the SSE stream. React's `useEffect` + `fetch` is sufficient.
+  Adding React Query for 4 API endpoints is over-engineering.
+- **Zustand / Redux** — State is localized: thread list, active thread, streaming state.
+  React's `useState` + `useReducer` + Context API handles this without a state management
+  library.
+- **React Router** — Not needed. Flask handles all routing. Atlas is a single-page chat
+  view, not a multi-route SPA.
+- **Axios** — `fetch` is sufficient and built into the browser. No additional HTTP client
+  is needed.
+- **date-fns / dayjs** — Thread timestamps are displayed as relative time ("2 hours ago").
+  JavaScript's `Intl.RelativeTimeFormat` handles this natively in modern browsers with
+  no library required.
+
+**Confidence:** HIGH for the "what not to add" list (based on direct app surface analysis).
+MEDIUM for lucide-react version (verify on npm).
+
+---
+
+## Full Installation Reference (UI/UX Milestone)
+
+### npm packages to install (production dependencies)
+
+```bash
+npm install react@^19.2.0 react-dom@^19.2.0 \
+  @fluentui/react-components@^9 \
+  @fluentui/react-icons@^2 \
+  motion@^12 \
+  prismjs@^1.29 \
+  clsx@^2 \
+  tailwind-merge@^2 \
+  lucide-react@^0.400
 ```
 
-**Why proxy through Flask:**
-- The browser cannot call `https://graph.microsoft.com` directly — it has no Graph token.
-- The Flask route adds the `Authorization: Bearer` header server-side.
-- Avoids CORS issues with graph.microsoft.com.
-- `@login_required` ensures only authenticated users can fetch photos.
+### npm packages to install (dev dependencies)
 
-**Caching consideration:** Profile photos rarely change. A 10-minute in-memory cache
-(using `functools.lru_cache` keyed on `user_id`) or a simple `dict` with TTL timestamps
-will eliminate redundant Graph API calls. Use `cachetools.TTLCache` if you want a
-battle-tested TTL dict. `cachetools` is a zero-dependency pure-Python package at ~20KB.
-
-| Tool | Add to deps? | Why |
-|------|-------------|-----|
-| `cachetools` | Optional | If photo proxy sees repeated requests for the same users; adds `TTLCache`. Pure Python, tiny. |
-| In-memory dict with timestamp | Zero-cost alternative | Sufficient for an internal tool with <100 users. |
-
-**Recommendation:** Start with an in-memory dict with TTL timestamps (no new package). Only
-add `cachetools` if the dict implementation becomes complex.
-
----
-
-### Layer 4: Kerberos Constrained Delegation (KCD)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| `subprocess` (stdlib) | Python 3.11+ stdlib | Launch PowerShell process, capture stdout/stderr | The architecture doc uses `subprocess` for `run_ps()`. No external library needed for process management on Windows. |
-| `asyncio.create_subprocess_exec` | Python 3.11+ stdlib | Async wrapper for PowerShell subprocess | Prevents blocking the event loop during PSSession setup (~2-4s per call). Essential for responsiveness when multiple tool calls are in-flight. |
-| PowerShell 5.1 | 5.1 (Windows built-in) | Exchange Management Shell host | Project-pinned. Exchange 2019 Management Shell runs on PS 5.1. PowerShell 7 can also run Exchange cmdlets via compatibility mode but is not required and adds testing surface. |
-
-**PSSession pattern (per-call, no pooling):**
-```python
-# Per architecture doc decision — no session pooling in v1
-script = f"""
-$session = New-PSSession -ConfigurationName Microsoft.Exchange \
-    -ConnectionUri 'http://exchprod01.marsh.com/PowerShell/' \
-    -Authentication Kerberos
-Invoke-Command -Session $session -ScriptBlock {{ {ps_commands} }}
-Remove-PSSession $session
-"""
-proc = await asyncio.create_subprocess_exec(
-    "powershell.exe", "-NonInteractive", "-Command", script,
-    stdout=asyncio.subprocess.PIPE,
-    stderr=asyncio.subprocess.PIPE
-)
-stdout, stderr = await proc.communicate()
+```bash
+npm install -D \
+  typescript@^5.5 \
+  @types/react@^19 \
+  @types/react-dom@^19 \
+  @types/prismjs@^1.26 \
+  vite@^6 \
+  @vitejs/plugin-react-swc@^3 \
+  @tailwindcss/vite@^4 \
+  tailwindcss@^4
 ```
 
-**What NOT to use:**
-- `python-pptx` / `python-docx` — unrelated
-- `paramiko` — SSH, not WinRM
-- `pypsrp` — PowerShell Remoting Protocol over PSRP. Valid alternative to subprocess
-  but heavier. The architecture doc's choice of `subprocess` is simpler and correct
-  for this single-host, domain-joined Windows deployment.
+### Total dependency footprint assessment
 
-**Confidence:** HIGH. `subprocess` + `asyncio` is the correct pattern on Windows.
-No library needed beyond stdlib for this layer.
+Estimated gzipped bundle for Atlas chat app:
+- React 19 runtime: ~45KB gz
+- Fluent UI v9 (tree-shaken to used components): ~80-120KB gz
+- Motion (react subset): ~35KB gz
+- Tailwind (purged): ~10-20KB gz
+- App code + Prism + utilities: ~30-50KB gz
 
----
-
-### Layer 5: Azure OpenAI Client
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **openai** | ≥2.29.0 | Azure OpenAI API client — chat completions with tool use | Project-pinned floor. `AzureOpenAI` class handles the endpoint routing, api-key header injection, and api-version query parameter. Official OpenAI Python SDK — no alternative. |
-| **httpx** | ≥0.27.0 | Underlying HTTP transport for the openai SDK | `openai` ≥1.x uses `httpx` internally. Pin explicitly to avoid transitive regression. |
-
-**API version note (IMPORTANT):**
-The architecture doc pins `API_VERSION=2023-05-15`. This is the Azure OpenAI API version,
-not the package version. As of 2025/2026, newer Azure OpenAI API versions exist
-(`2024-02-01`, `2024-08-01-preview`, `2024-10-01-preview`). The MMC gateway may be
-pinned to `2023-05-15` by the corporate endpoint configuration. Do NOT change
-`API_VERSION` without confirming with the MMC CTS team — the gateway may not support
-newer versions.
-
-Tool use (function calling) is supported in `2023-05-15` — this is the MCP tool dispatch
-mechanism.
-
-**What NOT to use:**
-- `azure-openai` (older Azure SDK package) — superseded by the `openai` package's
-  `AzureOpenAI` class. The separate `azure-openai` package is deprecated.
-- Direct `requests` / `httpx` calls to the Azure OpenAI endpoint — loses retry logic,
-  streaming support, and type safety provided by the SDK.
-- `langchain` or `llamaindex` — over-engineered for 15 fixed tools. The `openai` SDK's
-  native tool use handles this exactly. Adding an orchestration framework hides the
-  tool dispatch logic and makes debugging harder.
-- `semantic-kernel` — Microsoft's Python orchestration SDK. Valid for some Azure AI
-  scenarios but adds abstraction that conflicts with the clean MCP protocol boundary.
-
-**Confidence:** HIGH. The `openai` SDK is the only correct client for Azure OpenAI.
-Version floor of `>=2.29.0` is project-pinned (from pyproject.toml as of 2026-03-24).
-
----
-
-### Layer 6: PowerShell Execution Layer
-
-(See Layer 4 / KCD — they are the same implementation layer. No new packages.)
-
----
-
-### Layer 7: DNS / Email Security Lookups
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **dnspython** | ≥2.8.0 | DMARC, SPF record resolution for `get_dmarc_status` | Project-pinned (pyproject.toml: `>=2.8.0`). `dns.resolver.resolve()` for TXT record lookups. Pure Python, no system DNS library dependency. Handles SERVFAIL, NXDOMAIN gracefully. |
-
-**Pattern:**
-```python
-import dns.resolver
-
-def get_dmarc_status(domain: str) -> dict:
-    try:
-        answers = dns.resolver.resolve(f"_dmarc.{domain}", "TXT")
-        dmarc_record = next(
-            (str(r) for r in answers if "v=DMARC1" in str(r)), None
-        )
-    except dns.exception.DNSException as e:
-        return {"error": str(e)}
-```
-
-**What NOT to use:**
-- `socket.getaddrinfo` — no TXT record support
-- `subprocess` + `nslookup` / `Resolve-DnsName` — fragile, platform-dependent parsing
-
-**Confidence:** HIGH. `dnspython>=2.8.0` is project-pinned (pyproject.toml).
-
----
-
-### Layer 8: Data Persistence (Conversation History)
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **SQLite** (stdlib `sqlite3`) | Python 3.11+ stdlib | Conversation thread storage, message history, user preferences | No external database server needed for an internal single-server deployment. SQLite on local disk is sufficient for the expected load (<100 concurrent users). Zero ops overhead. |
-| **Flask-Session** (filesystem backend) | ≥0.8.0 | In-process session state | `SESSION_TYPE="filesystem"` — confirmed in `config.py`. |
-
-**Schema sketch:**
-```
-threads(id, user_upn, title, created_at, updated_at)
-messages(id, thread_id, role, content, tool_name, tool_result, timestamp)
-```
-
-**What NOT to use:**
-- **PostgreSQL / MySQL** — operational overhead is not justified for this scale.
-  An internal tool used by one team does not need a separate database server.
-- **Redis** for conversation history — acceptable for session caching but adds
-  infrastructure dependency. SQLite is simpler for the v1 deployment.
-- **In-memory dict** for conversation history — data lost on server restart.
-  Users expect history to persist (project requirement).
-
-**Confidence:** HIGH. SQLite is the correct choice for this scale and deployment model.
-
----
-
-### Layer 9: Secret Management
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **boto3** | ≥1.42.73 | AWS Secrets Manager client — fetch `AZURE_OPENAI_API_KEY` at startup | Project-pinned (pyproject.toml: `>=1.42.73`). `boto3` is the only AWS SDK for Python. |
-| **python-dotenv** | ≥1.2.2 | `.env` file loader for local development | Project-pinned (pyproject.toml: `>=1.2.2`). Never in production — only for local dev. |
-
-**Startup pattern:**
-```python
-import boto3, os
-
-def load_secrets():
-    if os.getenv("ENVIRONMENT") == "production":
-        client = boto3.client("secretsmanager", region_name="us-east-1")
-        secret = client.get_secret_value(SecretId="/mmc/cts/azure-openai/api-key")
-        os.environ["AZURE_OPENAI_API_KEY"] = secret["SecretString"]
-    # else: already set via .env or CI/CD environment
-```
-
-**What NOT to use:**
-- Hardcoded API keys — explicitly forbidden by project constraints.
-- `keyring` — Windows Credential Manager integration; acceptable for local dev but
-  not the pattern for a multi-user server deployment.
-- Azure Key Vault SDK — the architecture doc specifies AWS Secrets Manager, not AKV.
-  The server runs in an AWS-hosted or AWS-connected environment.
-
-**Confidence:** HIGH for boto3 as the correct choice given the AWS Secrets Manager spec.
-
----
-
-### Layer 10: Development & Tooling
-
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **uv** | ≥0.4.0 | Python package manager and virtualenv | Significantly faster than pip+venv for dependency resolution on Windows. Produces deterministic lockfiles. Recommended for all 2025/2026 Python projects. |
-| **pytest** | ≥9.0.2 | Unit and integration test runner | Project-pinned (pyproject.toml). `pytest-asyncio` plugin required for async tool handler tests. |
-| **pytest-asyncio** | ≥1.3.0 | Async test support | Project-pinned (pyproject.toml). Required to test `async def` tool handlers without manually running `asyncio.run()`. |
-| **ruff** | ≥0.4.0 | Linting and formatting | Replaces flake8 + black + isort. Extremely fast, single config in `pyproject.toml`. |
-| **mypy** | ≥1.10 | Static type checking | MCP tool schemas use Pydantic v2 models — mypy catches type mismatches before runtime. |
-| **python-dateutil** | ≥2.9.0 | Date parsing for Exchange timestamp fields | Exchange returns dates in various formats. `dateutil.parser.parse()` handles them all. |
-
-**What NOT to use:**
-- **pip + requirements.txt** for dependency management — use `uv` + `pyproject.toml`.
-  `requirements.txt` is not reproducible without pinning every transitive dependency.
-- **poetry** — valid but slower than uv; less traction in 2025/2026 ecosystem.
-- **black** separately — ruff now includes a black-compatible formatter.
-
-**Confidence:** MEDIUM. uv adoption trajectory and ruff are solid as of training cutoff
-(Aug 2025). Verify uv version at `https://pypi.org/project/uv/`.
-
----
-
-## Graph Milestone: Summary of Changes to pyproject.toml
-
-**No new production packages needed.** The Graph API integration requires zero additions
-to `[project.dependencies]` because:
-
-1. `msal` is already pinned at `>=1.35.1` — provides `ConfidentialClientApplication`
-   and `acquire_token_for_client()`.
-2. `requests` is already installed as a transitive dependency of `msal` (confirmed:
-   msal 1.35.1 depends on requests 2.32.5 in the project lockfile).
-
-**What does change:**
-
-1. **New file: `exchange_mcp/graph_client.py`** — a `GraphClient` class using the
-   pattern documented in Layer 3a above.
-2. **New file: `exchange_mcp/graph_tools.py`** (or additions to `tools.py`) — two new
-   MCP tool handlers: `search_colleagues` and `get_colleague_profile`.
-3. **New route in `chat_app/app.py`** — `GET /api/photo/<user_id>` photo proxy.
-4. **New config vars in `config.py`** — `GRAPH_CLIENT_ID`, `GRAPH_CLIENT_SECRET`,
-   `GRAPH_TENANT_ID` (may reuse existing `AZURE_*` vars if the same app registration
-   is used for both SSO and Graph application permissions — see note below).
-
-**Same-app vs separate-app registration:**
-
-The existing app registration uses the Authorization Code flow for SSO (delegated
-permissions). The Graph client credentials pattern requires Application permissions
-(`User.Read.All`, `ProfilePhoto.Read.All`). Both can live on the same app registration.
-
-- **Same registration (recommended):** Add the Application permissions to the existing
-  app registration. Simpler ops — one app to manage. The existing `AZURE_CLIENT_ID`,
-  `AZURE_CLIENT_SECRET`, and `AZURE_TENANT_ID` env vars can be reused.
-- **Separate registration:** More security isolation, but adds operational complexity
-  (two app registrations, two secrets to rotate).
-
-**Recommendation:** Use the same app registration. Internal tools with low security
-surface area do not need the additional isolation.
-
----
-
-## Full Dependency Matrix (Post-Graph Milestone)
-
-### Production Dependencies
-
-```toml
-[project]
-name = "exchange-mcp"
-requires-python = ">=3.11"
-dependencies = [
-    # MCP protocol
-    "mcp>=1.0.0",
-
-    # Web framework (chat app)
-    "flask>=3.0",
-    "flask-session>=0.8.0",
-    "waitress>=3.0",
-
-    # Azure AD / Entra ID SSO + Graph API client
-    # NOTE: requests is NOT listed here — it is a transitive dep of msal.
-    # If msal ever drops the requests dep, add requests>=2.32 explicitly.
-    "msal>=1.35.1",
-
-    # Azure OpenAI
-    "openai>=2.29.0",
-    "tiktoken>=0.12.0",
-
-    # DNS lookups
-    "dnspython>=2.8.0",
-
-    # Secret management
-    "boto3>=1.42.73",
-    "python-dotenv>=1.2.2",
-]
-```
-
-### Development-Only Dependencies
-
-```toml
-[dependency-groups]
-dev = [
-    "pytest>=9.0.2",
-    "pytest-asyncio>=1.3.0",
-]
-```
-
-### System-Level (not pip — Windows/AD environment)
-
-| Component | Version | Install Method |
-|-----------|---------|----------------|
-| Python | 3.11 or 3.12 | python.org installer or `winget install Python.Python.3.12` |
-| PowerShell | 5.1 (built-in) | Windows built-in; Exchange 2019 uses Windows PS 5.1 |
-| Exchange Management Tools | Exchange 2019 build | Installed on management server |
-| Active Directory (for KCD) | Windows Server AD | Enterprise AD team configuration |
-| AWS CLI / credentials | Latest | For boto3 access to Secrets Manager |
+**Estimated total: ~200-270KB gz.** This is well within acceptable range for an internal
+desktop-only enterprise tool (no mobile requirement, corporate network, 1080p-1440p target).
 
 ---
 
@@ -591,109 +661,34 @@ dev = [
 
 | Category | Recommended | Alternative | Why Not |
 |----------|-------------|-------------|---------|
-| Graph API client | msal + requests (direct) | `msgraph-sdk` | Adds 7 new transitive packages (kiota stack) for two REST endpoints. Over-engineered. |
-| Graph API client | msal + requests (direct) | `msgraph-core` (deprecated) | Superseded by msgraph-sdk; do not use. |
-| User search | `$search` with ConsistencyLevel header | `$filter=startsWith(displayName,'...')` | `$filter` with startsWith is exact-prefix only, not substring. `$search` supports proper substring match needed for colleague lookup. |
-| Photo size | 96x96 via `/photos/96x96/$value` | Default `/photo/$value` | Default photo is the largest available (up to 648x648). A 96x96 thumbnail is sufficient for profile cards and avoids transmitting large binary payloads. |
-| Photo caching | In-memory dict with TTL | `cachetools.TTLCache` | For <100 users, a plain dict is adequate. Only add cachetools if the TTL management code grows complex. |
-| App registration | Reuse existing SSO app | Separate app registration | No meaningful security benefit for an internal tool. One registration is simpler to manage. |
-| Web framework | Flask 3.x | FastAPI | FastAPI is for JSON APIs, not server-rendered HTML. Jinja2 is non-idiomatic with FastAPI. Flask-Session is more mature. |
-| WSGI server | Waitress | Gunicorn | Gunicorn is Unix-only. The deployment is Windows. |
-| Session storage | filesystem / Flask-Session | Redis | Redis adds infrastructure dependency. SQLite has zero ops overhead for this scale. |
-| Auth library | msal | authlib | msal is Microsoft-maintained, Entra ID-native. authlib is generic and adds a wrapper layer with no benefit. |
-| MCP SDK | `mcp` (official) | `fastmcp` | `fastmcp` is a third-party wrapper over the official SDK. Use the official SDK — it is now mature. |
-| Orchestration | openai SDK direct | langchain | langchain adds abstraction that hides tool dispatch. 15 fixed tools do not need an orchestration framework. |
-| DNS lookups | dnspython | subprocess+nslookup | dnspython is pure Python, structured, handles all DNS exceptions cleanly. |
-| Package manager | uv | pip+venv | uv is 10-100x faster resolution, produces lockfiles, is the 2025/2026 standard. |
-| Database | SQLite | PostgreSQL | PostgreSQL is over-engineered for an internal single-server tool. SQLite is correct for this scale. |
-
----
-
-## Version Verification Checklist
-
-Before pinning versions in `pyproject.toml`, verify current releases:
-
-| Package | Verify At | Verified Version | Date Verified | Confidence |
-|---------|-----------|-----------------|---------------|------------|
-| `msal` | https://pypi.org/project/msal/ | 1.35.1 | 2026-03-24 | HIGH |
-| `msgraph-sdk` | https://pypi.org/project/msgraph-sdk/ | 1.55.0 (NOT USED) | 2026-03-24 | HIGH |
-| `requests` | transitive via msal | 2.32.5 | 2026-03-24 (lockfile) | HIGH |
-| `mcp` | https://pypi.org/project/mcp/ | verify before pinning | — | LOW — fast-moving |
-| `flask` | https://pypi.org/project/flask/ | 3.0.x | MEDIUM |
-| `openai` | https://pypi.org/project/openai/ | 2.29.0 (floor, pyproject) | HIGH |
-| `dnspython` | https://pypi.org/project/dnspython/ | 2.8.0 (floor, pyproject) | HIGH |
-| `waitress` | https://pypi.org/project/waitress/ | 3.0.x | MEDIUM |
-| `uv` | https://pypi.org/project/uv/ | verify before pinning | LOW — fast-moving |
-| `boto3` | https://pypi.org/project/boto3/ | 1.42.73 (floor, pyproject) | HIGH |
-
----
-
-## Critical Stack Decisions with Risk Flags
-
-### DECISION 1: Flask over FastAPI
-**Risk:** LOW. Flask 3.x is stable, well-documented, Windows-compatible.
-**Watch:** Flask 4.x may ship in 2026 — check for breaking changes before upgrading.
-
-### DECISION 2: Waitress as WSGI server
-**Risk:** LOW-MEDIUM. Waitress is single-threaded per worker by default. For production
-with >20 concurrent users, configure `threads=8` parameter.
-**Configuration:** `waitress.serve(app, host='0.0.0.0', port=5000, threads=8)`
-
-### DECISION 3: Kerberos Constrained Delegation
-**Risk:** HIGH. This is the most operationally complex component. True per-user
-identity pass-through requires AD team configuration of:
-- Service account with `msDS-AllowedToDelegateTo`
-- `TRUSTED_TO_AUTH_FOR_DELEGATION` flag
-- Exchange PowerShell VDir Kerberos auth enabled
-**Mitigation:** Implement Basic Auth with service account for v1 demo. KCD is a v2
-enhancement requiring AD team engagement.
-
-### DECISION 4: SQLite for conversation history
-**Risk:** LOW. SQLite has write serialization (one writer at a time). For <100
-concurrent users, this is not a bottleneck.
-**Migration path:** If scale requires it, swap SQLite for PostgreSQL with minimal
-schema changes. The Flask-SQLAlchemy abstraction handles this.
-
-### DECISION 5: Per-call PSSession (no pooling)
-**Risk:** MEDIUM-HIGH for user experience. 2-4 seconds per tool call is noticeable.
-**Watch:** If demo feedback is that latency is unacceptable, the session pool is the
-first optimization target. A persistent session pool in v2 would use `asyncio.Queue`
-to manage a fixed pool of 3-5 open PSSessions.
-
-### DECISION 6 (NEW): Graph Client Credentials — Same App Registration
-**Risk:** LOW-MEDIUM. Admin consent is required for `User.Read.All` and
-`ProfilePhoto.Read.All` as Application permissions. This is a one-time Azure portal
-action that requires a Global Administrator or Privileged Role Administrator.
-**Dependency:** The milestone is blocked until this admin consent is granted. The
-Python code can be written and unit-tested before consent, but live Graph calls will
-return 403 until the permissions are in place.
-**Watch:** If the `$search` query returns unexpected results, verify the
-`ConsistencyLevel: eventual` header is present and that the Entra directory has
-replicated recent changes (replication can lag 30-60s).
-
-### DECISION 7 (NEW): requests over httpx for Graph calls
-**Risk:** VERY LOW. `requests` is synchronous and already installed. The Graph calls
-in `search_colleagues` and `get_colleague_profile` are synchronous MCP tool handlers
-(the MCP server's `handle_call_tool` awaits the async handler, but the Graph calls
-themselves can be synchronous within the async handler without blocking issues for
-this call volume).
-**Watch:** If Graph calls are found to block the event loop under load, wrap them in
-`asyncio.get_event_loop().run_in_executor(None, ...)` or switch to `httpx.AsyncClient`.
-For an internal tool with <100 users, this is not an expected issue.
+| Framework | React 19 | Vue 3 | No official Fluent UI v9 for Vue; community Vue Fluent libraries are partial and unmaintained |
+| Framework | React 19 | Svelte 5 | No official Fluent UI v9 for Svelte; Svelte Fluent libraries are community, WinUI-focused, not web Copilot |
+| Framework | React 19 | Enhanced vanilla JS | Current 1,012-line JS is already at complexity ceiling; no component model means escalating DOM bookkeeping for new features |
+| UI library | Fluent UI v9 | Fluent UI v8 (@fluentui/react) | v8 is legacy; different token system; v9 is the current standard |
+| UI library | Fluent UI v9 + shadcn/ui | MUI (Material UI) | Material Design != Microsoft Fluent Design; wrong aesthetic for Copilot style |
+| CSS approach | Tailwind v4 + CSS props | styled-components | Runtime CSS-in-JS overhead; React 19 compatibility unverified at high confidence |
+| CSS approach | Tailwind v4 + CSS props | CSS Modules | Unnecessary per-file overhead for a single developer; poor integration with Fluent token system |
+| Build tool | Vite 6 | webpack 5 | Slower DX (seconds vs milliseconds for dev server start); no advantage for this project |
+| Build tool | Vite 6 | esbuild standalone | No HMR, no React Fast Refresh, no plugin ecosystem |
+| Animation | motion (^12) | GSAP | Imperative React API; commercial license concern for MMC |
+| Animation | motion (^12) | CSS keyframes only | Cannot handle AnimatePresence (enter/exit for mounted components) |
+| Syntax highlight | Prism.js | Shiki | Async WASM loading adds complexity; unnecessary for <5KB JSON blobs |
+| State management | useState/Context | Zustand/Redux | Overengineered for 4 API endpoints and localized UI state |
 
 ---
 
 ## Sources
 
-- Project `pyproject.toml` (HIGH — project-authored, verified 2026-03-24)
-- Project `uv.lock` (HIGH — lockfile, verified msal 1.35.1 + requests 2.32.5, 2026-03-24)
-- Project `chat_app/auth.py`, `chat_app/config.py` (HIGH — confirmed MSAL auth code flow)
-- PyPI: https://pypi.org/project/msgraph-sdk/ — v1.55.0 current, verified 2026-03-24
-- PyPI: https://pypi.org/project/msal/ — v1.35.1 current, verified 2026-03-24
-- Microsoft Learn: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0
-  (HIGH — official Graph API docs, photo endpoints, permissions, verified 2026-03-24)
-- Microsoft Learn: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0
-  (HIGH — official Graph API docs, user search, $search ConsistencyLevel requirement, verified 2026-03-24)
-- Microsoft Learn: https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-daemon-app-python-acquire-token
-  (HIGH — official pattern for MSAL client credentials + Graph, verified 2026-03-24)
-- Training data (knowledge cutoff August 2025): ecosystem context (MEDIUM)
+- React versions: https://react.dev/versions (React 19.2, October 2025)
+- Fluent UI React v9: https://react.fluentui.dev/ (v9.73.5, verified March 2026 via npm search)
+- Fluent UI v9 npm: https://www.npmjs.com/package/@fluentui/react-components
+- Fluent Copilot chat: https://www.npmjs.com/package/@fluentui-copilot/react-copilot-chat
+- Fluent 2 Design System: https://fluent2.microsoft.design/get-started/develop
+- Tailwind CSS v4: https://tailwindcss.com/blog/tailwindcss-v4
+- Motion (formerly Framer Motion): https://motion.dev/ (v12.37.0)
+- Motion rebranding: https://fireup.pro/news/framer-motion-becomes-independent-introducing-motion
+- Flask + React integration (Miguel Grinberg): https://blog.miguelgrinberg.com/post/create-a-react-flask-project-in-2025
+- Flask SPA patterns: https://flask.palletsprojects.com/en/stable/patterns/singlepageapplications/
+- Svelte production readiness: https://codifysol.com/svelte-in-2025-is-it-ready-for-production/
+- Prism vs highlight.js: https://www.peterbe.com/plog/benchmark-compare-highlight.js-vs-prism
+- Shadcn AI chat: https://www.shadcn.io/ai

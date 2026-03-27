@@ -1,546 +1,449 @@
-# Architecture Patterns: Microsoft Graph Colleague Lookup Integration
+# Architecture Patterns: UI/UX Redesign — Frontend Framework Integration
 
-**Project:** Exchange Infrastructure MCP Server — v1.1 Colleague Lookup milestone
-**Researched:** 2026-03-24
-**Scope:** Integration of Microsoft Graph API (user search + profile + photo) into the existing MCP server + Flask chat app
+**Project:** Atlas — Exchange Infrastructure Chat App
+**Milestone:** Full UI/UX Overhaul (Subsequent Milestone)
+**Researched:** 2026-03-27
+**Scope:** How a modern frontend framework integrates with the existing Flask/Waitress/Jinja2 backend without disrupting the working API layer.
 
 ---
 
 ## Executive Summary
 
-The Graph colleague lookup feature slots cleanly into the existing architecture. The pattern mirrors how Exchange tools already work: a new peer client module (`graph_client.py`) is called from the MCP server; new MCP tools surface data to the AI; a Flask photo proxy route handles binary image serving. Token acquisition reuses the existing MSAL `ConfidentialClientApplication` pattern from `auth.py`, using `acquire_token_for_client` (client credentials flow) rather than on-behalf-of, because the Graph calls are app-level lookups against the directory, not delegated user actions.
+The recommended approach for Atlas is the **Flask-served SPA** pattern: Svelte 5 (compiled via Vite) is built to a static bundle, served by Flask from a dedicated `frontend/dist/` directory, and the entire app runs on a single origin (same host, same port). This preserves the session-cookie auth flow intact, eliminates all CORS complexity, and requires zero changes to the Flask API routes or auth blueprint.
 
-The one structural addition is a photo proxy route in `app.py` — the browser cannot call Graph directly because the bearer token is server-side only, and Graph does not support CORS for `$value` endpoints. Profile card rendering lives entirely in `app.js` as a new branch of the SSE `tool` event handler, keeping the server contract (JSON tool events over SSE) unchanged.
+The current Jinja2 templates are replaced by the compiled SPA index.html. Flask gets one catch-all route that returns the index.html for any non-API, non-auth path, enabling client-side routing. During development a Vite dev server proxies all `/api/*`, `/chat/*`, `/login`, `/auth/*`, and `/logout` requests back to Flask, keeping cookies on localhost same-origin.
+
+This is the lowest-risk path for a single developer because: (1) the SSE streaming already uses `fetch()` + `ReadableStream` (not `EventSource`), so it ports directly to Svelte with no protocol changes; (2) auth is fully server-side MSAL — the frontend never touches tokens; (3) Flask stays unchanged except for three config lines and one catch-all route.
 
 ---
 
-## Existing Architecture (What Is Already Built)
+## Current Architecture (Baseline)
 
 ```
-Browser (MMC internal / VPN)
+Browser (on-prem / VPN)
     |
-    | HTTPS + SSE
+    | HTTPS (self-signed cert, Waitress WSGI)
     v
-+------------------------------------------+
-|  chat_app/app.py  — Flask / Waitress      |
-|  Blueprints: auth_bp, chat_bp,            |
-|              conversations_bp             |
-|  Routes:                                  |
-|    GET  /                                 |
-|    GET  /chat                             |
-|    POST /chat/stream  (SSE)               |
-|    GET  /api/health                       |
-|    /auth/* (MSAL auth code flow)          |
-|    /api/threads/* (conversation CRUD)     |
-|  State:                                   |
-|    SQLite (chat.db) — threads + messages  |
-|    Filesystem sessions (flask-session)    |
-|    MCP background thread + asyncio loop   |
-+------------------+-----------------------+
-                   |
-                   | JSON-RPC 2.0 over stdio pipe
-                   | (threading.Lock serialises calls)
-                   v
-+------------------------------------------+
-|  exchange_mcp/server.py  — MCP server    |
-|  Tools: 15 Exchange tools + ping          |
-|  Dispatch: TOOL_DISPATCH dict             |
-|  Error: _sanitize_error() strips PS trace|
-+------------------+-----------------------+
-                   |
-                   | async Python calls
-                   v
-+------------------------------------------+
-|  exchange_mcp/exchange_client.py          |
-|  ExchangeClient — PowerShell subprocess   |
-|  Auth: interactive or CBA (cert)          |
-|  Per-call PSSession lifecycle             |
-|  Retry with exponential backoff           |
-+------------------------------------------+
-                   |
-                   | WinRM/PowerShell Remoting
-                   v
-         Exchange Management Shell
-         (Exchange Online / on-prem)
-```
-
-### Key Constraints Already Established
-
-- Flask is synchronous; async work dispatched via `run_coroutine_threadsafe` to a dedicated background loop in `mcp_client.py`.
-- The MCP server subprocess uses stdio exclusively for JSON-RPC; stdout is reserved.
-- MSAL `ConfidentialClientApplication` is created per-request from `auth.py` (`_build_msal_app()`). The `SerializableTokenCache` is persisted in the Flask session.
-- Scopes currently acquired: `["User.Read"]` for delegated SSO login.
-- Tool results flow as JSON text over MCP → `run_tool_loop()` in `openai_client.py` → SSE `tool` events → `app.js` `addToolPanel()`.
-
----
-
-## Graph Integration: Target Architecture
-
-```
-Browser (MMC internal / VPN)
++--------------------------------------------------+
+|  Flask 3.x / Waitress                            |
+|  Blueprints:                                     |
+|    auth_bp      → /login, /auth/callback,        |
+|                   /logout                        |
+|    chat_bp      → POST /chat/stream (SSE)        |
+|    conversations_bp → /api/threads (CRUD)        |
+|  Routes (app.py):                                |
+|    GET  /            → splash.html (Jinja2)      |
+|    GET  /chat        → chat.html (Jinja2)        |
+|    GET  /api/photo/<user_id>  → Graph photo proxy|
+|    GET  /api/health           → JSON             |
+|  Session: filesystem (flask-session, signed)     |
+|  Auth: MSAL ConfidentialClientApplication        |
+|  DB: SQLite WAL (threads + messages tables)      |
+|  MCP: async subprocess JSON-RPC stdio            |
++--------------------------------------------------+
     |
-    | HTTPS + SSE
+    | JSON-RPC stdio
     v
-+------------------------------------------+
-|  chat_app/app.py  — Flask / Waitress      |
-|  (modified)                               |
-|  NEW route:                               |
-|    GET  /api/photo/<user_id>              |  <-- photo proxy
-|    (login_required, proxies Graph binary) |
-+------------------+-----------------------+
-                   |
-                   | JSON-RPC 2.0 over stdio pipe
-                   v
-+------------------------------------------+
-|  exchange_mcp/server.py  — MCP server    |
-|  (modified — add 2 new tools)             |
-|  NEW tools in TOOL_DEFINITIONS:           |
-|    search_colleagues                      |
-|    get_colleague_profile                  |
-|  TOOL_DISPATCH entries point to           |
-|    graph_client.GraphClient methods       |
-+------------------+-----------------------+
-                   |          |
-      async Python calls      | async Python calls
-                   |          |
-                   v          v
-+------------------------------------------+    +------------------------------------------+
-|  exchange_mcp/exchange_client.py          |    |  exchange_mcp/graph_client.py  (NEW)      |
-|  (unchanged)                             |    |  GraphClient                              |
-+------------------------------------------+    |  Auth: MSAL client credentials            |
-                                                |    acquire_token_for_client(              |
-                                                |      ["https://graph.microsoft.com/.def"] |
-                                                |    )                                      |
-                                                |  Methods:                                 |
-                                                |    search_users(query) -> list[dict]      |
-                                                |    get_user_profile(user_id) -> dict      |
-                                                |    get_user_photo_bytes(user_id) -> bytes |
-                                                +------------------------------------------+
-                                                                   |
-                                                                   | HTTPS REST (requests)
-                                                                   v
-                                                     graph.microsoft.com/v1.0
-                                                     /users?$search=...
-                                                     /users/{id}?$select=...
-                                                     /users/{id}/photo/96x96/$value
++---------------------------+
+|  exchange_mcp server      |
+|  (Python subprocess)      |
++---------------------------+
+```
+
+**Static assets:** `chat_app/static/app.js` (~400 lines vanilla JS), `style.css` (~800 lines), served by Flask.
+
+**Jinja2 data injection:** `chat.html` receives `user`, `display_name`, `last_thread_id` from the `/chat` route. The `last_thread_id` is passed via a `data-last-thread-id` attribute on `.app-layout`. `base.html` injects `session.user.name` into the header.
+
+---
+
+## Integration Options Evaluated
+
+### Option A: Flask-Served SPA (Recommended)
+
+Svelte/Vite builds to `frontend/dist/`. Flask serves this directory as the SPA. Single origin. Auth cookies require no reconfiguration.
+
+**How it works in production:**
+- Flask `static_folder` → `frontend/dist/assets/` (hashed JS/CSS bundles)
+- Flask catch-all route → returns `frontend/dist/index.html`
+- All `/api/*`, `/chat/*`, `/login`, `/auth/*`, `/logout` routes continue as-is
+- `flask-session` cookies set with `SameSite=Lax`, `Secure` (already on HTTPS) — unchanged
+
+**How it works in development:**
+- Vite dev server runs on `:5173`, Flask on `:5000`
+- `vite.config.js` proxy: any path matching `/api/*`, `/chat/*`, `/login`, `/auth/*`, `/logout`, `/static/*` is forwarded to `http://localhost:5000`
+- Browser talks to Vite at `:5173` — cookies set by Flask arrive as same-origin because Vite proxy strips the cross-origin boundary
+- `credentials: 'include'` on fetch calls handles cookie forwarding through the proxy
+
+**Confidence:** HIGH — this pattern is documented by Flask's official SPA patterns page and confirmed working with Waitress.
+
+---
+
+### Option B: Separate Frontend Server (Not Recommended)
+
+SPA runs on `:5173` or `:3000` in production (e.g., served by Nginx). Flask on `:5000`. Cross-origin in production.
+
+**Problems for Atlas specifically:**
+1. `SameSite=Lax` session cookies do not cross origins. Would require `SameSite=None; Secure`, which changes security posture.
+2. MSAL auth code flow redirects to `/auth/callback` — the callback lands on Flask, sets session cookie, then must redirect to the frontend origin. This requires tracking the frontend origin in the Flask redirect, adding complexity.
+3. CORS middleware (`flask-cors`) must be added and configured for exact origin with `supports_credentials=True`.
+4. The `/api/photo/<user_id>` photo proxy would need CORS headers for image responses.
+5. On-prem with self-signed cert: two separate HTTPS origins means two separate cert exceptions for users.
+
+**Single-developer cost:** Meaningful — adds CORS config, changes cookie settings, complicates auth callback, adds Nginx config for production.
+
+**Verdict:** Rejected. No benefit for this deployment model.
+
+---
+
+### Option C: Enhanced Vanilla JS (Defer the Framework Decision)
+
+Keep Jinja2 templates and vanilla JS, but rewrite `app.js` as ES modules with a cleaner component model. Add a CSS design system.
+
+**When appropriate:** If UI polish is the primary goal and the team wants zero build tooling risk.
+
+**Problems:**
+- No component reactivity — DOM manipulation code grows proportionally with UI complexity
+- No TypeScript — harder to maintain as features expand
+- CSS-in-JS or scoped styles require manual discipline
+- Cannot use modern component libraries (shadcn/svelte, etc.)
+
+**Verdict:** Valid fallback if the framework migration proves too complex, but forfeits the long-term maintainability gains. Not recommended as the primary approach.
+
+---
+
+## Recommended Architecture: Flask-Served Svelte 5 SPA
+
+### Why Svelte 5 Over React and Vue 3
+
+| Criterion | React 18 | Vue 3 | Svelte 5 |
+|-----------|----------|-------|----------|
+| Bundle size (typical SPA) | ~42KB runtime + app | ~20KB runtime + app | ~1.6KB runtime + app |
+| Build tooling | Vite (Create React App deprecated) | Vite | Vite (native) |
+| Flask + Vite integration templates | Many | Many | Specific Flask+Svelte5 template exists |
+| SSE (fetch/ReadableStream) support | Standard | Standard | Standard |
+| Reactivity model | Hooks (learned patterns required) | Composition API (moderate) | Runes — closest to plain JS |
+| Single-developer ergonomics | Complex state management | Good | Excellent — minimal boilerplate |
+| Ecosystem maturity | Largest | Large | Growing rapidly |
+
+Svelte 5 is recommended for Atlas because: the app is one screen (chat interface), state is simple (threads list, current thread, streaming state), and Svelte's compile-to-vanilla-JS approach produces the smallest output. The developer experience is closest to the existing vanilla JS codebase — migrating from `app.js` to Svelte components is a natural progression rather than a paradigm shift.
+
+React would be the right choice if future staffing required React-familiar developers. Vue 3 is a reasonable alternative if Svelte 5 feels unfamiliar. Either can use the same Flask-served SPA architecture described here.
+
+---
+
+## Component Boundaries
+
+```
+App (root Svelte component)
+├── Header
+│   ├── AppLogo
+│   ├── ThemeToggle         (replaces localStorage theme logic from app.js)
+│   └── UserInfo + Logout   (receives user from Flask-injected JSON or /api/me)
+│
+├── Sidebar
+│   ├── NewChatButton
+│   └── ThreadList
+│       └── ThreadItem      (inline rename, delete, active state)
+│
+└── ChatPane
+    ├── MessageList
+    │   ├── WelcomeMessage  (example query buttons)
+    │   ├── UserMessage
+    │   └── AssistantMessage
+    │       ├── ThinkingDots
+    │       ├── ToolPanel   (collapsible details, JSON highlight)
+    │       ├── ProfileCard
+    │       ├── SearchResultCards
+    │       └── MarkdownRenderer
+    │
+    └── InputArea
+        ├── AutoExpandTextarea
+        └── SendButton      (disabled during streaming)
+```
+
+**State that crosses component boundaries:**
+- `currentThreadId` — owned by App, passed to Sidebar and ChatPane
+- `isStreaming` — owned by ChatPane, passed to InputArea
+- `user` — fetched once on mount from `/api/me` (new endpoint) or injected via `<script>` tag
+
+---
+
+## Data Flow
+
+```
+User types message
+    → InputArea emits "submit"
+    → ChatPane calls POST /chat/stream
+    → Flask chat_bp processes: tool loop → streaming response
+    → ChatPane reads ReadableStream (existing SSE protocol unchanged)
+    → SSE events dispatched to: ToolPanel, MarkdownRenderer, ThreadList (thread_named)
+    → On "done": finalize markdown, refetch /api/threads
+
+User clicks thread
+    → ThreadList emits "select"
+    → ChatPane calls GET /api/threads/{id}/messages
+    → Renders historical messages
+
+User renames thread
+    → ThreadItem emits "rename"
+    → PATCH /api/threads/{id}
+    → ThreadList updates locally
+
+User logs out
+    → Header triggers window.location = '/logout'
+    → Flask clears session, redirects to splash
 ```
 
 ---
 
-## Component-by-Component Integration Points
+## SSE Streaming Integration
 
-### 1. graph_client.py (NEW — peer to exchange_client.py)
+**Key finding:** The existing SSE implementation uses `fetch()` + `ReadableStream.getReader()` — NOT the native `EventSource` API. This is by design because the endpoint is POST (sends `message` and `thread_id` in the JSON body). `EventSource` only supports GET requests.
 
-**Location:** `exchange_mcp/graph_client.py`
+This means the SSE consumer ports directly to Svelte with zero protocol changes:
 
-**Responsibility:** All Microsoft Graph API calls. No Exchange, no PowerShell. Parallel design to `exchange_client.py`.
-
-**Auth model:** App-only (client credentials flow). Uses the same `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` environment variables already present in the system. Acquires a token with scope `https://graph.microsoft.com/.default` — this is the app-only scope that bundles all consented application permissions.
-
-**Why client credentials, not on-behalf-of:** The Graph calls are directory lookups (find a colleague by name), not actions that need to respect the logged-in user's own Graph permissions. The service runs as the registered application identity. This is simpler and avoids OBO complexity. The logged-in user is already authenticated via Azure AD; their identity is used for access control to the chat app, not for Graph authorization.
-
-**Token caching inside GraphClient:** MSAL `SerializableTokenCache` in memory, module-level. App tokens (client credentials) are long-lived (typically 1 hour) and can be safely cached at the module level — they are not user-specific. This is distinct from the per-user token cache in the Flask session used for SSO.
-
-**Key methods:**
-
-```
-search_users(query: str, top: int = 10) -> list[dict]
-  GET /v1.0/users?$search="displayName:{query}"
-              &$select=id,displayName,jobTitle,department,mail,userPrincipalName
-              &$top={top}
-  Headers: ConsistencyLevel: eventual
-  Required permission: User.Read.All (application)
-
-get_user_profile(user_id: str) -> dict
-  GET /v1.0/users/{user_id}
-              ?$select=id,displayName,jobTitle,department,
-                       mail,userPrincipalName,officeLocation,
-                       businessPhones,mobilePhone,manager
-  Required permission: User.Read.All (application)
-
-get_user_photo_bytes(user_id: str, size: str = "96x96") -> bytes
-  GET /v1.0/users/{user_id}/photos/{size}/$value
-  Returns: raw image bytes (jpeg)
-  Returns: None if 404 (user has no photo)
-  Required permission: ProfilePhoto.Read.All (application)
+```javascript
+// Current app.js pattern (works identically in Svelte)
+const response = await fetch('/chat/stream', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ message: text, thread_id: currentThreadId }),
+    signal: abortController.signal
+});
+const reader = response.body.getReader();
+// ... pump loop reads SSE data: lines
 ```
 
-**Error handling:** `RuntimeError` on Graph API errors, matching the exchange_client convention so `server.py`'s `_sanitize_error()` can process them uniformly. 404 from photo endpoint returns `None` rather than raising — the tool result should gracefully indicate no photo available.
+In Svelte, this lives in a `stream.js` service module. The streaming state (`isStreaming`, abort controller) becomes a Svelte rune or store. The event types (`tool`, `text`, `thread_named`, `done`, `error`) are handled the same way — the only difference is that state mutations trigger reactive UI updates rather than direct DOM manipulation.
 
-**No PowerShell dependency:** Pure Python + `requests` library (or `httpx` for async). This is a REST client, not a subprocess runner.
-
-**Async vs sync:** The MCP server's `handle_call_tool` is async. `graph_client.py` should expose async methods (using `httpx.AsyncClient`) to avoid blocking the event loop. This mirrors the async pattern in `exchange_client.py`.
+**No changes required to `chat.py` or the SSE event protocol.**
 
 ---
 
-### 2. exchange_mcp/tools.py (MODIFIED — add 2 tools)
+## Auth Flow Continuity
 
-**Add to TOOL_DEFINITIONS:**
+The MSAL auth code flow is entirely server-side in Flask. The frontend never sees tokens. The SPA simply:
 
-```python
-Tool(
-    name="search_colleagues",
-    description=(
-        "Search for MMC colleagues by name or partial name. Returns a list of matching "
-        "people with their job title, department, and email address. "
-        "Use when asked to find a person: 'Who is Jane Smith?', 'Find colleagues in IT', "
-        "'Search for John in Finance'. Returns up to 10 results."
-    ),
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "query": {
-                "type": "string",
-                "description": "Name or partial name to search for."
-            }
-        },
-        "required": ["query"]
+1. On mount, calls `GET /api/me` (new lightweight endpoint) — returns 200 with user JSON or 401
+2. If 401 → redirect to `/login` (window.location, not client-side routing)
+3. Flask `/login` → Azure AD → `/auth/callback` → sets session cookie → redirects to `/` (which loads SPA)
+4. SPA loads, calls `/api/me`, gets user data, renders authenticated UI
+
+**New endpoint needed:** `GET /api/me` — returns `session["user"]` as JSON (name, preferred_username, oid). This is a 5-line Flask route. Replaces Jinja2 template variable injection.
+
+**Session cookie behavior:**
+- Existing config: `SESSION_TYPE=filesystem`, `SESSION_USE_SIGNER=True`
+- Cookie attributes: Flask default is `SameSite=Lax`, `HttpOnly=True`
+- Since SPA is served from the same origin as Flask, `SameSite=Lax` is correct and does not need to change
+- `SESSION_COOKIE_SECURE=True` is already correct for the HTTPS on-prem deployment
+- No CORS configuration required
+
+**MSAL redirect URI:** The `/auth/callback` route remains unchanged. The callback URL registered in Azure AD Entra (`https://<server>/auth/callback`) does not change.
+
+**Splash page:** The `splash.html` with the "Sign in with Microsoft" button can remain a Jinja2 template served at `/` for unauthenticated users (simplest path), OR it can be replaced by the SPA rendering the login screen conditionally. The simplest migration keeps Flask serving the splash for unauthenticated requests and the SPA for authenticated ones — but a cleaner SPA approach has the SPA always serve the root, with `/api/me` determining render state.
+
+**Recommendation:** Replace splash with SPA-rendered login screen. Avoids the split-template complexity and makes the entire UI consistent.
+
+---
+
+## Build and Serve Strategy
+
+### Directory Structure
+
+```
+xmcp/
+├── chat_app/             # Flask app (unchanged)
+│   ├── static/           # Legacy static (removed after migration)
+│   ├── templates/        # Legacy Jinja2 (removed after migration)
+│   ├── app.py
+│   ├── auth.py
+│   ├── chat.py
+│   └── ...
+│
+└── frontend/             # New Svelte/Vite project
+    ├── src/
+    │   ├── App.svelte
+    │   ├── lib/
+    │   │   ├── components/
+    │   │   └── services/
+    │   │       ├── api.js      # /api/threads CRUD
+    │   │       └── stream.js   # /chat/stream SSE consumer
+    │   └── main.js
+    ├── dist/             # Vite build output (gitignored)
+    ├── package.json
+    └── vite.config.js
+```
+
+### Vite Configuration (Development)
+
+```javascript
+// frontend/vite.config.js
+import { defineConfig } from 'vite';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+
+export default defineConfig({
+    plugins: [svelte()],
+    server: {
+        proxy: {
+            '/api': { target: 'http://localhost:5000', changeOrigin: true },
+            '/chat': { target: 'http://localhost:5000', changeOrigin: true },
+            '/login': { target: 'http://localhost:5000', changeOrigin: true },
+            '/auth': { target: 'http://localhost:5000', changeOrigin: true },
+            '/logout': { target: 'http://localhost:5000', changeOrigin: true },
+            '/static': { target: 'http://localhost:5000', changeOrigin: true },
+        }
+    },
+    build: {
+        outDir: '../chat_app/frontend_dist',  // Build directly into Flask static tree
     }
-),
-Tool(
-    name="get_colleague_profile",
-    description=(
-        "Get detailed profile information for a specific colleague by their user ID "
-        "or email address. Returns name, title, department, office, phone numbers, "
-        "and manager. Use after search_colleagues to get full details for a specific person."
-    ),
-    inputSchema={
-        "type": "object",
-        "properties": {
-            "user_id": {
-                "type": "string",
-                "description": "The user's Azure AD object ID or email address (UPN)."
-            }
-        },
-        "required": ["user_id"]
-    }
-)
+});
 ```
 
-**Add to TOOL_DISPATCH:**
+### Flask Changes for SPA (Production)
 
 ```python
-"search_colleagues": handle_search_colleagues,
-"get_colleague_profile": handle_get_colleague_profile,
-```
+# app.py additions — approximately 15 lines
 
-**Handler signature (same pattern as Exchange tools):**
-
-```python
-async def handle_search_colleagues(
-    arguments: dict, client: ExchangeClient | None
-) -> Any:
-    ...
-
-async def handle_get_colleague_profile(
-    arguments: dict, client: ExchangeClient | None
-) -> Any:
-    ...
-```
-
-The `client` parameter is the ExchangeClient (unused by Graph handlers). Graph handlers construct or receive a `GraphClient` instance independently. A module-level `_graph_client: GraphClient | None` in `server.py` follows the same pattern as `_exchange_client`.
-
----
-
-### 3. exchange_mcp/server.py (MODIFIED — Graph client lifecycle)
-
-**Add module-level reference:**
-
-```python
-_graph_client: GraphClient | None = None
-```
-
-**Initialize in `main()` before stdio opens** (same pattern as `_exchange_client`):
-
-```python
-graph_client = GraphClient()
-_graph_client = graph_client
-ok = await graph_client.verify_connection()
-if not ok:
-    logger.warning("Graph client connection check failed — colleague tools degraded")
-```
-
-**Pass to tool handlers** by making `_graph_client` accessible in the dispatch context. The simplest approach: add a second context parameter to the Graph tool handlers, or use a module-level singleton accessed directly. The latter is simpler and consistent with how `_exchange_client` is accessed.
-
-**Tool count:** Changes from 15 to 17 (15 Exchange tools + ping + 2 Graph tools). Update the startup banner log message.
-
----
-
-### 4. Photo Proxy Route in app.py (NEW ROUTE — NOT a blueprint)
-
-**Why a proxy is required:** The Graph `photo/$value` endpoint returns raw binary (JPEG). Browser `<img src="...">` tags cannot call it directly because:
-- The bearer token is server-side (never exposed to browser JS)
-- Graph does not add CORS headers to `$value` binary endpoints
-- The existing auth pattern keeps all Azure credentials on the server
-
-**Route:**
-
-```
-GET /api/photo/<user_id>
-```
-
-**Location:** Inline route in `app.py` (not a separate blueprint). This is a single route; a blueprint would be overengineering. Add it after the existing `/api/health` route.
-
-**Implementation:**
-
-```python
-@app.route("/api/photo/<user_id>")
+# 1. New /api/me endpoint
+@app.route("/api/me")
 @login_required
-def user_photo(user_id: str):
-    # Import graph_client module directly — not via MCP
-    from exchange_mcp.graph_client import GraphClient
-    client = GraphClient()  # module-level singleton preferred
-    photo_bytes = asyncio.run_in_executor_equivalent(client.get_user_photo_bytes(user_id))
-    if photo_bytes is None:
-        # Return a 1x1 transparent GIF placeholder
-        return Response(TRANSPARENT_GIF_BYTES, content_type="image/gif")
-    return Response(
-        photo_bytes,
-        content_type="image/jpeg",
-        headers={"Cache-Control": "max-age=3600"}
-    )
+def me():
+    return jsonify(session.get("user"))
+
+# 2. Serve SPA static assets
+app = Flask(
+    __name__,
+    static_folder="../frontend_dist/assets",
+    static_url_path="/assets",
+)
+
+# 3. Catch-all route returns SPA index.html
+@app.route("/", defaults={"path": ""})
+@app.route("/<path:path>")
+def spa_index(path):
+    # Let Flask handle its own routes first; this catch-all is lowest priority
+    # because specific routes are registered before it.
+    return send_from_directory("../frontend_dist", "index.html")
 ```
 
-**Note on async in Flask route:** The photo proxy calls `graph_client.get_user_photo_bytes()` which is async. Use the same `_async_run()` pattern from `mcp_client.py` — dispatch to the background MCP event loop via `run_coroutine_threadsafe`. This avoids creating a new event loop inside a Flask route handler, which is an existing solved problem in this codebase.
+Note: The catch-all must be registered AFTER all blueprints and specific routes, so Flask's URL matching resolves `/api/*`, `/chat/*`, `/login`, `/auth/*`, and `/logout` first.
 
-**Alternatively:** Make `get_user_photo_bytes` also available as a synchronous wrapper in `graph_client.py`, since photo fetching is a direct REST call (not subprocess), making a sync version using `requests` library straightforward. This is the simpler path — no asyncio bridge needed for the proxy route.
+### Build Integration
 
-**Cache-Control header:** `max-age=3600` (1 hour) is appropriate. Profile photos change rarely. The browser will cache the image and not re-request it on every render within that window.
+```bash
+# Development workflow
+cd frontend && npm run dev   # Vite dev server on :5173 with Flask proxy
+cd chat_app && python -m flask run  # Flask on :5000
 
-**Security:** Route is protected by `@login_required`. Only authenticated colleagues can fetch photos. The `user_id` path parameter is passed directly to Graph — validate it is a GUID or UPN format before passing, to prevent path injection into the Graph URL.
-
----
-
-### 5. Profile Card Rendering in app.js (FRONTEND CHANGE)
-
-**What the AI returns:** When `search_colleagues` or `get_colleague_profile` is called, the MCP tool result JSON contains colleague fields. The AI then writes a text response that describes the profile. The SSE stream delivers:
-1. A `tool` event: `{"type": "tool", "name": "get_colleague_profile", "status": "success", "result": "{...json...}"}`
-2. `text` events: the AI's prose description
-3. A `done` event
-
-**Profile card rendering approach:** The frontend detects Graph colleague tool results and renders them as structured profile cards inline with the AI text, in addition to the collapsible tool panel. This requires a new rendering branch in `app.js`.
-
-**Recommended format: HTML injection via innerHTML** (not markdown). The existing `appendText()` function appends raw text characters from streaming deltas. Profile card HTML needs to be injected as a DOM element, not as streaming text. The best insertion point is inside `addToolPanel()` or as a companion `addProfileCard()` method called when the SSE `tool` event has `name === "search_colleagues"` or `name === "get_colleague_profile"`.
-
-**Profile card structure (inserted above the AI text, below the tool panel):**
-
-```
-[collapsible tool panel — existing behavior]
-[profile card div — new]
-  <img src="/api/photo/{user_id}" onerror="this.src='/static/no-photo.svg'">
-  <div class="profile-info">
-    <div class="profile-name">{displayName}</div>
-    <div class="profile-title">{jobTitle}</div>
-    <div class="profile-dept">{department}</div>
-    <div class="profile-email"><a href="mailto:{mail}">{mail}</a></div>
-  </div>
-[streaming AI text — existing behavior]
-```
-
-**For `search_colleagues` returning multiple people:** Render a card row for each result. Parse the JSON tool result, iterate over the results array, render one card per person.
-
-**Why not markdown:** The existing `appendText()` builds a DOM text node (`document.createTextNode('')`), not an HTML element. The AI's streaming text content cannot contain raw HTML — it would appear as literal `<div>` tags. Profile cards must be constructed as DOM elements from the SSE `tool` event data (which arrives before the streaming text), not from the AI's text output.
-
-**What the AI text response should say:** The system prompt should instruct Atlas to describe the colleague in conversational prose when Graph tools are invoked ("Jane Smith is a Senior Engineer in the IT department..."), supplementing the card rather than repeating its fields verbatim. The card provides the photo and structured layout; the text provides context.
-
----
-
-## Data Flow: Colleague Lookup Turn
-
-```
-1. User types: "Find Jane Smith in IT"
-
-2. POST /chat/stream
-   browser -> Flask
-
-3. run_tool_loop() — OpenAI tool-call loop
-   Atlas model selects: search_colleagues({"query": "Jane Smith"})
-
-4. call_mcp_tool("search_colleagues", {"query": "Jane Smith"})
-   Flask thread -> MCP background event loop (via run_coroutine_threadsafe)
-
-5. JSON-RPC over stdio pipe
-   mcp_client.py -> exchange_mcp/server.py
-
-6. handle_search_colleagues(arguments, _exchange_client)
-   server.py -> graph_client.GraphClient.search_users("Jane Smith")
-
-7. MSAL acquire_token_for_client(["https://graph.microsoft.com/.default"])
-   Graph token cache hit (if not expired) or token fetch from Azure AD
-
-8. GET https://graph.microsoft.com/v1.0/users
-        ?$search="displayName:Jane Smith"
-        &$select=id,displayName,jobTitle,department,mail,userPrincipalName
-        &$top=10
-        &ConsistencyLevel=eventual
-   graph_client.py -> graph.microsoft.com
-
-9. JSON response: [{id, displayName, jobTitle, department, mail}, ...]
-
-10. server.py wraps result as TextContent JSON
-    Returns: [{"id": "...", "displayName": "Jane Smith", ...}, ...]
-
-11. call_mcp_tool returns result JSON string
-    Appended to messages as role=tool
-
-12. Atlas model generates text response + emits done
-
-13. SSE stream to browser:
-    data: {"type": "tool", "name": "search_colleagues", "status": "success",
-           "result": "[{\"id\":\"...\", \"displayName\":\"Jane Smith\", ...}]"}
-    data: {"type": "text", "delta": "I found Jane Smith..."}
-    data: {"type": "done"}
-
-14. app.js SSE handler:
-    - "tool" event with name "search_colleagues":
-        addToolPanel(...)         -- existing collapsible panel
-        addProfileCard(result)    -- NEW: parse result JSON, render card(s)
-                                     img src="/api/photo/{id}"
-    - "text" events: appendText() -- existing streaming text
-
-15. Browser requests /api/photo/{user_id}
-    GET /api/photo/abc-123-def
-
-16. Flask photo proxy:
-    GraphClient.get_user_photo_bytes("abc-123-def", size="96x96")
-    -> GET /v1.0/users/abc-123-def/photos/96x96/$value
-    -> returns JPEG bytes
-    Response(jpeg_bytes, content_type="image/jpeg", Cache-Control: max-age=3600)
-
-17. Browser renders <img> with colleague photo
+# Production build
+cd frontend && npm run build  # Outputs to chat_app/frontend_dist/
+# Flask/Waitress serves everything from one process as before
 ```
 
 ---
 
-## Token Caching: Graph vs SSO
+## Migration Strategy
 
-Two separate MSAL token concerns in this system:
+### Phase 1: Parallel Infrastructure (No Visible Change)
 
-| Token Purpose | Where Cached | Flow | Scope | Lifetime |
-|---------------|-------------|------|-------|----------|
-| SSO login (user identity) | Flask filesystem session, per-user `SerializableTokenCache` | Auth code flow | `User.Read` | 1h access / longer refresh |
-| Graph API calls (app-level) | Module-level singleton in `graph_client.py`, `SerializableTokenCache` | Client credentials | `https://graph.microsoft.com/.default` | 1 hour |
+1. Scaffold `frontend/` with Vite + Svelte 5
+2. Configure Vite proxy to Flask
+3. Implement `GET /api/me` in Flask (5-line addition)
+4. Create a bare-bones `App.svelte` that calls `/api/me` and renders "authenticated" or "login"
+5. Wire the build output into Flask catch-all route (behind a feature flag or config toggle)
+6. Verify: cookies work, SSE works, auth round-trip works
 
-**Key design rule:** Do NOT reuse the SSO user token for Graph API calls. They serve different purposes and have different scopes. The SSO token is a delegated token scoped to `User.Read` for the logged-in user's own profile. The Graph search token is an application token with `User.Read.All` to search the entire directory. Mixing them is architecturally incorrect and would require OBO flow complexity with no benefit.
+**Risk at this phase:** Zero. Original Jinja2 templates still serve in production. The SPA build is only active when explicitly enabled.
 
-**Module-level token cache in GraphClient:** Since `graph_client.py` is imported by `server.py` (the MCP subprocess), and the MCP subprocess is a single long-lived process, the module-level token cache persists for the lifetime of the MCP server process. This is appropriate — client credential tokens can be shared across all tool calls in the same process.
+### Phase 2: Core Chat Functionality
 
----
+Migrate in this order (each self-contained, testable before next):
 
-## Required Azure AD App Registration Changes
+1. **Stream service** (`stream.js`) — port existing `readSSEStream()` and `doSend()` from app.js. Test against live `/chat/stream`. This is the highest-risk piece; isolate it first.
+2. **Thread management** — port `fetchThreads()`, `renderThreadList()`, `switchThread()`, `createNewThread()`, `deleteThread()`, `makeRenameHandler()` to ThreadList + ThreadItem components
+3. **Message rendering** — port `createMessageEl()`, `appendUserMessage()`, `createAssistantMessage()`, `renderMarkdown()`, tool panel builder, profile card builder, search result cards
+4. **Welcome message** — example query buttons
+5. **Input area** — auto-expanding textarea, form submit, keyboard shortcuts (Ctrl+Enter, Escape to cancel)
+6. **Header** — user info, logout link, theme toggle
 
-The existing app registration (AZURE_CLIENT_ID) needs two new **application permissions** (not delegated — these are app-only calls):
+**Migrate splash last** (or keep as Jinja2 — it has no dynamic JS, just a link to `/login`).
 
-| Permission | Type | Purpose |
-|------------|------|---------|
-| `User.Read.All` | Application | Search users, get profile details |
-| `ProfilePhoto.Read.All` | Application | Fetch user photos |
+### Phase 3: UI Polish (The Actual Redesign)
 
-**Admin consent required:** Application permissions always require tenant admin consent. This is a one-time action in the Azure portal (App Registrations -> API permissions -> Grant admin consent).
+Once the Svelte port is feature-complete and verified against the existing UI behavior, apply the design system changes: layout, typography, colour system, animations, component polish. By this point the component boundaries are established and styling is scoped.
 
-**No new client secret needed:** The existing `AZURE_CLIENT_SECRET` is reused. The same app identity acquires both SSO tokens (delegated) and Graph app tokens (application).
+This sequencing is critical: **don't redesign and migrate simultaneously**. Separating the "structural port" from the "visual redesign" phases makes each individually verifiable and reduces rollback scope.
 
----
+### Rollback Strategy
 
-## New vs Modified Files
-
-| File | Status | What Changes |
-|------|--------|-------------|
-| `exchange_mcp/graph_client.py` | NEW | Complete Graph API client — search, profile, photo |
-| `exchange_mcp/tools.py` | MODIFIED | Add `search_colleagues` and `get_colleague_profile` tool definitions and dispatch entries |
-| `exchange_mcp/server.py` | MODIFIED | Add `_graph_client` module-level reference, initialize in `main()`, pass to Graph handlers; update tool count in banner |
-| `chat_app/app.py` | MODIFIED | Add `GET /api/photo/<user_id>` route |
-| `chat_app/static/app.js` | MODIFIED | Add `addProfileCard()` function, handle Graph tool events in SSE handler |
-| `chat_app/static/style.css` | MODIFIED | Profile card CSS (photo dimensions, layout, responsive) |
-| `chat_app/openai_client.py` | MODIFIED | Update SYSTEM_PROMPT to include colleague lookup guidance for Atlas |
-
-**No new blueprints, no new Python packages beyond `httpx` (or `requests`) for the Graph REST client.**
-
----
-
-## Suggested Build Order
-
-Dependencies determine sequence.
-
-### Step 1: graph_client.py (foundation, no UI dependency)
-Build and test in isolation before touching any other file. Verify:
-- Token acquisition with `acquire_token_for_client` succeeds
-- `search_users("test name")` returns expected shape
-- `get_user_profile(known_id)` returns full profile dict
-- `get_user_photo_bytes(known_id)` returns JPEG bytes
-- 404 from photo endpoint returns `None` gracefully
-
-### Step 2: MCP server integration (tools.py + server.py)
-Add tool definitions and dispatch entries. Test with `mcp dev exchange_mcp/server.py` or direct MCP client. Verify the AI model selects `search_colleagues` and `get_colleague_profile` appropriately.
-
-### Step 3: Photo proxy route (app.py)
-Add the `/api/photo/<user_id>` route. Test by hitting it directly in a browser after login. Verify Cache-Control header, 404 handling (placeholder GIF), and `@login_required` gate.
-
-### Step 4: Profile card frontend (app.js + style.css)
-Add the card rendering logic. Test by sending a message that triggers the Graph tools and verifying the card renders with the proxied photo URL.
-
-### Step 5: System prompt update (openai_client.py)
-Expand the Atlas system prompt to describe colleague lookup capabilities and instruct the model on when to use `search_colleagues` vs `get_colleague_profile`.
-
----
-
-## Architecture Patterns to Follow
-
-### Pattern: Graph client mirrors exchange_client structure
-Same constructor pattern, same error conventions (raise `RuntimeError` on API errors), same `verify_connection()` method for startup health check. This keeps `server.py` consistent — it initializes both clients the same way and passes both to handlers.
-
-### Pattern: Photo proxy as a thin pass-through
-The proxy should not transform the image. Fetch from Graph, return bytes. Do not base64-encode, resize, or reformat. Let the browser handle display via CSS constraints (`object-fit: cover; width: 64px; height: 64px`).
-
-### Pattern: Profile card data from tool result JSON, not from AI text
-The SSE `tool` event carries the raw JSON result from `search_colleagues` / `get_colleague_profile`. Parse this in `app.js` to build the profile card DOM. Do not ask the AI to embed structured card data in its text response — that path is fragile (the model may format it differently, may abbreviate, may omit fields).
-
-### Pattern: Graceful photo degradation
-Every `<img>` in a profile card should have `onerror="this.src='/static/no-photo.svg'"`. Not all colleagues have photos in Azure AD. The 404 case from the proxy (which returns a placeholder GIF) plus the `onerror` fallback ensures a consistent UI regardless of photo availability.
-
-### Pattern: App registration permissions as a prerequisite
-The photo proxy and search tools will return 403 errors until `User.Read.All` and `ProfilePhoto.Read.All` application permissions are granted admin consent in the Azure portal. This is an infrastructure prerequisite, not a code prerequisite — document it as a deployment requirement in the phase plan.
+During Phase 2, Flask can be configured to conditionally serve either the Jinja2 templates or the SPA index.html based on an environment variable. If the SPA has a critical regression, flip the flag. Remove this dual-serving capability after Phase 3 is complete and validated.
 
 ---
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern: Fetching photos in the MCP tool result
-Do not return photo bytes from the MCP tool. MCP results are text (JSON). Embedding base64-encoded photos in tool result JSON would bloat the OpenAI context window (a 96x96 JPEG is ~3-8 KB of base64, multiplied by every search result). The photo proxy pattern correctly separates the binary channel (HTTP response) from the data channel (tool result JSON).
+### Anti-Pattern 1: CORS Configuration for Same-Server Deployment
 
-### Anti-Pattern: Calling Graph from app.js directly
-The bearer token is server-side. Exposing it to the browser is a security violation. All Graph calls go through the server-side proxy.
+Adding `flask-cors` and configuring cross-origin headers is unnecessary when Flask serves the SPA from the same origin. Adding it anyway introduces security surface and is a signal the architecture is wrong.
 
-### Anti-Pattern: Reusing the SSO user token for Graph directory calls
-The delegated `User.Read` token only allows reading the currently logged-in user's own profile. Directory-wide colleague search requires `User.Read.All` with application permissions. Using the wrong token will produce 403 errors.
+### Anti-Pattern 2: JWT/Token Auth for the SPA
 
-### Anti-Pattern: New blueprint for the photo proxy
-One route does not warrant a blueprint. Adding a blueprint increases import complexity and registration overhead for no architectural benefit. The `/api/photo/<user_id>` route belongs inline in `app.py` alongside the existing `/api/health` route.
+Some Flask+SPA tutorials replace session cookies with JWTs because "SPAs need stateless auth." For Atlas, session cookies are correct — the MSAL token is already server-side, the session is short-lived, and the deployment is internal (not a public API). Introducing JWTs would require storing them (localStorage = XSS risk, memory = lost on refresh) and adds significant complexity for no benefit.
 
-### Anti-Pattern: Blocking Flask request thread on async Graph call
-`graph_client.get_user_photo_bytes()` is async. Do not call `asyncio.run()` inside the Flask route handler — this creates a new event loop in a thread that may already have one (the MCP background loop). Use `run_coroutine_threadsafe(_mcp_loop)` (reusing the existing background loop from `mcp_client.py`) or provide a synchronous `requests`-based implementation for the photo proxy specifically.
+### Anti-Pattern 3: Using EventSource for the SSE Endpoint
+
+The existing `/chat/stream` endpoint is POST (because it needs a JSON body with `message` and `thread_id`). `EventSource` only handles GET. The current `fetch()` + `ReadableStream` approach is correct and must be preserved. Do not refactor to GET+EventSource.
+
+### Anti-Pattern 4: Big-Bang Rewrite
+
+Rewriting all Jinja2 templates and all of `app.js` simultaneously before testing any of it against the live Flask backend is how frontend migrations fail. The phased approach (infrastructure → core → polish) limits the blast radius of any given phase.
+
+### Anti-Pattern 5: SvelteKit Instead of Svelte
+
+SvelteKit is a full-stack framework with its own routing, SSR, and server endpoints. For Atlas, Flask IS the server. Using SvelteKit would create a Node.js server layer in front of Flask, complicating auth (two session layers), SSE (SvelteKit's SSE requires its own endpoint patterns), and deployment (two processes). Use plain Svelte 5 with Vite, not SvelteKit.
+
+---
+
+## Scalability Considerations
+
+| Concern | Current (Jinja2 + vanilla JS) | After SPA Migration |
+|---------|-------------------------------|---------------------|
+| Auth | Unchanged | Unchanged |
+| SSE streaming | Unchanged | Unchanged |
+| API surface | Unchanged | +1 endpoint (/api/me) |
+| Static file serving | Flask serves .js + .css | Flask serves hashed bundles |
+| Build complexity | None | npm + Vite build step |
+| Deployment | python -m waitress | npm run build then python -m waitress |
+| Bundle caching | Manual (filenames static) | Automatic (Vite content hash) |
+
+The largest operational change is adding `npm run build` to the deployment process. This is well-understood and can be scripted in the existing `scripts/` directory.
 
 ---
 
 ## Confidence Assessment
 
-| Area | Confidence | Source |
-|------|------------|--------|
-| Graph `/users?$search` with `ConsistencyLevel: eventual` | HIGH | Official MS Learn docs verified 2026-03-24 |
-| Graph `profilephoto-get` endpoint, 96x96 size | HIGH | Official MS Learn docs verified 2026-03-24 |
-| `ProfilePhoto.Read.All` required permission for app-only photo access | HIGH | Official MS Learn docs verified 2026-03-24 |
-| MSAL `acquire_token_for_client` for client credentials | HIGH | Official MSAL Python docs, established pattern |
-| Module-level token cache in MCP subprocess being safe | HIGH | Client credential tokens are not user-specific; safe to share process-wide |
-| Photo proxy pattern (Flask route serving binary from Graph) | HIGH | Standard pattern; no library-specific risk |
-| `ConsistencyLevel: eventual` required for `$search` on `/users` | HIGH | Official Graph docs state this explicitly |
-| Profile card as DOM injection (not markdown) | HIGH | Consistent with existing `addToolPanel()` DOM builder pattern in app.js |
+| Area | Confidence | Basis |
+|------|------------|-------|
+| Flask-served SPA pattern | HIGH | Flask official SPA docs, confirmed working pattern |
+| Vite proxy for dev | HIGH | Vite official docs, widely used pattern |
+| Session cookie preservation | HIGH | Same-origin = no cookie changes needed |
+| SSE via fetch/ReadableStream in Svelte | HIGH | Standard fetch API, framework-agnostic |
+| MSAL auth flow unchanged | HIGH | Flask handles all auth; frontend only calls /api/me |
+| Svelte 5 with Vite | MEDIUM | Svelte 5 is stable (released Oct 2024); specific Flask+Svelte5 template exists but is not official |
+| Migration phasing | MEDIUM | Based on general strangler-fig patterns; Atlas-specific ordering is reasoned but not empirically validated |
 
 ---
 
 ## Sources
 
-- Microsoft Graph List Users: https://learn.microsoft.com/en-us/graph/api/user-list?view=graph-rest-1.0 (verified 2026-03-24)
-- Microsoft Graph Get profilePhoto: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0 (verified 2026-03-24)
-- Microsoft Graph Get User: https://learn.microsoft.com/en-us/graph/api/user-get?view=graph-rest-1.0 (verified 2026-03-24)
-- MSAL Python client credentials: https://learn.microsoft.com/en-us/entra/msal/python/ (established pattern, consistent with auth.py)
-- Existing auth.py and mcp_client.py in this codebase — MSAL and asyncio bridge patterns verified by reading source
+- [Flask Single-Page Applications (official docs)](https://flask.palletsprojects.com/en/stable/patterns/singlepageapplications/)
+- [Session-based Auth with Flask for Single Page Apps — TestDriven.io](https://testdriven.io/blog/flask-spa-auth/)
+- [Flask + Svelte integration — Medium (Alex Cabrera)](https://cabreraalex.medium.com/svelte-js-flask-combining-svelte-with-a-simple-backend-server-d1bc46190ab9)
+- [Flask-Svelte-Template (Svelte 5 + Vite)](https://github.com/martinm07/flask-svelte-template)
+- [SvelteKit static adapter + Flask](https://github.com/saas-templates/flask-sveltekit-static)
+- [Vite Server Options (proxy configuration)](https://vite.dev/config/server-options)
+- [Unbreaking Cookies in Local Dev with Vite Proxy (2025)](https://mattslifebytes.com/2025/03/30/unbreaking-cookies-in-local-dev-with-vite-proxy/)
+- [SSE POST fetch ReadableStream vs EventSource — Medium](https://medium.com/@david.richards.tech/sse-server-sent-events-using-a-post-request-without-eventsource-1c0bd6f14425)
+- [React vs Vue vs Svelte 2025 comparison — merge.rocks](https://merge.rocks/blog/comparing-front-end-frameworks-for-startups-in-2025-svelte-vs-react-vs-vue)
+- [Frontend migration guide — Frontend Mastery](https://frontendmastery.com/posts/frontend-migration-guide/)
+- [Cookie Security for Flask — Miguel Grinberg](https://blog.miguelgrinberg.com/post/cookie-security-for-flask-applications)

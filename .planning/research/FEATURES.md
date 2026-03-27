@@ -2,7 +2,7 @@
 
 **Domain:** MCP Server for Infrastructure Management + Enterprise Internal Chat Application
 **Project:** Exchange Infrastructure MCP Server (Exchange Management Shell + Azure OpenAI + Python Chat App)
-**Researched:** 2026-03-19 (original), updated 2026-03-24 (colleague lookup milestone)
+**Researched:** 2026-03-19 (original), updated 2026-03-24 (colleague lookup milestone), updated 2026-03-27 (UI/UX overhaul milestone)
 **Confidence:** HIGH — Project has a fully specified architecture document; feature analysis drawn from that spec plus domain knowledge of MCP, enterprise chat, and Exchange tooling.
 
 ---
@@ -18,6 +18,8 @@ This project has three distinct feature domains, each with its own table stakes 
 They are analyzed separately, then cross-cutting dependencies are mapped.
 
 Domain 4 (Colleague Lookup and Profile Display) was added in milestone v1.1 and is analyzed at the end.
+
+Domain 5 (UI/UX Overhaul — Microsoft Copilot aesthetic) was added in milestone v1.2 and is analyzed in the final section.
 
 ---
 
@@ -213,102 +215,132 @@ Things to deliberately NOT build for colleague lookup. Common mistakes that crea
 
 ---
 
-## Feature Dependencies
+## Domain 5: UI/UX Visual Overhaul — Microsoft Copilot Aesthetic (v1.2 Milestone)
+
+**Context:** Atlas is functionally complete but visually dated. This milestone is a full UI/UX overhaul targeting Microsoft Copilot aesthetic for IT engineers and managers at Marsh McLennan. 80K employees, desktop-only (1080p–1440p), dark mode primary. All backend features stay; only visual and interaction patterns change.
+
+**Research basis:** Microsoft 365 Copilot Chat, GitHub Copilot Chat, ChatGPT, Claude.ai, Microsoft Fluent 2 Design System. Patterns sourced from Microsoft Design documentation, Smashing Magazine AI UI patterns research, and community-verified UX practices.
+
+**Source confidence:** Table stakes HIGH (all verified against documented Copilot/ChatGPT patterns). Differentiators MEDIUM (verified against multiple sources; specific values like animation timing LOW confidence). Anti-features HIGH (established enterprise UX guidance).
+
+### Table Stakes
+
+Features that users of modern enterprise AI chat expect to be present and correct. Missing or broken implementations make the product feel unfinished or unprofessional.
+
+| Feature | Why Expected | Complexity | Notes |
+|---------|--------------|------------|-------|
+| Full-bleed, consistent dark mode | IT ops teams default to dark. Mismatched grays or light-mode bleed signals poor craft. | Low | Already exists; needs audit — surface hierarchy (#0f0f0f / #1a1a1a / #262626), no off-white elements |
+| Unambiguous user vs. assistant role differentiation | Every major product (Copilot, ChatGPT, Claude) visually distinguishes who said what. | Low | Alignment differences, avatar/icon, background tint, or label — pick one consistent approach |
+| Proper markdown rendering during streaming | Code blocks, bold, lists, headers in every IT response. Partial markdown during SSE must not break layout. | Low-Med | Already exists; audit for streaming edge cases — half-open bold tags, unclosed code fences |
+| Syntax-highlighted code blocks | IT engineers read Exchange cmdlets and JSON. Plain-text code is unacceptable. | Low | Already exists; verify language auto-detection works correctly |
+| Copy button on every code block | ChatGPT, Copilot: every code block has its own copy button. Engineers expect it. | Low | Already exists for full responses; ensure per-code-block copy is present |
+| Auto-resize textarea input | Single-line inputs feel broken for multi-sentence prompts. | Low | Standard grow-on-newline behavior, max ~5 lines before scroll |
+| Send on Enter, newline on Shift+Enter | Universal standard across all major chat products. Any other mapping creates friction. | Low | Verify current behavior matches; document the keyboard shortcut visibly |
+| Streaming cursor / active generation signal | Users expect to see text arriving. A blinking cursor or shimmer signals the model is working. | Low | Already exists; ensure visual is crisp and not distracting |
+| Stop generation button during streaming | ChatGPT, Copilot: replaces or augments send button while streaming. Engineers run long queries. | Low | Appears during SSE streaming, disappears when stream ends |
+| Sidebar thread list with clear hierarchy | Persistent history with left-side navigation is expected. Copilot, ChatGPT, Claude all use this layout. | Low | Already exists; needs visual polish — spacing, active state, hover states |
+| Thread rename and delete affordances | Users name threads by project or ticket. Cannot feel ephemeral. | Low | Already exists; ensure affordances are discoverable (hover reveal or always-visible icons) |
+| New thread button — prominent and consistent | "New chat" must be immediately findable at the top of the sidebar. | Low | Already exists; verify placement and icon (pencil-plus is the Copilot/ChatGPT standard) |
+| Welcome / empty state with prompt suggestions | Every modern product (Copilot, Gemini) shows prompt chips on an empty state to reduce blank-page anxiety. | Low | Already exists; needs visual refinement to match Fluent 2 card style |
+| Loading / thinking state before streaming begins | Three-dot pulse or shimmer during the gap between send and first token. | Low | Already exists; audit visual quality against Copilot standard |
+| Keyboard navigation and visible focus rings | Enterprise accessibility requirement. WCAG AA mandates 3:1 contrast on focus indicators. | Med | Focus styles, logical tab order, Esc to cancel |
+
+### Differentiators
+
+Features that separate "it works" from "it feels like Copilot."
+
+| Feature | Value Proposition | Complexity | Notes |
+|---------|-------------------|------------|-------|
+| Tool call panel visual upgrade | GitHub Copilot, Claude show agentic steps with chevron icon, status badge, and timing. Engineers trust systems that show their work. | Med | Already exists functionally; add: chevron icon, status badge (running / done / error), elapsed time on header |
+| Tool call elapsed time display | "Ran in 1.2s" on collapsed tool panels signals performance. Copilot does this for actions. | Low | Add elapsed time to each tool panel header — needs timing data from backend (start/end timestamps) |
+| Smooth message entrance animation | Copilot uses subtle fade-in + translate-up for new messages. Reduces visual jank on SSE token arrival. | Low | CSS keyframe, 150–200ms duration, no bounce, opacity 0→1 + translateY 8px→0 |
+| Sidebar thread recency grouping | ChatGPT groups threads: Today / Yesterday / This Week / Older. Reduces cognitive load with many sessions. | Low-Med | Frontend-only sort by `created_at` timestamp; no backend change if timestamps exist |
+| Hover actions on messages | Copy, thumbs-up/down, timestamp appear on message hover. Copilot, ChatGPT pattern. | Low-Med | Ghost icons at message bottom-right edge, visible only on hover, opacity transition |
+| Thumbs-up / thumbs-down feedback | IBM, Copilot, all enterprise tools capture response quality. Builds trust with IT stakeholders. Two taps max: icon click, then optional pre-defined category. | Low | Binary feedback; optional category on thumbs-down (Inaccurate / Not helpful / Off-topic). No open text required. |
+| Sidebar collapse to icon-only | Copilot and GitHub Copilot allow hiding sidebar for focus mode — common on 1080p monitors. | Low-Med | Slide/shrink CSS transition; icon-only collapsed state shows new-chat button and first letter of thread name |
+| Per-message timestamp on hover | ChatGPT shows send time on hover. Helps engineers correlate chat steps to Exchange event logs. | Low | Tooltip or fade-in text on message hover, format: "Today 14:32" |
+| Inline profile card visual alignment with Fluent 2 | Already built; differentiation comes from Fluent-style card: subtle border-radius, correct spacing, avatar ring color. | Low | Audit existing card against Fluent 2 card component specifications |
+| Accessible color contrast audit | Fluent 2 dark mode tokens are tuned for WCAG AA. Replacing ad-hoc grays with semantic tokens fixes contrast failures at once. | Med | One-time token system introduction; fixes multiple contrast issues simultaneously |
+
+### Anti-Features
+
+UI/UX patterns to deliberately NOT build. These are common complexity traps or signals of consumer-grade quality.
+
+| Anti-Feature | Why Avoid | What to Do Instead |
+|--------------|-----------|-------------------|
+| Typewriter / per-character animation | Looks clever, frustrates fast readers, adds artificial latency. Copilot streams tokens naturally — no typewriter. | Render tokens as they arrive via SSE. Natural streaming speed, no artificial per-character delay. |
+| Message reaction emojis (emoji palette) | Consumer chat pattern. Enterprise AI tools (Copilot, ChatGPT Business) do not use emoji reactions. Undermines trust, looks like Slack misused. | Binary thumbs-up/down only. |
+| "Bot is typing..." persistent ellipsis as primary loading | Signals low-end support bot (Intercom, Zendesk). Enterprise AI shows "Thinking..." or a named assistant with a spinner. | Use a "Thinking..." label with pulsing dots alongside the Atlas assistant name/avatar. |
+| Onboarding wizard or product tour overlay | Enterprise IT engineers do not want guided tours. Copilot has none. Teams has none. | Welcome chips + clear affordances. Let the tool speak for itself. |
+| Sound effects on send/receive | No modern enterprise chat uses audio. Immediately signals consumer-grade build. | Silence. |
+| Floating chat bubble / widget style | Embedded support bot pattern. Full-page layout is the professional enterprise standard (Copilot, ChatGPT, Claude). | Full-page layout only. |
+| Always-visible "Regenerate response" button under every message | Creates persistent visual clutter. Should appear only via hover actions or on the last message only. | Hover action pattern — appears on interaction, disappears when focus leaves. |
+| Chat export as PDF or Word doc | High implementation cost (HTML → PDF rendering), low usage by IT engineers. They copy-paste or share links. | Copy-to-clipboard (already built) covers 95% of the use case. |
+| Real-time multi-user collaboration on same thread | Wrong problem for this domain. IT engineers investigate solo. Multi-user adds WebSocket complexity for zero benefit. | Single-user sessions. Share via export only. |
+| File attachment upload UI | Not applicable to Exchange query domain. Adds visual complexity with no functional use. | Text-only input. Keep the input area clean. |
+| Model picker dropdown in the chat UI | Multiple model options confuse enterprise users and fragment the support surface. | Single model, single experience. Model selection stays in admin config. |
+| Animated mesh gradient or particle background | Consumer AI marketing page aesthetic. Signals startup, not enterprise. Especially wrong in dark mode. | Flat neutral dark surface. Let content be the visual focus. |
+| "Powered by OpenAI" or LLM branding watermark | IT engineers know the stack. A watermark signals demo build, not production tool. | Remove or restrict to auth splash page if legally required. |
+| Chat persona / avatar customization by end users | Consumer ChatGPT feature. Enterprise users do not need to configure assistant identity. | Fixed Atlas branding and avatar. No customization for end users. |
+| Paginated message history within a thread | Creates disorientation. Users expect continuous scroll to top within a thread. | Virtualized scroll list. All messages in one continuous view. |
+
+### Feature Dependencies (UI/UX Overhaul)
 
 ```
-Authentication (SSO)
-  → Conversation history (needs user identity to scope history)
-  → Pass-through identity (needs authenticated user identity for KCD)
-  → Tool audit logging (needs user identity to record)
+Dark Mode Audit
+    └── Requires: design token system (CSS custom properties for semantic colors)
+    └── Enables: consistent dark mode across all components at once
 
-Pass-through identity (Kerberos Constrained Delegation)
-  → Per-user Exchange RBAC respected
-  → Per-user audit trail in Exchange logs
+Message Role Differentiation
+    └── Depends on: existing message data model (role: user | assistant already present)
+    └── No backend changes needed
 
-MCP Tool Registry (list_tools)
-  → All Exchange tools (tools are registered, then callable)
-  → search_colleagues tool (registered with name/department params)
-  → get_colleague_profile tool (registered with user_id param)
-  → Tool visibility in UI (UI reads tool call metadata from model response)
+Tool Call Panel Upgrade
+    ├── Status badge (running/done/error) — needs: tool_status field in SSE events
+    └── Elapsed time — needs: tool_start_time and tool_end_time in SSE events
+         └── Backend change required: add timestamps to tool call events
 
-Graph API client module
-  → search_colleagues tool (uses Graph /users?$search)
-  → get_colleague_profile tool (uses Graph /users/{id} + /users/{id}/photo)
-  → Photo proxy route (GET /api/photo/<user_id> fetches from Graph)
+Stop Generation Button
+    └── Needs: SSE stream abort signal (fetch AbortController already standard in modern browsers)
+    └── Backend: handle connection close gracefully
 
-Photo proxy route (Flask /api/photo/<user_id>)
-  → Profile card photo rendering (img src points to proxy, not Graph directly)
-  → Graph token never exposed to browser (security requirement)
+Sidebar Thread Recency Grouping
+    └── Needs: thread.created_at timestamp (verify this exists in current schema)
+    └── Frontend-only sort and group if timestamp exists
 
-Profile card rendering (inline HTML in chat)
-  → search_colleagues tool result (card rendered from tool response)
-  → get_colleague_profile tool result (detailed card from tool response)
-  → Photo proxy route (card img src calls proxy)
-  → Existing copy-to-clipboard (email field uses existing clipboard pattern)
+Message Entrance Animation
+    └── CSS only — no dependencies
 
-Tool visibility in UI
-  → Conversation history (tool calls are part of the stored conversation)
-  → Export/share (exported conversation must include tool call metadata)
+Hover Actions on Messages
+    └── CSS + minimal JS — depends on: existing copy-to-clipboard implementation
+    └── Thumbs feedback — new: needs feedback storage endpoint (POST /api/feedback)
 
-Conversation history
-  → Multiple conversation threads (threads are groups of history records)
-  → Conversation search (search requires history to exist)
-  → Export/share (exports from stored history)
-
-Per-call PSSession lifecycle
-  → All Exchange tools (every Exchange tool uses PSSession)
-  → Timeout handling (per-call timeout set when PSSession is created)
-
-Error wrapping in MCP server
-  → User-visible error messages in chat UI (structured error flows to UI)
-  → Colleague lookup error states (user not found, Graph auth failure, photo 404)
+Sidebar Collapse
+    └── CSS transition + localStorage for persisted state
+    └── No backend changes
 ```
 
----
+### MVP Recommendation for UI/UX Overhaul
 
-## MVP Recommendation
+**Must ship (table stakes audit + fix — no new backend):**
+1. Audit and fix dark mode color consistency — semantic token system, surface hierarchy
+2. Message role visual differentiation — clear user vs. assistant distinction
+3. Sidebar visual polish — spacing, active state, hover states, new-chat button placement
+4. Auto-resize textarea — CSS + JS, no backend
+5. Stop generation button — AbortController on existing SSE fetch
+6. Message entrance animation — CSS keyframes only
+7. Keyboard navigation and focus rings — accessibility + WCAG AA compliance
 
-### Colleague Lookup v1.1 (Current Milestone)
+**Should ship (differentiators, low complexity):**
+8. Tool call panel upgrade — chevron icon, status badge, elapsed time (requires backend timestamp addition)
+9. Hover actions on messages — copy, per-message timestamp, thumbs feedback
+10. Thread recency grouping in sidebar — Today / Yesterday / This Week / Older
+11. Sidebar collapse — CSS transition, localStorage persistence
 
-**Must-Have (defined in PROJECT.md for v1.1):**
-1. Graph API client module — MSAL client credentials flow, same app registration as SSO
-2. `search_colleagues` MCP tool — query by name and/or department, return up to 10 results
-3. `get_colleague_profile` MCP tool — fetch detailed user info by ID
-4. Photo proxy route — `/api/photo/<user_id>` in Flask, returns initials fallback on 404
-5. Inline profile card rendering — photo + name + title + department + email
-6. Azure AD app permissions — `User.Read.All`, `ProfilePhoto.Read.All`
-
-**Add to v1.1 if time permits (low complexity, high value):**
-- Operating company badge derived from `companyName`
-- Office location on card (render only if populated)
-- Copy email to clipboard button
-- Single vs multi-result card layout differentiation
-
-**Defer to post-v1.1:**
-- Manager field expansion (separate Graph call, add complexity)
-- Search by name + department combined (requires Graph $search + $filter combo with ConsistencyLevel header)
-- Phone numbers on card (low population rate in AAD at many enterprises; validate with CTS team first)
-- Usage analytics for colleague lookup queries
-
-### v1.0 Features (Already Built)
-
-**Shipped v1.0 (2026-03-22):**
-- All 15 Exchange tools with JSON schemas
-- Azure AD/Entra ID SSO
-- Per-call PSSession with Kerberos + Basic Auth fallback
-- Conversation history (SQLite)
-- Multiple conversation threads with sidebar
-- Collapsible tool call panel (tool name + params + raw result)
-- Copy-to-clipboard per message
-- Error handling visible to user
-- SSE streaming responses
-- Keyboard shortcuts (Ctrl+Enter)
-- Dark mode toggle
-
-**Known v1.0 tech debt (not blocking v1.1):**
-- Tool events not persisted to SQLite (historical messages lose tool panels)
-- Copy button missing on historical messages
-- CHATGPT_ENDPOINT not in secrets pipeline
+**Defer (high complexity, out of scope for visual overhaul):**
+- Thread search (requires search backend or client-side index)
+- Full token/design system migration (large scope, own milestone)
+- Response word count or token indicator (low value for IT domain)
 
 ---
 
@@ -325,20 +357,29 @@ Error wrapping in MCP server
 | Tool registry (list_tools) | MCP SDK | Tool dispatch, tool visibility in UI, model tool selection |
 | Conversation DB | SSO user identity, SQLite | History persistence, multiple threads, export, search |
 | Tool visibility in UI | MCP tool call metadata in model response | User trust, audit capability, export with tool traces |
+| Design token system (CSS custom properties) | CSS refactor | Dark mode consistency, WCAG AA compliance, theme maintenance |
+| Tool call timestamps | Backend SSE event changes | Tool elapsed time display, status badge accuracy |
 
 ---
 
 ## Sources
 
-**HIGH confidence (official documentation, verified 2026-03-24):**
-- Microsoft Graph profilephoto GET API: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0 — Photo sizes (48x48, 64x64, 96x96, 120x120, 240x240, 360x360, 432x432, 504x504, 648x648), 404 behavior when no photo, `ProfilePhoto.Read.All` permission requirement
-- Microsoft Graph user resource type: https://learn.microsoft.com/en-us/graph/api/resources/user?view=graph-rest-1.0 — Default-returned properties (displayName, jobTitle, mail, userPrincipalName), $select-required properties (department, officeLocation, companyName, businessPhones, mobilePhone)
-- Microsoft Graph $search parameter: https://learn.microsoft.com/en-us/graph/search-query-parameter — `$search="displayName:term"` for user search, `ConsistencyLevel: eventual` header requirement, combining $search and $filter behavior
-- Microsoft Graph Toolkit Person-Card (archived, retirement 2026-08-28): https://learn.microsoft.com/en-us/graph/toolkit/components/person-card — Standard enterprise profile card sections (Contact, Organization, Messages, Files, Profile), field inventory
+**Domain 5 — UI/UX Overhaul (verified 2026-03-27):**
+- [The new UI for enterprise AI — Microsoft Design](https://microsoft.design/articles/the-new-ui-for-enterprise-ai/)
+- [Creating a dynamic UX: guidance for generative AI applications — Microsoft Learn](https://learn.microsoft.com/en-us/microsoft-cloud/dev/copilot/isv/ux-guidance)
+- [Design Patterns For AI Interfaces — Smashing Magazine](https://www.smashingmagazine.com/2025/07/design-patterns-ai-interfaces/)
+- [AI Chat UI Best Practices: Designing Better LLM Interfaces — DEV Community](https://dev.to/greedy_reader/ai-chat-ui-best-practices-designing-better-llm-interfaces-18jj)
+- [Fluent 2 Design System — Color](https://fluent2.microsoft.design/color)
+- [Designing dark mode — Microsoft Design](https://microsoft.design/articles/designing-dark-mode/)
+- [AI UX Patterns — Citations — ShapeofAI.com](https://www.shapeof.ai/patterns/citations)
+- [Comparing Conversational AI Tool User Interfaces 2025 — IntuitionLabs](https://intuitionlabs.ai/articles/conversational-ai-ui-comparison-2025)
+- [AI Copilot UX 2025–26: Best Practices for Trustworthy Interfaces](https://www.letsgroto.com/blog/mastering-ai-copilot-design)
+- [ChatGPT Sidebar Redesign: New Features Explained](https://www.ai-toolbox.co/chatgpt-management-and-productivity/chatgpt-sidebar-redesign-guide)
+- [Where should AI sit in your UI — UX Collective](https://uxdesign.cc/where-should-ai-sit-in-your-ui-1710a258390e)
+- [Beyond Chat: How AI is Transforming UI Design Patterns — Artium.AI](https://artium.ai/insights/beyond-chat-how-ai-is-transforming-ui-design-patterns)
 
-**MEDIUM confidence (multiple sources, community-verified patterns):**
-- Initials fallback for missing photos: industry-standard pattern (Primer design system, shadcn patterns, enterprise avatar UX research). Not Graph-specific documentation.
-- Operating company badge pattern: derived from project context (4 operating companies, AAD `companyName` field). Requires validation that companyName is consistently populated in MMC AAD.
-- Card layout for single vs multi-result: enterprise search UX convention (ClearBox Consulting, search UX best practices). Not an official standard.
-
-**Note:** WebSearch and Context7 supplemented with official Microsoft documentation via WebFetch for this research session. Microsoft Graph API documentation is authoritative and current (updated 2025-11-24 per page metadata).
+**Domains 1–4 — original research (verified 2026-03-19 to 2026-03-24):**
+- Microsoft Graph profilephoto GET API: https://learn.microsoft.com/en-us/graph/api/profilephoto-get?view=graph-rest-1.0
+- Microsoft Graph user resource type: https://learn.microsoft.com/en-us/graph/api/resources/user?view=graph-rest-1.0
+- Microsoft Graph $search parameter: https://learn.microsoft.com/en-us/graph/search-query-parameter
+- Microsoft Graph Toolkit Person-Card (archived, retirement 2026-08-28): https://learn.microsoft.com/en-us/graph/toolkit/components/person-card
