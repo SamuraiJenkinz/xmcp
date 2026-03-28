@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 14 of 19 (Functional Port)
-Plan: 1 of 5 in current phase
+Plan: 2 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-28 — Completed 14-01-PLAN.md (Types, API clients, and Context providers)
+Last activity: 2026-03-28 — Completed 14-02-PLAN.md (Streaming hook and historical parser)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 1/5 done)
+Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 2/5 done)
 
 ## Performance Metrics
 
@@ -44,6 +44,9 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [14-01]: **streamingMessage is separate from messages[]** — never push streaming content into messages[] until FINALIZE_STREAMING; merging during streaming causes re-render thrash
 - [14-01]: **fetchMe returns null on 401, throws on other errors** — unauthenticated is a valid app state, not an exception
 - [14-01]: **Context hook pattern: createContext<T | null>(null) + throw on null** — all 3 contexts (Auth/Thread/Chat) use this pattern; enforces provider wrapping at runtime
+- [14-02]: **options callbacks stored in optionsRef** — SSE hook reads callbacks via ref not closure; prevents stale references as context state updates on each render
+- [14-02]: **flushPendingText before every non-text event** — ensures no text delta dropped when tool/done/error/cancel boundary arrives mid-stream
+- [14-02]: **parseHistoricalMessages look-ahead stops at next assistant boundary** — prevents cross-turn contamination in multi-turn tool loops
 
 ### Pending Todos
 
@@ -59,5 +62,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed 14-01-PLAN.md — Types, API clients, and Context providers; Phase 14 plan 1/5 done
-Resume file: .planning/phases/14-functional-port/14-02-PLAN.md
+Stopped at: Completed 14-02-PLAN.md — Streaming hook and historical parser; Phase 14 plan 2/5 done
+Resume file: .planning/phases/14-functional-port/14-03-PLAN.md
