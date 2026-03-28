@@ -1,4 +1,4 @@
-import { RawMessage, DisplayMessage, ToolPanelData } from '../types';
+import type { RawMessage, DisplayMessage, ToolPanelData } from '../types';
 
 /**
  * DEBT-01 frontend fix: Parse raw OpenAI-format messages into display-ready

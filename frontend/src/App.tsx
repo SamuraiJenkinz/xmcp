@@ -1,12 +1,46 @@
-import { FluentProvider, webDarkTheme, Title1 } from '@fluentui/react-components'
+import { useState } from 'react';
+import { FluentProvider, webDarkTheme, webLightTheme } from '@fluentui/react-components';
+import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
+import { ThreadProvider } from './contexts/ThreadContext.tsx';
+import { ChatProvider } from './contexts/ChatContext.tsx';
+import { AppLayout } from './components/AppLayout.tsx';
+
+// Set data-theme attribute immediately from localStorage so CSS variables
+// apply before React renders.
+const storedTheme = (localStorage.getItem('atlas-theme') as 'light' | 'dark') || 'light';
+document.documentElement.setAttribute('data-theme', storedTheme);
+
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <div className="loading">Loading...</div>;
+  if (!user) {
+    window.location.href = '/login';
+    return null;
+  }
+  return <>{children}</>;
+}
 
 export default function App() {
+  const [theme, setTheme] = useState<'light' | 'dark'>(storedTheme);
+
+  function handleToggleTheme() {
+    const newTheme: 'light' | 'dark' = theme === 'dark' ? 'light' : 'dark';
+    setTheme(newTheme);
+    localStorage.setItem('atlas-theme', newTheme);
+    document.documentElement.setAttribute('data-theme', newTheme);
+  }
+
   return (
-    <FluentProvider theme={webDarkTheme}>
-      <div className="tw:flex tw:flex-col tw:min-h-screen tw:items-center tw:justify-center">
-        <Title1>Atlas</Title1>
-        <p className="tw:mt-4">React shell is running. Fluent UI and Tailwind are configured.</p>
-      </div>
+    <FluentProvider theme={theme === 'dark' ? webDarkTheme : webLightTheme}>
+      <AuthProvider>
+        <AuthGuard>
+          <ThreadProvider>
+            <ChatProvider>
+              <AppLayout theme={theme} onToggleTheme={handleToggleTheme} />
+            </ChatProvider>
+          </ThreadProvider>
+        </AuthGuard>
+      </AuthProvider>
     </FluentProvider>
-  )
+  );
 }

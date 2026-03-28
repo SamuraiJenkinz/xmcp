@@ -1,5 +1,5 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { SSEEvent, ToolPanelData } from '../types';
+import type { SSEEvent, ToolPanelData } from '../types';
 
 interface UseStreamingMessageOptions {
   onText: (delta: string) => void;
