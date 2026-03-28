@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 14 of 19 (Functional Port)
-Plan: 4 of 5 in current phase
+Plan: 5 of 5 in current phase (tasks 1-2/3 complete — awaiting human-verify checkpoint)
 Status: In progress
-Last activity: 2026-03-28 — Completed 14-04-PLAN.md (Message rendering components)
+Last activity: 2026-03-28 — Executed 14-05-PLAN.md tasks 1-2 (InputArea, Header, AppLayout, App.tsx wiring)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 4/5 done)
+Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 5/5 tasks 1-2 done)
 
 ## Performance Metrics
 
@@ -54,6 +54,7 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [14-04]: **ToolPanel uses native details/summary, not Fluent Accordion** — locked decision from research, confirmed in implementation
 - [14-04]: **rehypeSanitize must be last in rehypePlugins array** — plugins process left-to-right; sanitizer must run after all transforms
 - [14-04]: **contentRef + useEffect in AssistantMessage** — ref tracks latest content prop; CopyButton's getText closure is never stale during streaming
+- [14-05]: **type-only imports required in useStreamingMessage.ts and parseHistoricalMessages.ts** — verbatimModuleSyntax enforcement; pre-existing files had value-import style for types; fixed as Rule 3 blocking issue during build verification
 
 ### Pending Todos
 
@@ -69,5 +70,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed 14-04-PLAN.md — Message rendering components (8 files, DEBT-02 fix); Phase 14 plan 4/5 done
-Resume file: .planning/phases/14-functional-port/14-05-PLAN.md
+Stopped at: 14-05-PLAN.md tasks 1-2 complete; paused at checkpoint:human-verify (Task 3)
+Resume file: .planning/phases/14-functional-port/14-05-PLAN.md (Task 3 checkpoint)
