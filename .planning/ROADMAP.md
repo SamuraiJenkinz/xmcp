@@ -139,14 +139,14 @@ Plans:
   3. Copy-to-clipboard works on both new and historical messages (DEBT-02 fix)
   4. Tool panels expand and collapse; profile cards render with photo or initials placeholder
   5. All 7 regression smoke tests pass before this phase is marked complete
-**Plans**: TBD
+**Plans**: 5 plans
 
 Plans:
-- [ ] 14-01: SSE streaming hook — stream.ts useStreamingMessage with AbortController in useRef, all 5 event types verified
-- [ ] 14-02: Backend fix — persist tool events to SQLite (DEBT-01); historical message copy-to-clipboard (DEBT-02)
-- [ ] 14-03: Thread management components — ThreadList, ThreadItem (new/rename/delete/thread_named update)
-- [ ] 14-04: Message rendering — UserMessage, AssistantMessage, MarkdownRenderer + DOMPurify, ToolPanel, ProfileCard
-- [ ] 14-05: InputArea + Header — auto-resize textarea, send/stop button, keyboard shortcuts, user info, logout
+- [ ] 14-01-PLAN.md — Types, API clients, and Context providers (auth, threads, chat state)
+- [ ] 14-02-PLAN.md — useStreamingMessage hook with SSE parsing + parseHistoricalMessages utility (DEBT-01 frontend fix)
+- [ ] 14-03-PLAN.md — ThreadList and ThreadItem sidebar components (CRUD, rename, switch with stream abort)
+- [ ] 14-04-PLAN.md — Message rendering: UserMessage, AssistantMessage, MarkdownRenderer, ToolPanel, ProfileCard, SearchResultCard, CopyButton (DEBT-02 fix)
+- [ ] 14-05-PLAN.md — InputArea, Header, AppLayout wiring, App.tsx integration + human verification
 
 #### Phase 15: Design System
 **Goal**: Fluent 2 semantic color token system applied globally — dark mode surface hierarchy correct, light mode aligned, Segoe UI Variable typography in place — enabling all subsequent visual work
