@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 14 of 19 (Functional Port)
-Plan: 2 of 5 in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-28 — Completed 14-02-PLAN.md (Streaming hook and historical parser)
+Last activity: 2026-03-28 — Completed 14-03-PLAN.md (Thread sidebar components: ThreadItem and ThreadList)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 2/5 done)
+Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 3/5 done)
 
 ## Performance Metrics
 
@@ -47,6 +47,9 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [14-02]: **options callbacks stored in optionsRef** — SSE hook reads callbacks via ref not closure; prevents stale references as context state updates on each render
 - [14-02]: **flushPendingText before every non-text event** — ensures no text delta dropped when tool/done/error/cancel boundary arrives mid-stream
 - [14-02]: **parseHistoricalMessages look-ahead stops at next assistant boundary** — prevents cross-turn contamination in multi-turn tool loops
+- [14-03]: **onCancelStream is a prop not a context value** — streaming AbortController lives in App.tsx (useStreamingMessage), ThreadList accepts callback; keeps hook ownership clear
+- [14-03]: **Thread switch clears messages immediately** — SET_MESSAGES [] before async getMessages call; matches vanilla JS responsiveness
+- [14-03]: **controlled input for rename, not contentEditable** — locked decision from research, enforced in ThreadItem implementation
 
 ### Pending Todos
 
@@ -62,5 +65,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed 14-02-PLAN.md — Streaming hook and historical parser; Phase 14 plan 2/5 done
-Resume file: .planning/phases/14-functional-port/14-03-PLAN.md
+Stopped at: Completed 14-03-PLAN.md — Thread sidebar components (ThreadItem + ThreadList); Phase 14 plan 3/5 done
+Resume file: .planning/phases/14-functional-port/14-04-PLAN.md
