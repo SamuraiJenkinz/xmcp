@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 14 of 19 (Functional Port)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-03-28 — Completed 14-03-PLAN.md (Thread sidebar components: ThreadItem and ThreadList)
+Last activity: 2026-03-28 — Completed 14-04-PLAN.md (Message rendering components)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 3/5 done)
+Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 4/5 done)
 
 ## Performance Metrics
 
@@ -50,6 +50,10 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [14-03]: **onCancelStream is a prop not a context value** — streaming AbortController lives in App.tsx (useStreamingMessage), ThreadList accepts callback; keeps hook ownership clear
 - [14-03]: **Thread switch clears messages immediately** — SET_MESSAGES [] before async getMessages call; matches vanilla JS responsiveness
 - [14-03]: **controlled input for rename, not contentEditable** — locked decision from research, enforced in ThreadItem implementation
+- [14-04]: **CopyButton accepts getText: () => string** — lazy evaluation at click time fixes DEBT-02; clipboard works identically on streaming and historical messages
+- [14-04]: **ToolPanel uses native details/summary, not Fluent Accordion** — locked decision from research, confirmed in implementation
+- [14-04]: **rehypeSanitize must be last in rehypePlugins array** — plugins process left-to-right; sanitizer must run after all transforms
+- [14-04]: **contentRef + useEffect in AssistantMessage** — ref tracks latest content prop; CopyButton's getText closure is never stale during streaming
 
 ### Pending Todos
 
@@ -65,5 +69,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: Completed 14-03-PLAN.md — Thread sidebar components (ThreadItem + ThreadList); Phase 14 plan 3/5 done
-Resume file: .planning/phases/14-functional-port/14-04-PLAN.md
+Stopped at: Completed 14-04-PLAN.md — Message rendering components (8 files, DEBT-02 fix); Phase 14 plan 4/5 done
+Resume file: .planning/phases/14-functional-port/14-05-PLAN.md
