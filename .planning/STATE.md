@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 13 of 19 (Infrastructure Scaffold)
-Plan: 2 of 2 in current phase
-Status: Phase complete
-Last activity: 2026-03-27 — Completed 13-02-PLAN.md (Flask-React integration layer)
+Phase: 14 of 19 (Functional Port)
+Plan: 1 of 5 in current phase
+Status: In progress
+Last activity: 2026-03-28 — Completed 14-01-PLAN.md (Types, API clients, and Context providers)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 13 done)
+Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 1/5 done)
 
 ## Performance Metrics
 
@@ -41,6 +41,9 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [13-02]: **ATLAS_UI=react toggles SPA mode** — single env var, no code change; default 'classic' ensures zero regression on existing deployments
 - [13-02]: **send_from_directory was NOT pre-imported** — plan stated it was already imported; had to add it (auto-fixed Rule 3)
 - [13-verify]: **auth.py url_for('index') → url_for('catch_all')** — removing @app.route('/') from index() broke login_required redirect and logout; fixed in orchestrator correction
+- [14-01]: **streamingMessage is separate from messages[]** — never push streaming content into messages[] until FINALIZE_STREAMING; merging during streaming causes re-render thrash
+- [14-01]: **fetchMe returns null on 401, throws on other errors** — unauthenticated is a valid app state, not an exception
+- [14-01]: **Context hook pattern: createContext<T | null>(null) + throw on null** — all 3 contexts (Auth/Thread/Chat) use this pattern; enforces provider wrapping at runtime
 
 ### Pending Todos
 
@@ -55,6 +58,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-27
-Stopped at: Completed 13-02-PLAN.md — Flask-React integration layer complete; Phase 13 done
-Resume file: .planning/phases/14-regression-tests/ (next phase)
+Last session: 2026-03-28
+Stopped at: Completed 14-01-PLAN.md — Types, API clients, and Context providers; Phase 14 plan 1/5 done
+Resume file: .planning/phases/14-functional-port/14-02-PLAN.md
