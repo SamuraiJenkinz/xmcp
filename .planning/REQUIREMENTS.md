@@ -20,10 +20,10 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Design System
 
-- [ ] **DSGN-01**: Implement Fluent 2 semantic color token system (CSS custom properties with --atlas- namespace)
-- [ ] **DSGN-02**: Dark mode audit — three-tier surface hierarchy, no ad-hoc grays, WCAG AA contrast
-- [ ] **DSGN-03**: Light mode aligned with Fluent 2 neutral palette
-- [ ] **DSGN-04**: Typography system using Fluent 2 type ramp (Segoe UI Variable)
+- [x] **DSGN-01**: Implement Fluent 2 semantic color token system (CSS custom properties with --atlas- namespace)
+- [x] **DSGN-02**: Dark mode audit — three-tier surface hierarchy, no ad-hoc grays, WCAG AA contrast
+- [x] **DSGN-03**: Light mode aligned with Fluent 2 neutral palette
+- [x] **DSGN-04**: Typography system using Fluent 2 type ramp (Segoe UI Variable)
 
 ### Chat Experience
 
@@ -122,10 +122,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRAME-08 | Phase 14 | Complete |
 | DEBT-01 | Phase 14 | Complete |
 | DEBT-02 | Phase 14 | Complete |
-| DSGN-01 | Phase 15 | Pending |
-| DSGN-02 | Phase 15 | Pending |
-| DSGN-03 | Phase 15 | Pending |
-| DSGN-04 | Phase 15 | Pending |
+| DSGN-01 | Phase 15 | Complete |
+| DSGN-02 | Phase 15 | Complete |
+| DSGN-03 | Phase 15 | Complete |
+| DSGN-04 | Phase 15 | Complete |
 | CHAT-01 | Phase 16 | Pending |
 | CHAT-02 | Phase 16 | Pending |
 | CHAT-03 | Phase 16 | Pending |

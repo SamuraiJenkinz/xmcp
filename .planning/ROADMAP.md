@@ -157,11 +157,11 @@ Plans:
   2. Dark mode shows a three-tier surface hierarchy (background / surface / elevated surface) that matches Fluent 2 webDarkTheme — verified by toggling dark mode and inspecting computed styles
   3. Light mode uses the Fluent 2 neutral palette with no dark-mode bleed; switching modes changes all surfaces correctly
   4. Body text, headings, and code blocks use Segoe UI Variable at Fluent 2 type ramp sizes
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 15-01: CSS variable audit and --atlas- namespace migration; Fluent 2 token integration via @theme directive
-- [ ] 15-02: Dark mode surface hierarchy, light mode neutral palette, Segoe UI Variable type ramp
+- [x] 15-01-PLAN.md — --atlas- token definitions, Tailwind @theme inline bridge, @layer base typography
+- [x] 15-02-PLAN.md — Component CSS rules using --atlas- tokens, surface hierarchy, human verification
 
 #### Phase 16: Chat Experience Redesign
 **Goal**: Message bubbles, input area, streaming states, and welcome screen look and feel like Microsoft Copilot — clear role differentiation, smooth animations, stop-generation button, prompt chips
@@ -249,7 +249,7 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 12. Profile Card Frontend + System Prompt | v1.1 | 2/2 | Complete | 2026-03-25 |
 | 13. Infrastructure Scaffold | v1.2 | 2/2 | Complete | 2026-03-27 |
 | 14. Functional Port | v1.2 | 5/5 | Complete | 2026-03-29 |
-| 15. Design System | v1.2 | 0/2 | Not started | - |
+| 15. Design System | v1.2 | 2/2 | Complete | 2026-03-29 |
 | 16. Chat Experience Redesign | v1.2 | 0/3 | Not started | - |
 | 17. Sidebar and Tool Panels | v1.2 | 0/3 | Not started | - |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 0/3 | Not started | - |

@@ -11,7 +11,7 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 Phase: 15 of 19 (Design System) — Complete
 Plan: 2 of 2 in current phase — Phase complete
-Status: Phase 15 complete — ready for Phase 16 (Shell Layout)
+Status: Phase 15 complete — ready for Phase 16 (Chat Experience Redesign)
 Last activity: 2026-03-29 — Completed 15-02-PLAN.md (component CSS token application, human-verified)
 
 Progress: [████████████████░░░] 82% (Phase 15 complete, 16-19 remaining)
@@ -81,4 +81,4 @@ None.
 
 Last session: 2026-03-29
 Stopped at: Completed 15-02-PLAN.md — component CSS token application, Phase 15 fully complete
-Resume file: None — ready for 16-shell-layout phase
+Resume file: None — ready for Phase 16 (Chat Experience Redesign)
