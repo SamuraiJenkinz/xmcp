@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 14 of 19 (Functional Port)
-Plan: 5 of 5 in current phase (tasks 1-2/3 complete — awaiting human-verify checkpoint)
-Status: In progress
-Last activity: 2026-03-28 — Executed 14-05-PLAN.md tasks 1-2 (InputArea, Header, AppLayout, App.tsx wiring)
+Phase: 14 of 19 (Functional Port) — COMPLETE
+Plan: 5 of 5 in current phase — all plans complete
+Status: Phase complete — ready for Phase 15 (Visual Redesign)
+Last activity: 2026-03-28 — Completed 14-05-PLAN.md (InputArea, Header, AppLayout, App.tsx wiring; human-verify approved)
 
-Progress: [█████████████░░░░░░] 68% (13/19 phases complete — Phase 14 in progress, plan 5/5 tasks 1-2 done)
+Progress: [██████████████░░░░░] 74% (14/19 phases complete)
 
 ## Performance Metrics
 
@@ -55,6 +55,10 @@ Progress: [█████████████░░░░░░] 68% (13/19
 - [14-04]: **rehypeSanitize must be last in rehypePlugins array** — plugins process left-to-right; sanitizer must run after all transforms
 - [14-04]: **contentRef + useEffect in AssistantMessage** — ref tracks latest content prop; CopyButton's getText closure is never stale during streaming
 - [14-05]: **type-only imports required in useStreamingMessage.ts and parseHistoricalMessages.ts** — verbatimModuleSyntax enforcement; pre-existing files had value-import style for types; fixed as Rule 3 blocking issue during build verification
+- [14-05]: **Theme state owned by App.tsx root** — passed to FluentProvider and Header as props; avoids dedicated context for single scalar value
+- [14-05]: **AuthGuard redirects on user === null (not loading)** — prevents flash redirect during auth fetch
+- [14-05]: **data-theme set at module load before React renders** — CSS variables hydrate without FOUC
+- [14-05]: **Provider nesting order: FluentProvider > AuthProvider > AuthGuard > ThreadProvider > ChatProvider > AppLayout** — locked order for Phase 14
 
 ### Pending Todos
 
@@ -63,12 +67,12 @@ None.
 ### Blockers/Concerns
 
 - [Phase 13 gate]: Verify whether IIS ARR is in the production serving path before Phase 13 ships — if present, configure responseBufferLimit="0"
-- [Phase 14 gate]: All 7 regression smoke tests must pass before Phase 15 begins
+- [Phase 14 gate — CLEARED]: All 7 regression smoke tests passed (human-verified 2026-03-28)
 - [Phase 17 evaluate]: @fluentui-copilot/react-copilot-chat fitness for Atlas tool panels requires a 2-4 hour spike at Phase 16/17 start
 - [Phase 17 prereq]: Confirm thread created_at column exists in SQLite schema before implementing sidebar recency grouping
 
 ## Session Continuity
 
 Last session: 2026-03-28
-Stopped at: 14-05-PLAN.md tasks 1-2 complete; paused at checkpoint:human-verify (Task 3)
-Resume file: .planning/phases/14-functional-port/14-05-PLAN.md (Task 3 checkpoint)
+Stopped at: Completed 14-05-PLAN.md — Phase 14 functional port complete
+Resume file: None — ready to begin Phase 15 (Visual Redesign)
