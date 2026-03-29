@@ -108,3 +108,576 @@
   --font-atlas: var(--atlas-font-base);
   --font-atlas-mono: var(--atlas-font-mono);
 }
+
+/* -- Component Styles -- */
+@layer components {
+  /* === Layout === */
+  .app-container {
+    display: flex;
+    height: 100vh;
+    width: 100%;
+    overflow: hidden;
+    background-color: var(--atlas-bg-canvas);
+  }
+
+  .sidebar {
+    width: 260px;
+    min-width: 260px;
+    background-color: var(--atlas-bg-surface);
+    border-right: 1px solid var(--atlas-stroke-2);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+  }
+
+  .chat-pane {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    background-color: var(--atlas-bg-canvas);
+  }
+
+  /* === Header === */
+  .chat-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    background-color: var(--atlas-bg-surface);
+    border-bottom: 1px solid var(--atlas-stroke-2);
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-secondary);
+  }
+
+  .user-info {
+    margin-right: auto;
+    color: var(--atlas-text-primary);
+    font-size: var(--atlas-text-body);
+    font-weight: 600;
+  }
+
+  .theme-toggle-btn,
+  .logout-btn {
+    background: none;
+    border: none;
+    color: var(--atlas-text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: var(--atlas-text-body);
+    text-decoration: none;
+  }
+
+  .theme-toggle-btn:hover,
+  .logout-btn:hover {
+    background-color: var(--atlas-bg-elevated);
+    color: var(--atlas-text-primary);
+  }
+
+  /* === Thread List (Sidebar) === */
+  .thread-list {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    gap: 2px;
+  }
+
+  .new-chat-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    background-color: var(--atlas-accent);
+    color: var(--atlas-accent-text);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: var(--atlas-text-body);
+    font-weight: 600;
+    font-family: var(--atlas-font-base);
+  }
+
+  .new-chat-btn:hover {
+    opacity: 0.9;
+  }
+
+  /* === Thread Item === */
+  .thread-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    color: var(--atlas-text-primary);
+    font-size: var(--atlas-text-body);
+  }
+
+  .thread-item:hover {
+    background-color: var(--atlas-bg-elevated);
+  }
+
+  .thread-item-active {
+    background-color: var(--atlas-accent-subtle);
+    color: var(--atlas-text-primary);
+  }
+
+  .thread-item-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .thread-item-name-input {
+    flex: 1;
+    background: var(--atlas-bg-canvas);
+    color: var(--atlas-text-primary);
+    border: 1px solid var(--atlas-stroke-1);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: var(--atlas-text-body);
+    font-family: var(--atlas-font-base);
+    outline: none;
+  }
+
+  .thread-actions {
+    display: flex;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 150ms;
+  }
+
+  .thread-item:hover .thread-actions {
+    opacity: 1;
+  }
+
+  .thread-action-btn {
+    background: none;
+    border: none;
+    color: var(--atlas-text-tertiary);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-size: var(--atlas-text-caption1);
+  }
+
+  .thread-action-btn:hover {
+    color: var(--atlas-text-primary);
+    background-color: var(--atlas-bg-canvas);
+  }
+
+  /* === Message List === */
+  .chat-messages {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    background-color: var(--atlas-bg-canvas);
+  }
+
+  /* === Messages === */
+  .message {
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    font-size: var(--atlas-text-body);
+    line-height: var(--atlas-lh-body);
+    color: var(--atlas-text-primary);
+  }
+
+  .user-message {
+    padding: 12px 16px;
+    background-color: var(--atlas-bg-elevated);
+    border-radius: 8px;
+  }
+
+  .assistant-message {
+    padding: 12px 0;
+  }
+
+  .streaming-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1em;
+    background-color: var(--atlas-text-primary);
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+
+  /* === Markdown Content === */
+  .markdown-content {
+    color: var(--atlas-text-primary);
+    line-height: var(--atlas-lh-body);
+  }
+
+  .markdown-content h1,
+  .markdown-content h2,
+  .markdown-content h3 {
+    color: var(--atlas-text-primary);
+    margin-top: 16px;
+    margin-bottom: 8px;
+  }
+
+  .markdown-content h1 { font-size: var(--atlas-text-title3); line-height: var(--atlas-lh-title3); }
+  .markdown-content h2 { font-size: var(--atlas-text-subtitle1); line-height: var(--atlas-lh-subtitle1); }
+  .markdown-content h3 { font-size: var(--atlas-text-body2); line-height: var(--atlas-lh-body2); font-weight: 600; }
+
+  .markdown-content p {
+    margin: 8px 0;
+  }
+
+  .markdown-content code {
+    font-family: var(--atlas-font-mono);
+    font-size: var(--atlas-text-caption1);
+    background-color: var(--atlas-bg-elevated);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  .markdown-content pre {
+    background-color: var(--atlas-bg-elevated);
+    border: 1px solid var(--atlas-stroke-2);
+    border-radius: 6px;
+    padding: 12px 16px;
+    overflow-x: auto;
+    margin: 8px 0;
+  }
+
+  .markdown-content pre code {
+    background: none;
+    padding: 0;
+    font-size: var(--atlas-text-caption1);
+  }
+
+  .markdown-content a {
+    color: var(--atlas-accent);
+    text-decoration: none;
+  }
+
+  .markdown-content a:hover {
+    text-decoration: underline;
+  }
+
+  .markdown-content ul,
+  .markdown-content ol {
+    padding-left: 24px;
+    margin: 8px 0;
+  }
+
+  .markdown-content table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 8px 0;
+  }
+
+  .markdown-content th,
+  .markdown-content td {
+    border: 1px solid var(--atlas-stroke-2);
+    padding: 8px 12px;
+    text-align: left;
+  }
+
+  .markdown-content th {
+    background-color: var(--atlas-bg-elevated);
+    font-weight: 600;
+  }
+
+  /* === Tool Panel === */
+  .tool-panel {
+    margin: 8px 0;
+    border: 1px solid var(--atlas-stroke-2);
+    border-radius: 6px;
+    background-color: var(--atlas-bg-elevated);
+    overflow: hidden;
+  }
+
+  .tool-panels {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .tool-panel-summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-secondary);
+    list-style: none;
+  }
+
+  .tool-panel-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .tool-panel-summary:hover {
+    color: var(--atlas-text-primary);
+    background-color: var(--atlas-bg-surface);
+  }
+
+  .tool-panel-icon {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--atlas-accent);
+  }
+
+  .tool-panel-name {
+    font-weight: 600;
+  }
+
+  .tool-panel-status {
+    margin-left: auto;
+    font-size: var(--atlas-text-caption2);
+    font-weight: 600;
+  }
+
+  .status-success { color: var(--atlas-status-success); }
+  .status-error { color: var(--atlas-status-error); }
+
+  .tool-panel-body {
+    padding: 8px 12px;
+    border-top: 1px solid var(--atlas-stroke-2);
+  }
+
+  .tool-panel-label {
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-tertiary);
+    margin-bottom: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .tool-panel-json {
+    font-family: var(--atlas-font-mono);
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-secondary);
+    background-color: var(--atlas-bg-surface);
+    border-radius: 4px;
+    padding: 8px 12px;
+    overflow-x: auto;
+    margin: 4px 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .tool-panel-result {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  /* === Profile Card === */
+  .profile-card {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    padding: 12px 16px;
+    margin: 8px 0;
+    background-color: var(--atlas-bg-elevated);
+    border: 1px solid var(--atlas-stroke-2);
+    border-radius: 8px;
+  }
+
+  .profile-card-photo {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  .profile-card-initials {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--atlas-accent);
+    color: var(--atlas-accent-text);
+    font-weight: 600;
+    font-size: var(--atlas-text-body2);
+  }
+
+  .profile-card-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  .profile-card-name {
+    font-weight: 600;
+    font-size: var(--atlas-text-body);
+    color: var(--atlas-text-primary);
+  }
+
+  .profile-card-field {
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-secondary);
+  }
+
+  .profile-card-dept {
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-text-tertiary);
+  }
+
+  .profile-card-email a {
+    font-size: var(--atlas-text-caption1);
+    color: var(--atlas-accent);
+    text-decoration: none;
+  }
+
+  .profile-card-email a:hover {
+    text-decoration: underline;
+  }
+
+  /* === Search Result Cards === */
+  .search-results {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 8px 0;
+  }
+
+  .search-result-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px;
+    padding: 10px 16px;
+    background-color: var(--atlas-bg-elevated);
+    border: 1px solid var(--atlas-stroke-2);
+    border-radius: 6px;
+  }
+
+  .search-result-name {
+    font-weight: 600;
+    color: var(--atlas-text-primary);
+    font-size: var(--atlas-text-body);
+  }
+
+  .search-result-sep {
+    color: var(--atlas-text-disabled);
+  }
+
+  .search-result-title {
+    color: var(--atlas-text-secondary);
+    font-size: var(--atlas-text-caption1);
+  }
+
+  .search-result-dept {
+    color: var(--atlas-text-tertiary);
+    font-size: var(--atlas-text-caption1);
+  }
+
+  .search-result-email-row {
+    width: 100%;
+  }
+
+  .search-result-email {
+    color: var(--atlas-accent);
+    font-size: var(--atlas-text-caption1);
+    text-decoration: none;
+  }
+
+  .search-result-email:hover {
+    text-decoration: underline;
+  }
+
+  /* === Input Area === */
+  .input-area {
+    display: flex;
+    gap: 8px;
+    padding: 12px 24px 16px;
+    background-color: var(--atlas-bg-surface);
+    border-top: 1px solid var(--atlas-stroke-2);
+    align-items: flex-end;
+  }
+
+  .chat-input {
+    flex: 1;
+    resize: none;
+    border: 1px solid var(--atlas-stroke-1);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-family: var(--atlas-font-base);
+    font-size: var(--atlas-text-body);
+    line-height: var(--atlas-lh-body);
+    color: var(--atlas-text-primary);
+    background-color: var(--atlas-bg-canvas);
+    outline: none;
+    min-height: 40px;
+    max-height: 120px;
+  }
+
+  .chat-input:focus {
+    border-color: var(--atlas-accent);
+  }
+
+  .chat-input::placeholder {
+    color: var(--atlas-text-disabled);
+  }
+
+  .send-btn {
+    padding: 8px 16px;
+    background-color: var(--atlas-accent);
+    color: var(--atlas-accent-text);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--atlas-font-base);
+    font-size: var(--atlas-text-body);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  .send-btn:hover:not(:disabled) {
+    opacity: 0.9;
+  }
+
+  .send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  /* === Copy Button === */
+  .copy-btn {
+    background: none;
+    border: 1px solid var(--atlas-stroke-1);
+    color: var(--atlas-text-secondary);
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: var(--atlas-text-caption1);
+    font-family: var(--atlas-font-base);
+  }
+
+  .copy-btn:hover {
+    background-color: var(--atlas-bg-elevated);
+    color: var(--atlas-text-primary);
+  }
+
+  /* === Loading State === */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    color: var(--atlas-text-secondary);
+    font-size: var(--atlas-text-body2);
+    background-color: var(--atlas-bg-canvas);
+  }
+}
