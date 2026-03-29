@@ -55,26 +55,30 @@ export function InputArea({ onSend, onCancel, isStreaming, disabled }: InputArea
     // Shift+Enter: default behavior (newline) — do nothing
   }
 
-  const isButtonDisabled = disabled || (!isStreaming && message.trim() === '');
+  const isButtonDisabled = disabled || message.trim() === '';
 
   return (
     <div className="input-area">
       <textarea
         ref={textareaRef}
         className="chat-input"
-        placeholder="Type a message..."
+        placeholder="Ask Atlas anything about Exchange..."
         rows={1}
         value={message}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
-        disabled={disabled}
+        readOnly={isStreaming}
+        disabled={disabled && !isStreaming}
       />
       {isStreaming ? (
-        <button className="send-btn" onClick={onCancel} disabled={isButtonDisabled}>
-          Stop
-        </button>
+        <button
+          className="stop-btn"
+          onClick={onCancel}
+          aria-label="Stop generating"
+          type="button"
+        />
       ) : (
-        <button className="send-btn" onClick={handleSubmit} disabled={isButtonDisabled}>
+        <button className="send-btn" onClick={handleSubmit} disabled={isButtonDisabled} type="button">
           Send
         </button>
       )}
