@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 14: Functional Port
+**Current focus:** v1.2 UI/UX Redesign — Phase 15: Design System
 
 ## Current Position
 
-Phase: 14 of 19 (Functional Port) — COMPLETE
-Plan: 5 of 5 in current phase — all plans complete
-Status: Phase complete — ready for Phase 15 (Visual Redesign)
-Last activity: 2026-03-28 — Completed 14-05-PLAN.md (InputArea, Header, AppLayout, App.tsx wiring; human-verify approved)
+Phase: 15 of 19 (Design System) — In progress
+Plan: 1 of 2 in current phase — 1 complete
+Status: In progress
+Last activity: 2026-03-29 — Completed 15-01-PLAN.md (Atlas design token system in index.css)
 
-Progress: [██████████████░░░░░] 74% (14/19 phases complete)
+Progress: [███████████████░░░░] 78% (15/19 phases, 1 plan into phase 15)
 
 ## Performance Metrics
 
@@ -59,6 +59,9 @@ Progress: [██████████████░░░░░] 74% (14/19
 - [14-05]: **AuthGuard redirects on user === null (not loading)** — prevents flash redirect during auth fetch
 - [14-05]: **data-theme set at module load before React renders** — CSS variables hydrate without FOUC
 - [14-05]: **Provider nesting order: FluentProvider > AuthProvider > AuthGuard > ThreadProvider > ChatProvider > AppLayout** — locked order for Phase 14
+- [15-01]: **Atlas token file ordering is mandatory** — @import → :root → [data-theme="dark"] → @layer base → @theme inline; :root must precede @theme inline for variable resolution
+- [15-01]: **62 --atlas- custom properties defined** — surface, text, stroke, accent, status, font families, Fluent 2 sizes (10-32px), Fluent 2 line heights
+- [15-01]: **Typography tokens are theme-invariant** — only color tokens override in [data-theme="dark"]; font-family/size/line-height shared across light and dark
 
 ### Pending Todos
 
@@ -73,6 +76,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-28
-Stopped at: Completed 14-05-PLAN.md — Phase 14 functional port complete
-Resume file: None — ready to begin Phase 15 (Visual Redesign)
+Last session: 2026-03-29
+Stopped at: Completed 15-01-PLAN.md — Atlas design token system in index.css
+Resume file: None — ready for 15-02-PLAN.md (shell layout visual pass)
