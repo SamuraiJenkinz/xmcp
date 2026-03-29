@@ -142,11 +142,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Types, API clients, and Context providers (auth, threads, chat state)
-- [ ] 14-02-PLAN.md — useStreamingMessage hook with SSE parsing + parseHistoricalMessages utility (DEBT-01 frontend fix)
-- [ ] 14-03-PLAN.md — ThreadList and ThreadItem sidebar components (CRUD, rename, switch with stream abort)
-- [ ] 14-04-PLAN.md — Message rendering: UserMessage, AssistantMessage, MarkdownRenderer, ToolPanel, ProfileCard, SearchResultCard, CopyButton (DEBT-02 fix)
-- [ ] 14-05-PLAN.md — InputArea, Header, AppLayout wiring, App.tsx integration + human verification
+- [x] 14-01-PLAN.md — Types, API clients, and Context providers (auth, threads, chat state)
+- [x] 14-02-PLAN.md — useStreamingMessage hook with SSE parsing + parseHistoricalMessages utility (DEBT-01 frontend fix)
+- [x] 14-03-PLAN.md — ThreadList and ThreadItem sidebar components (CRUD, rename, switch with stream abort)
+- [x] 14-04-PLAN.md — Message rendering: UserMessage, AssistantMessage, MarkdownRenderer, ToolPanel, ProfileCard, SearchResultCard, CopyButton (DEBT-02 fix)
+- [x] 14-05-PLAN.md — InputArea, Header, AppLayout wiring, App.tsx integration + human verification
 
 #### Phase 15: Design System
 **Goal**: Fluent 2 semantic color token system applied globally — dark mode surface hierarchy correct, light mode aligned, Segoe UI Variable typography in place — enabling all subsequent visual work
@@ -248,7 +248,7 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 11. MCP Tools + Photo Proxy | v1.1 | 3/3 | Complete | 2026-03-24 |
 | 12. Profile Card Frontend + System Prompt | v1.1 | 2/2 | Complete | 2026-03-25 |
 | 13. Infrastructure Scaffold | v1.2 | 2/2 | Complete | 2026-03-27 |
-| 14. Functional Port | v1.2 | 0/5 | Not started | - |
+| 14. Functional Port | v1.2 | 5/5 | Complete | 2026-03-29 |
 | 15. Design System | v1.2 | 0/2 | Not started | - |
 | 16. Chat Experience Redesign | v1.2 | 0/3 | Not started | - |
 | 17. Sidebar and Tool Panels | v1.2 | 0/3 | Not started | - |

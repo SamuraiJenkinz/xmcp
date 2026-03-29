@@ -12,11 +12,11 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 - [x] **FRAME-01**: Scaffold React 19 + Vite + TypeScript within existing Flask app (hybrid SPA pattern — Flask serves shell, React mounts on #app)
 - [x] **FRAME-02**: Integrate Fluent UI v9 (@fluentui/react-components) as primary component library
 - [x] **FRAME-03**: Integrate Tailwind CSS v4 for utility styling alongside Fluent tokens
-- [ ] **FRAME-04**: Port SSE streaming logic to React (fetch + ReadableStream, AbortController in useRef)
-- [ ] **FRAME-05**: Port thread management (CRUD, sidebar, switching) to React components
-- [ ] **FRAME-06**: Port message rendering and markdown to React components
+- [x] **FRAME-04**: Port SSE streaming logic to React (fetch + ReadableStream, AbortController in useRef)
+- [x] **FRAME-05**: Port thread management (CRUD, sidebar, switching) to React components
+- [x] **FRAME-06**: Port message rendering and markdown to React components
 - [x] **FRAME-07**: Add /api/me endpoint to replace Jinja2 template variable injection
-- [ ] **FRAME-08**: Achieve functional parity — all existing features work identically before visual changes
+- [x] **FRAME-08**: Achieve functional parity — all existing features work identically before visual changes
 
 ### Design System
 
@@ -63,8 +63,8 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Tech Debt
 
-- [ ] **DEBT-01**: Persist tool events to SQLite so historical messages retain tool panels
-- [ ] **DEBT-02**: Copy-to-clipboard on historical messages
+- [x] **DEBT-01**: Persist tool events to SQLite so historical messages retain tool panels
+- [x] **DEBT-02**: Copy-to-clipboard on historical messages
 - [ ] **DEBT-03**: Fix 3 test regressions (description phrasing, tool count assertion)
 - [ ] **DEBT-04**: Remove get_user_photo_bytes() dead code
 - [ ] **DEBT-05**: Fix get_colleague_profile user_id schema description
@@ -116,12 +116,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRAME-02 | Phase 13 | Complete |
 | FRAME-03 | Phase 13 | Complete |
 | FRAME-07 | Phase 13 | Complete |
-| FRAME-04 | Phase 14 | Pending |
-| FRAME-05 | Phase 14 | Pending |
-| FRAME-06 | Phase 14 | Pending |
-| FRAME-08 | Phase 14 | Pending |
-| DEBT-01 | Phase 14 | Pending |
-| DEBT-02 | Phase 14 | Pending |
+| FRAME-04 | Phase 14 | Complete |
+| FRAME-05 | Phase 14 | Complete |
+| FRAME-06 | Phase 14 | Complete |
+| FRAME-08 | Phase 14 | Complete |
+| DEBT-01 | Phase 14 | Complete |
+| DEBT-02 | Phase 14 | Complete |
 | DSGN-01 | Phase 15 | Pending |
 | DSGN-02 | Phase 15 | Pending |
 | DSGN-03 | Phase 15 | Pending |
