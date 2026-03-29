@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 16 of 19 (Chat Experience Redesign) — In progress
-Plan: 2 of 3 in current phase — Plan 2 complete
-Status: In progress — 16-02 complete, ready for 16-03 (message footer + copy button polish)
-Last activity: 2026-03-29 — Completed 16-02-PLAN.md (glassmorphism input bar, stop button, welcome state)
+Phase: 16 of 19 (Chat Experience Redesign) — Phase complete
+Plan: 3 of 3 in current phase — Plan 3 complete
+Status: Phase 16 complete — ready for Phase 17 (Sidebar Improvements)
+Last activity: 2026-03-29 — Completed 16-03-PLAN.md (hover-revealed copy button and timestamp overlay)
 
-Progress: [█████████████████░░] 87% (16-02 complete, 16-03, phases 17-19 remaining)
+Progress: [██████████████████░] 90% (phase 16 complete, phases 17-19 remaining)
 
 ## Performance Metrics
 
@@ -72,6 +72,10 @@ Progress: [█████████████████░░] 87% (16-02
 - [16-02]: **color-mix() for glassmorphism alpha** — color-mix(in srgb, --atlas-bg-elevated 80%, transparent) works in both light/dark themes; @supports fallback for unsupported browsers
 - [16-02]: **Stop button CSS pseudo-element** — ::before on .stop-btn renders white square icon; no icon library needed; aria-label provides accessibility
 - [16-02]: **onChipSend = handleSend** — prompt chip clicks reuse handleSend which already handles null activeThreadId thread creation; no special chip path needed
+- [16-03]: **formatTimestamp extracted to utils/** — shared between UserMessage and AssistantMessage; Intl.RelativeTimeFormat for <24h, toLocaleString for older
+- [16-03]: **Clipboard emoji U+1F4CB** — chosen over U+2398 (HELM SYMBOL) for rendering reliability in Segoe UI Variable on Windows
+- [16-03]: **Hover actions gated on !isStreaming** — copy and timestamp only render after stream finalises; streaming content is partial and timestamp is only meaningful on finalised messages
+- [16-03]: **Message hover overlay pattern** — .message-hover-actions at top:-4px right:4px, opacity 0→1 in 150ms on .message:hover; mirrors thread-actions pattern
 
 ### Pending Todos
 
@@ -87,5 +91,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-29
-Stopped at: Completed 16-02-PLAN.md — Glassmorphism input bar, stop button, welcome state with prompt chips
-Resume file: None — ready for 16-03 (message footer + copy button polish)
+Stopped at: Completed 16-03-PLAN.md — Hover-revealed copy button and timestamp overlay on all message bubbles
+Resume file: None — ready for Phase 17 (Sidebar Improvements)
