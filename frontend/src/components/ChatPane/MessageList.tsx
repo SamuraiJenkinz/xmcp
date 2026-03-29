@@ -3,7 +3,11 @@ import { useChat } from '../../contexts/ChatContext.tsx';
 import { UserMessage } from './UserMessage.tsx';
 import { AssistantMessage } from './AssistantMessage.tsx';
 
-export function MessageList() {
+interface MessageListProps {
+  onChipSend?: (text: string) => void;
+}
+
+export function MessageList({ onChipSend }: MessageListProps) {
   const { messages, streamingMessage } = useChat();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -17,6 +21,35 @@ export function MessageList() {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages, streamingMessage]);
+
+  if (messages.length === 0 && streamingMessage === null) {
+    return (
+      <div className="chat-messages" ref={containerRef}>
+        <div className="welcome-state">
+          <div className="welcome-icon" aria-hidden="true">&#9889;</div>
+          <h2 className="welcome-heading">How can I help with Exchange today?</h2>
+          <div className="prompt-chips-grid">
+            <button className="prompt-chip" onClick={() => onChipSend?.('Check mailbox quota')}>
+              <span className="prompt-chip-icon" aria-hidden="true">&#128231;</span>
+              Check mailbox quota
+            </button>
+            <button className="prompt-chip" onClick={() => onChipSend?.('Trace a message')}>
+              <span className="prompt-chip-icon" aria-hidden="true">&#128269;</span>
+              Trace a message
+            </button>
+            <button className="prompt-chip" onClick={() => onChipSend?.('DAG health status')}>
+              <span className="prompt-chip-icon" aria-hidden="true">&#128421;</span>
+              DAG health status
+            </button>
+            <button className="prompt-chip" onClick={() => onChipSend?.('Look up a colleague')}>
+              <span className="prompt-chip-icon" aria-hidden="true">&#128100;</span>
+              Look up a colleague
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="chat-messages" ref={containerRef}>

@@ -86,7 +86,7 @@ export function AppLayout({ theme, onToggleTheme }: AppLayoutProps) {
       </aside>
       <main className="chat-pane">
         <Header theme={theme} onToggleTheme={onToggleTheme} />
-        <MessageList />
+        <MessageList onChipSend={handleSend} />
         <InputArea
           onSend={handleSend}
           onCancel={handleCancel}
