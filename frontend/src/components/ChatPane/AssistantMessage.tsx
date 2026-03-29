@@ -10,6 +10,7 @@ interface Props {
   content: string;
   toolPanels?: ToolPanelData[];
   isStreaming?: boolean;
+  timestamp?: string;
 }
 
 function renderToolPanel(panel: ToolPanelData, idx: number) {
@@ -24,7 +25,7 @@ function renderToolPanel(panel: ToolPanelData, idx: number) {
   return <ToolPanel key={idx} {...panel} />;
 }
 
-export function AssistantMessage({ content, toolPanels, isStreaming }: Props) {
+export function AssistantMessage({ content, toolPanels, isStreaming, timestamp }: Props) {
   // Track latest content in a ref so CopyButton's getText() always reads current value
   const contentRef = useRef(content);
   useEffect(() => {

@@ -22,13 +22,14 @@ export function MessageList() {
     <div className="chat-messages" ref={containerRef}>
       {messages.map((msg, idx) => {
         if (msg.type === 'user') {
-          return <UserMessage key={idx} content={msg.content} />;
+          return <UserMessage key={idx} content={msg.content} timestamp={msg.timestamp} />;
         }
         return (
           <AssistantMessage
             key={idx}
             content={msg.content}
             toolPanels={msg.toolPanels}
+            timestamp={msg.timestamp}
           />
         );
       })}
