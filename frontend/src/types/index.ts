@@ -31,6 +31,7 @@ export interface DisplayMessage {
   type: 'user' | 'assistant';
   content: string;
   toolPanels?: ToolPanelData[];
+  timestamp?: string;  // ISO 8601, set at creation; absent for historical messages
 }
 
 // SSE event types from POST /chat/stream

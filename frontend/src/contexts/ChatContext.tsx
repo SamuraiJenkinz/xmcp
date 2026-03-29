@@ -70,6 +70,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           state.streamingMessage.toolPanels.length > 0
             ? state.streamingMessage.toolPanels
             : undefined,
+        timestamp: new Date().toISOString(),
       };
       return {
         ...state,
@@ -90,6 +91,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
           state.streamingMessage.toolPanels.length > 0
             ? state.streamingMessage.toolPanels
             : undefined,
+        timestamp: new Date().toISOString(),
       };
       return {
         ...state,
@@ -108,7 +110,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'ADD_USER_MESSAGE':
       return {
         ...state,
-        messages: [...state.messages, { type: 'user', content: action.content }],
+        messages: [...state.messages, {
+          type: 'user',
+          content: action.content,
+          timestamp: new Date().toISOString(),
+        }],
       };
 
     case 'CLEAR_ERROR':
