@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 15: Design System
+**Current focus:** v1.2 UI/UX Redesign — Phase 16: Chat Experience Redesign
 
 ## Current Position
 
-Phase: 15 of 19 (Design System) — Complete
-Plan: 2 of 2 in current phase — Phase complete
-Status: Phase 15 complete — ready for Phase 16 (Chat Experience Redesign)
-Last activity: 2026-03-29 — Completed 15-02-PLAN.md (component CSS token application, human-verified)
+Phase: 16 of 19 (Chat Experience Redesign) — In progress
+Plan: 1 of 3 in current phase — Plan 1 complete
+Status: In progress — 16-01 complete, ready for 16-02 (input area redesign)
+Last activity: 2026-03-29 — Completed 16-01-PLAN.md (message bubble redesign + timestamp tracking)
 
-Progress: [████████████████░░░] 82% (Phase 15 complete, 16-19 remaining)
+Progress: [█████████████████░░] 85% (16-01 complete, 16-02, 16-03, phases 17-19 remaining)
 
 ## Performance Metrics
 
@@ -65,6 +65,9 @@ Progress: [████████████████░░░] 82% (Phase
 - [15-02]: **Surface tier mapping locked** — canvas (bg1) for main content area, surface (bg2) for sidebar/header/input bar, elevated (bg3) for cards/panels/user message bubbles; mirrors Fluent 2 webDarkTheme layering
 - [15-02]: **.thread-item-active not .thread-item.active** — ThreadItem.tsx uses standalone className `thread-item-active`, not a compound selector; plan spec was incorrect, corrected during execution
 - [15-02]: **132 var(--atlas-*) references in @layer components** — all React component classes covered with zero hardcoded hex values; visual token foundation complete for Phases 16-19
+- [16-01]: **Copilot bubble geometry locked** — user: 14px 14px 4px 14px (sharp bottom-right), assistant: 4px 14px 14px 14px (sharp top-left); 75% max-width with align-self per role
+- [16-01]: **Timestamp is display-layer only** — DisplayMessage.timestamp?: string stamped at ADD_USER_MESSAGE/FINALIZE_STREAMING/CANCEL_STREAMING; not in RawMessage or StreamingMessageState
+- [16-01]: **message-enter animation fill-mode: both** — ensures opacity:0 during delay frames before animation starts; prefers-reduced-motion disables entirely
 
 ### Pending Todos
 
@@ -80,5 +83,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-29
-Stopped at: Completed 15-02-PLAN.md — component CSS token application, Phase 15 fully complete
-Resume file: None — ready for Phase 16 (Chat Experience Redesign)
+Stopped at: Completed 16-01-PLAN.md — Copilot-style message bubbles, entrance animation, timestamp tracking
+Resume file: None — ready for 16-02 (input area redesign)
