@@ -174,12 +174,12 @@ Plans:
   4. The textarea expands as text is typed (up to ~5 lines), submits on Enter, and inserts a newline on Shift+Enter
   5. Hovering a message reveals a copy button and a per-message timestamp
   6. An empty thread shows a welcome state with Fluent 2 card-style prompt suggestion chips
-**Plans**: TBD
+**Plans**: 3 plans (complete)
 
 Plans:
-- [ ] 16-01: Message bubble components — UserMessage, AssistantMessage Copilot style; message entrance animations (motion v12)
-- [ ] 16-02: InputArea redesign — auto-resize, send/stop toggle, keyboard shortcuts, welcome state with prompt chips
-- [ ] 16-03: Hover actions — per-message copy button and timestamp overlay
+- [x] 16-01: Message bubble components — UserMessage, AssistantMessage Copilot style; message entrance animations
+- [x] 16-02: InputArea redesign — auto-resize, send/stop toggle, keyboard shortcuts, welcome state with prompt chips
+- [x] 16-03: Hover actions — per-message copy button and timestamp overlay
 
 #### Phase 17: Sidebar and Tool Panels
 **Goal**: Thread sidebar has recency grouping, collapse mode, and polished states; tool panels have chevron expand, status badges, elapsed time, and syntax-highlighted JSON
@@ -250,7 +250,7 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 13. Infrastructure Scaffold | v1.2 | 2/2 | Complete | 2026-03-27 |
 | 14. Functional Port | v1.2 | 5/5 | Complete | 2026-03-29 |
 | 15. Design System | v1.2 | 2/2 | Complete | 2026-03-29 |
-| 16. Chat Experience Redesign | v1.2 | 0/3 | Not started | - |
+| 16. Chat Experience Redesign | v1.2 | 3/3 | Complete | 2026-03-29 |
 | 17. Sidebar and Tool Panels | v1.2 | 0/3 | Not started | - |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 0/3 | Not started | - |
 | 19. Accessibility Sweep | v1.2 | 0/1 | Not started | - |

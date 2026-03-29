@@ -27,12 +27,12 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Chat Experience
 
-- [ ] **CHAT-01**: Redesigned message bubbles — clear user vs assistant role differentiation (Copilot style)
-- [ ] **CHAT-02**: Smooth message entrance animation (fade-in + translate, 150-200ms)
-- [ ] **CHAT-03**: Stop generation button replaces Send during streaming
-- [ ] **CHAT-04**: Auto-resize textarea with Send on Enter, Shift+Enter for newline
-- [ ] **CHAT-05**: Hover actions on messages — copy, per-message timestamp
-- [ ] **CHAT-06**: Welcome/empty state with Fluent 2 card-style prompt suggestion chips
+- [x] **CHAT-01**: Redesigned message bubbles — clear user vs assistant role differentiation (Copilot style)
+- [x] **CHAT-02**: Smooth message entrance animation (fade-in + translate, 150-200ms)
+- [x] **CHAT-03**: Stop generation button replaces Send during streaming
+- [x] **CHAT-04**: Auto-resize textarea with Send on Enter, Shift+Enter for newline
+- [x] **CHAT-05**: Hover actions on messages — copy, per-message timestamp
+- [x] **CHAT-06**: Welcome/empty state with Fluent 2 card-style prompt suggestion chips
 
 ### Tool Panels
 
@@ -126,12 +126,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DSGN-02 | Phase 15 | Complete |
 | DSGN-03 | Phase 15 | Complete |
 | DSGN-04 | Phase 15 | Complete |
-| CHAT-01 | Phase 16 | Pending |
-| CHAT-02 | Phase 16 | Pending |
-| CHAT-03 | Phase 16 | Pending |
-| CHAT-04 | Phase 16 | Pending |
-| CHAT-05 | Phase 16 | Pending |
-| CHAT-06 | Phase 16 | Pending |
+| CHAT-01 | Phase 16 | Complete |
+| CHAT-02 | Phase 16 | Complete |
+| CHAT-03 | Phase 16 | Complete |
+| CHAT-04 | Phase 16 | Complete |
+| CHAT-05 | Phase 16 | Complete |
+| CHAT-06 | Phase 16 | Complete |
 | SIDE-01 | Phase 17 | Pending |
 | SIDE-02 | Phase 17 | Pending |
 | SIDE-03 | Phase 17 | Pending |
@@ -155,4 +155,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-27 after v1.2 roadmap creation*
+*Last updated: 2026-03-29 after Phase 16 completion*
