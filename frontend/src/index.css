@@ -775,15 +775,55 @@
     border: 1px solid var(--atlas-stroke-1);
     color: var(--atlas-text-secondary);
     cursor: pointer;
-    padding: 4px 8px;
+    padding: 4px 6px;
     border-radius: 4px;
-    font-size: var(--atlas-text-caption1);
+    font-size: var(--atlas-text-caption2);
     font-family: var(--atlas-font-base);
+    line-height: 1;
+    white-space: nowrap;
   }
 
   .copy-btn:hover {
     background-color: var(--atlas-bg-elevated);
     color: var(--atlas-text-primary);
+  }
+
+  /* === Message Hover Actions === */
+  .message-hover-actions {
+    position: absolute;
+    top: -4px;
+    right: 4px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    transition: opacity 150ms;
+    z-index: 1;
+  }
+
+  .message:hover .message-hover-actions {
+    opacity: 1;
+  }
+
+  .message-timestamp-overlay {
+    position: absolute;
+    bottom: -20px;
+    right: 4px;
+    font-size: var(--atlas-text-caption2);
+    color: var(--atlas-text-tertiary);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 150ms;
+    pointer-events: none;
+  }
+
+  .message:hover .message-timestamp-overlay {
+    opacity: 1;
+  }
+
+  .assistant-message .message-timestamp-overlay {
+    right: auto;
+    left: 4px;
   }
 
   /* === Loading State === */

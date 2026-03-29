@@ -17,8 +17,13 @@ export function CopyButton({ getText }: Props) {
   }, [getText]);
 
   return (
-    <button className="copy-btn" onClick={handleCopy}>
-      {copied ? 'Copied!' : 'Copy'}
+    <button
+      className="copy-btn"
+      onClick={handleCopy}
+      aria-label={copied ? 'Copied' : 'Copy to clipboard'}
+      type="button"
+    >
+      {copied ? '\u2713' : '\uD83D\uDCCB'}
     </button>
   );
 }
