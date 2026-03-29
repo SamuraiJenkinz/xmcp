@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 16 of 19 (Chat Experience Redesign) — In progress
-Plan: 1 of 3 in current phase — Plan 1 complete
-Status: In progress — 16-01 complete, ready for 16-02 (input area redesign)
-Last activity: 2026-03-29 — Completed 16-01-PLAN.md (message bubble redesign + timestamp tracking)
+Plan: 2 of 3 in current phase — Plan 2 complete
+Status: In progress — 16-02 complete, ready for 16-03 (message footer + copy button polish)
+Last activity: 2026-03-29 — Completed 16-02-PLAN.md (glassmorphism input bar, stop button, welcome state)
 
-Progress: [█████████████████░░] 85% (16-01 complete, 16-02, 16-03, phases 17-19 remaining)
+Progress: [█████████████████░░] 87% (16-02 complete, 16-03, phases 17-19 remaining)
 
 ## Performance Metrics
 
@@ -68,6 +68,10 @@ Progress: [█████████████████░░] 85% (16-01
 - [16-01]: **Copilot bubble geometry locked** — user: 14px 14px 4px 14px (sharp bottom-right), assistant: 4px 14px 14px 14px (sharp top-left); 75% max-width with align-self per role
 - [16-01]: **Timestamp is display-layer only** — DisplayMessage.timestamp?: string stamped at ADD_USER_MESSAGE/FINALIZE_STREAMING/CANCEL_STREAMING; not in RawMessage or StreamingMessageState
 - [16-01]: **message-enter animation fill-mode: both** — ensures opacity:0 during delay frames before animation starts; prefers-reduced-motion disables entirely
+- [16-02]: **readOnly not disabled during streaming** — readOnly preserves textarea visual state without gray-out; disabled only fires when no active thread exists outside a stream
+- [16-02]: **color-mix() for glassmorphism alpha** — color-mix(in srgb, --atlas-bg-elevated 80%, transparent) works in both light/dark themes; @supports fallback for unsupported browsers
+- [16-02]: **Stop button CSS pseudo-element** — ::before on .stop-btn renders white square icon; no icon library needed; aria-label provides accessibility
+- [16-02]: **onChipSend = handleSend** — prompt chip clicks reuse handleSend which already handles null activeThreadId thread creation; no special chip path needed
 
 ### Pending Todos
 
@@ -83,5 +87,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-29
-Stopped at: Completed 16-01-PLAN.md — Copilot-style message bubbles, entrance animation, timestamp tracking
-Resume file: None — ready for 16-02 (input area redesign)
+Stopped at: Completed 16-02-PLAN.md — Glassmorphism input bar, stop button, welcome state with prompt chips
+Resume file: None — ready for 16-03 (message footer + copy button polish)
