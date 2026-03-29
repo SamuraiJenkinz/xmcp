@@ -622,10 +622,21 @@
   .input-area {
     display: flex;
     gap: 8px;
-    padding: 12px 24px 16px;
-    background-color: var(--atlas-bg-surface);
-    border-top: 1px solid var(--atlas-stroke-2);
+    padding: 12px 20px 16px;
+    margin: 0 auto 12px;
+    max-width: 768px;
+    width: calc(100% - 48px);
+    border-radius: 12px;
+    background-color: color-mix(in srgb, var(--atlas-bg-elevated) 80%, transparent);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     align-items: flex-end;
+  }
+
+  @supports not (backdrop-filter: blur(1px)) {
+    .input-area {
+      background-color: var(--atlas-bg-elevated);
+    }
   }
 
   .chat-input {
@@ -641,7 +652,7 @@
     background-color: var(--atlas-bg-canvas);
     outline: none;
     min-height: 40px;
-    max-height: 120px;
+    max-height: 200px;
   }
 
   .chat-input:focus {
@@ -672,6 +683,90 @@
   .send-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .stop-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--atlas-status-error);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .stop-btn:hover {
+    opacity: 0.9;
+  }
+
+  .stop-btn::before {
+    content: '';
+    display: block;
+    width: 12px;
+    height: 12px;
+    background-color: white;
+    border-radius: 2px;
+  }
+
+  /* === Welcome State === */
+  .welcome-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 48px 24px;
+  }
+
+  .welcome-icon {
+    font-size: 48px;
+    line-height: 1;
+  }
+
+  .welcome-heading {
+    font-size: var(--atlas-text-title3);
+    line-height: var(--atlas-lh-title3);
+    font-weight: 600;
+    color: var(--atlas-text-primary);
+    letter-spacing: -0.02em;
+    text-align: center;
+  }
+
+  .prompt-chips-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    max-width: 480px;
+    width: 100%;
+  }
+
+  .prompt-chip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background-color: var(--atlas-bg-elevated);
+    border: none;
+    border-radius: 9999px;
+    color: var(--atlas-text-secondary);
+    font-size: var(--atlas-text-body);
+    font-family: var(--atlas-font-base);
+    cursor: pointer;
+    transition: background-color 100ms;
+    text-align: left;
+  }
+
+  .prompt-chip:hover {
+    background-color: var(--atlas-bg-surface);
+  }
+
+  .prompt-chip-icon {
+    font-size: 18px;
+    flex-shrink: 0;
   }
 
   /* === Copy Button === */
