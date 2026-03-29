@@ -5,6 +5,7 @@ import { CopyButton } from '../shared/CopyButton.tsx';
 import { ToolPanel } from './ToolPanel.tsx';
 import { ProfileCard } from './ProfileCard.tsx';
 import { SearchResultCard } from './SearchResultCard.tsx';
+import { formatTimestamp } from '../../utils/formatTimestamp.ts';
 
 interface Props {
   content: string;
@@ -41,7 +42,16 @@ export function AssistantMessage({ content, toolPanels, isStreaming, timestamp }
       )}
       <MarkdownRenderer content={content} />
       {isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
-      <CopyButton getText={() => contentRef.current} />
+      {!isStreaming && (
+        <div className="message-hover-actions">
+          <CopyButton getText={() => contentRef.current} />
+        </div>
+      )}
+      {!isStreaming && timestamp && (
+        <div className="message-timestamp-overlay">
+          {formatTimestamp(timestamp)}
+        </div>
+      )}
     </div>
   );
 }
