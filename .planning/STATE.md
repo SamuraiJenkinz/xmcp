@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 15 of 19 (Design System) — In progress
-Plan: 1 of 2 in current phase — 1 complete
-Status: In progress
-Last activity: 2026-03-29 — Completed 15-01-PLAN.md (Atlas design token system in index.css)
+Phase: 15 of 19 (Design System) — Complete
+Plan: 2 of 2 in current phase — Phase complete
+Status: Phase 15 complete — ready for Phase 16 (Shell Layout)
+Last activity: 2026-03-29 — Completed 15-02-PLAN.md (component CSS token application, human-verified)
 
-Progress: [███████████████░░░░] 78% (15/19 phases, 1 plan into phase 15)
+Progress: [████████████████░░░] 82% (Phase 15 complete, 16-19 remaining)
 
 ## Performance Metrics
 
@@ -62,6 +62,9 @@ Progress: [███████████████░░░░] 78% (15/19
 - [15-01]: **Atlas token file ordering is mandatory** — @import → :root → [data-theme="dark"] → @layer base → @theme inline; :root must precede @theme inline for variable resolution
 - [15-01]: **62 --atlas- custom properties defined** — surface, text, stroke, accent, status, font families, Fluent 2 sizes (10-32px), Fluent 2 line heights
 - [15-01]: **Typography tokens are theme-invariant** — only color tokens override in [data-theme="dark"]; font-family/size/line-height shared across light and dark
+- [15-02]: **Surface tier mapping locked** — canvas (bg1) for main content area, surface (bg2) for sidebar/header/input bar, elevated (bg3) for cards/panels/user message bubbles; mirrors Fluent 2 webDarkTheme layering
+- [15-02]: **.thread-item-active not .thread-item.active** — ThreadItem.tsx uses standalone className `thread-item-active`, not a compound selector; plan spec was incorrect, corrected during execution
+- [15-02]: **132 var(--atlas-*) references in @layer components** — all React component classes covered with zero hardcoded hex values; visual token foundation complete for Phases 16-19
 
 ### Pending Todos
 
@@ -77,5 +80,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-29
-Stopped at: Completed 15-01-PLAN.md — Atlas design token system in index.css
-Resume file: None — ready for 15-02-PLAN.md (shell layout visual pass)
+Stopped at: Completed 15-02-PLAN.md — component CSS token application, Phase 15 fully complete
+Resume file: None — ready for 16-shell-layout phase
