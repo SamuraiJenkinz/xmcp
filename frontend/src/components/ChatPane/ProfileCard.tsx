@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 interface ProfileData {
   id: string;
   name?: string;
@@ -12,7 +14,15 @@ interface Props {
   resultJson: string;
 }
 
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return name.trim().charAt(0).toUpperCase() || '?';
+}
+
 export function ProfileCard({ resultJson }: Props) {
+  const [photoFailed, setPhotoFailed] = useState(false);
+
   let profile: ProfileData | null = null;
   let parseError = false;
 
@@ -35,14 +45,18 @@ export function ProfileCard({ resultJson }: Props) {
 
   return (
     <div className="profile-card">
-      <img
-        className="profile-card-photo"
-        src={photoSrc}
-        alt={displayName}
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).style.display = 'none';
-        }}
-      />
+      {photoFailed ? (
+        <div className="profile-card-photo profile-card-initials">
+          {getInitials(displayName)}
+        </div>
+      ) : (
+        <img
+          className="profile-card-photo"
+          src={photoSrc}
+          alt={displayName}
+          onError={() => setPhotoFailed(true)}
+        />
+      )}
       <div className="profile-card-info">
         {displayName && <div className="profile-card-name">{displayName}</div>}
         {profile.jobTitle && <div className="profile-card-field">{profile.jobTitle}</div>}
