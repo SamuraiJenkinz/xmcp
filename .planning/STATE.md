@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 20 of 20 (Streaming State Bridge) — In Progress
-Plan: 1 of 2 in current phase
-Status: Plan 20-01 complete — /chat proxy + isStreaming bridge shipped
-Last activity: 2026-03-30 — Completed 20-01-PLAN.md
+Plan: 2 of 2 in current phase (Task 1 complete, paused at human-verify checkpoint)
+Status: 20-02 Task 1 complete — dead code audit passed, build verified; awaiting human sign-off on streaming UX
+Last activity: 2026-03-30 — Completed 20-02 Task 1 (read-only audit + build verification)
 
-Progress: [███████████████████░] 97% (20-01/20-02 complete)
+Progress: [███████████████████░] 99% (checkpoint pending human approval)
 
 ## Performance Metrics
 
@@ -120,5 +120,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 20-01-PLAN.md — /chat Vite proxy + hookIsStreaming→ChatContext bridge
+Stopped at: 20-02 Task 1 complete — paused at human-verify checkpoint; awaiting streaming UX sign-off
 Resume file: None
