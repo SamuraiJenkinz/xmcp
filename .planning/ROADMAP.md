@@ -191,12 +191,12 @@ Plans:
   3. Tool panels show a chevron toggle, a status badge (running / done / error), and elapsed time ("Ran in 1.2s") when expanded
   4. JSON inside tool panels is syntax-highlighted with a Fluent-aligned dark theme and has a per-panel copy button
   5. Backend SSE tool events carry start/end timestamps enabling elapsed time calculation (tracked backend PR separate from UI work)
-**Plans**: 3 plans
+**Plans**: 3 plans (complete)
 
 Plans:
-- [ ] 17-01-PLAN.md — Backend: add start_time/end_time to SSE tool events and frontend type updates
-- [ ] 17-02-PLAN.md — Sidebar redesign: recency grouping, collapse mode, Compose icon new-chat, visual polish
-- [ ] 17-03-PLAN.md — Tool panel redesign: chevron toggle, status badge, elapsed time, syntax-highlighted JSON, per-panel copy
+- [x] 17-01: Backend: add start_time/end_time to SSE tool events and frontend type updates
+- [x] 17-02: Sidebar redesign: recency grouping, collapse mode, Compose icon new-chat, visual polish
+- [x] 17-03: Tool panel redesign: chevron toggle, status badge, elapsed time, syntax-highlighted JSON, per-panel copy
 
 #### Phase 18: Profile Cards, Splash Page, and Cleanup
 **Goal**: Profile and search result cards aligned with Fluent 2; professional splash/login page; three test regressions and two schema issues resolved
@@ -251,6 +251,6 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 14. Functional Port | v1.2 | 5/5 | Complete | 2026-03-29 |
 | 15. Design System | v1.2 | 2/2 | Complete | 2026-03-29 |
 | 16. Chat Experience Redesign | v1.2 | 3/3 | Complete | 2026-03-29 |
-| 17. Sidebar and Tool Panels | v1.2 | 0/3 | Not started | - |
+| 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 0/3 | Not started | - |
 | 19. Accessibility Sweep | v1.2 | 0/1 | Not started | - |

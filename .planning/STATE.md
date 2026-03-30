@@ -5,7 +5,7 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 17: Sidebar and Tool Panels
+**Current focus:** v1.2 UI/UX Redesign — Phase 17 complete, ready for Phase 18
 
 ## Current Position
 
@@ -93,8 +93,8 @@ None.
 
 - [Phase 13 gate]: Verify whether IIS ARR is in the production serving path before Phase 13 ships — if present, configure responseBufferLimit="0"
 - [Phase 14 gate — CLEARED]: All 7 regression smoke tests passed (human-verified 2026-03-28)
-- [Phase 17 evaluate]: @fluentui-copilot/react-copilot-chat fitness for Atlas tool panels requires a 2-4 hour spike at Phase 16/17 start
-- [Phase 17 prereq]: Confirm thread created_at column exists in SQLite schema before implementing sidebar recency grouping
+- [Phase 17 evaluate — RESOLVED]: @fluentui-copilot/react-copilot-chat not used — native details/summary with ChevronRight16Regular chosen instead; simpler, fewer deps
+- [Phase 17 prereq — RESOLVED]: groupThreadsByRecency uses updated_at from Thread type, not created_at; column confirmed present
 
 ## Session Continuity
 

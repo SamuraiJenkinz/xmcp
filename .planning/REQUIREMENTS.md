@@ -36,16 +36,16 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Tool Panels
 
-- [ ] **TOOL-01**: Redesigned collapsible tool panels — chevron icon, status badge (running/done/error)
-- [ ] **TOOL-02**: Tool call elapsed time display ("Ran in 1.2s") — requires backend timestamp addition to SSE tool events
-- [ ] **TOOL-03**: Syntax-highlighted JSON with Fluent-aligned dark theme
-- [ ] **TOOL-04**: Per-panel copy button
+- [x] **TOOL-01**: Redesigned collapsible tool panels — chevron icon, status badge (done/error)
+- [x] **TOOL-02**: Tool call elapsed time display ("Ran in 1.2s") — requires backend timestamp addition to SSE tool events
+- [x] **TOOL-03**: Syntax-highlighted JSON with Fluent-aligned dark theme
+- [x] **TOOL-04**: Per-panel copy button
 
 ### Sidebar
 
-- [ ] **SIDE-01**: Thread recency grouping — Today / Yesterday / This Week / Older
-- [ ] **SIDE-02**: Sidebar collapse to icon-only mode (CSS transition, localStorage persistence)
-- [ ] **SIDE-03**: Visual polish — spacing, active state, hover states, new-chat button (pencil-plus icon)
+- [x] **SIDE-01**: Thread recency grouping — Today / Yesterday / This Week / Older
+- [x] **SIDE-02**: Sidebar collapse to icon-only mode (CSS transition, localStorage persistence)
+- [x] **SIDE-03**: Visual polish — spacing, active state, hover states, new-chat button (Compose icon)
 
 ### Profile Cards
 
@@ -132,13 +132,13 @@ Which phases cover which requirements. Updated during roadmap creation.
 | CHAT-04 | Phase 16 | Complete |
 | CHAT-05 | Phase 16 | Complete |
 | CHAT-06 | Phase 16 | Complete |
-| SIDE-01 | Phase 17 | Pending |
-| SIDE-02 | Phase 17 | Pending |
-| SIDE-03 | Phase 17 | Pending |
-| TOOL-01 | Phase 17 | Pending |
-| TOOL-02 | Phase 17 | Pending |
-| TOOL-03 | Phase 17 | Pending |
-| TOOL-04 | Phase 17 | Pending |
+| SIDE-01 | Phase 17 | Complete |
+| SIDE-02 | Phase 17 | Complete |
+| SIDE-03 | Phase 17 | Complete |
+| TOOL-01 | Phase 17 | Complete |
+| TOOL-02 | Phase 17 | Complete |
+| TOOL-03 | Phase 17 | Complete |
+| TOOL-04 | Phase 17 | Complete |
 | PROF-01 | Phase 18 | Pending |
 | PROF-02 | Phase 18 | Pending |
 | SPLA-01 | Phase 18 | Pending |
@@ -155,4 +155,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-03-27*
-*Last updated: 2026-03-29 after Phase 16 completion*
+*Last updated: 2026-03-30 after Phase 17 completion*
