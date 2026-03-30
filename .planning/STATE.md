@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 18 of 19 (Profile Cards and Splash Cleanup) — COMPLETE
-Plan: 2 of 2 in current phase — Phase 18 complete
+Plan: 3 of 3 in current phase — Phase 18 complete
 Status: Phase complete — ready for Phase 19
-Last activity: 2026-03-30 — Completed 18-02-PLAN.md (splash page Fluent 2 redesign: geometric SVG logo, 12px card, Segoe UI Variable h1)
+Last activity: 2026-03-30 — Completed 18-03-PLAN.md (DEBT-03/04/05: fix 3 test regressions, remove get_user_photo_bytes dead code, clarify get_colleague_profile schema)
 
 Progress: [████████████████████] 98% (phases 13-18 complete, phase 19 remaining)
 
@@ -87,6 +87,10 @@ Progress: [████████████████████] 98% (ph
 - [18-01]: **search-result-card class removed** — replaced by search-result-row inside a shared elevated container; Fluent 2 List pattern where container provides elevation, not individual items
 - [18-01]: **Profile card border upgraded to --atlas-stroke-1** — stronger border weight matches Fluent 2 Card specification vs --atlas-stroke-2 used previously
 - [18-01]: **Results capped at 5 via .slice(0, 5)** — client-side cap; max-height 280px provides scroll affordance for any overflow
+- [18-03]: **Stale Disconnect-ExchangeOnline assertions removed** — implementation changed to let session end with process; finally block presence still asserted
+- [18-03]: **Stale $env: assertions removed from CBA test** — CBA implementation inlines credential values at script build time rather than relying on $env: reads inside generated PS
+- [18-03]: **get_user_photo_bytes() fully removed** — dead code replaced by get_user_photo_96(); removed with all 4 tests and docstring references as a unit
+- [18-03]: **get_colleague_profile user_id schema names source tool** — "Microsoft Graph API object ID (GUID) from search_colleagues results" reduces LLM confusion about what to pass
 
 ### Pending Todos
 
@@ -105,5 +109,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 18-02-PLAN.md — Splash page Fluent 2 redesign (geometric SVG logo, 12px card, Segoe UI Variable h1)
+Stopped at: Completed 18-03-PLAN.md — Tech debt cleanup (DEBT-03/04/05: test regressions, dead code, schema fix)
 Resume file: None — ready for Phase 19
