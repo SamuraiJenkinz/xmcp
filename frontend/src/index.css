@@ -128,6 +128,12 @@
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    transition: width 200ms ease, min-width 200ms ease;
+  }
+
+  .sidebar[data-collapsed="true"] {
+    width: 56px;
+    min-width: 56px;
   }
 
   .chat-pane {
@@ -179,29 +185,93 @@
   .thread-list {
     display: flex;
     flex-direction: column;
-    padding: 8px;
-    gap: 2px;
+    padding: 0;
+    gap: 0;
   }
 
-  .new-chat-btn {
+  /* Thread list header — collapse toggle + new chat */
+  .thread-list-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border-bottom: 1px solid var(--atlas-stroke-2);
+  }
+
+  .sidebar-toggle-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 8px 12px;
-    margin-bottom: 8px;
-    background-color: var(--atlas-accent);
-    color: var(--atlas-accent-text);
+    width: 32px;
+    height: 32px;
     border: none;
     border-radius: 6px;
+    background: transparent;
+    color: var(--atlas-text-secondary);
     cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .sidebar-toggle-btn:hover {
+    background-color: var(--atlas-bg-elevated);
+    color: var(--atlas-text-primary);
+  }
+
+  /* New chat button — expanded mode */
+  .new-chat-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--atlas-text-secondary);
     font-size: var(--atlas-text-body);
-    font-weight: 600;
     font-family: var(--atlas-font-base);
+    cursor: pointer;
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
   }
 
   .new-chat-btn:hover {
-    opacity: 0.9;
+    background-color: var(--atlas-bg-elevated);
+    color: var(--atlas-text-primary);
+  }
+
+  /* New chat button — collapsed mode (icon only) */
+  .new-chat-btn-collapsed {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    margin: 8px auto;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--atlas-text-secondary);
+    cursor: pointer;
+  }
+
+  .new-chat-btn-collapsed:hover {
+    background-color: var(--atlas-bg-elevated);
+    color: var(--atlas-text-primary);
+  }
+
+  /* Thread group headings */
+  .thread-group {
+    margin-top: 4px;
+  }
+
+  .thread-group-heading {
+    padding: 6px 12px 4px;
+    font-size: var(--atlas-text-caption2);
+    font-weight: 600;
+    color: var(--atlas-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
   }
 
   /* === Thread Item === */

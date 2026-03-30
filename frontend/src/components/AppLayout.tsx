@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import { createThread } from '../api/threads.ts';
 import { useChat } from '../contexts/ChatContext.tsx';
 import { useThreads } from '../contexts/ThreadContext.tsx';
@@ -75,14 +75,28 @@ export function AppLayout({ theme, onToggleTheme }: AppLayoutProps) {
     [activeThreadId, chatDispatch, threadDispatch, startStream]
   );
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(
+    () => localStorage.getItem('atlas-sidebar-collapsed') === 'true'
+  );
+
+  function handleToggleSidebar() {
+    const next = !sidebarCollapsed;
+    setSidebarCollapsed(next);
+    localStorage.setItem('atlas-sidebar-collapsed', String(next));
+  }
+
   const handleCancel = useCallback(() => {
     cancelStream();
   }, [cancelStream]);
 
   return (
     <div className="app-container">
-      <aside className="sidebar">
-        <ThreadList onCancelStream={handleCancel} />
+      <aside className="sidebar" data-collapsed={sidebarCollapsed ? 'true' : undefined}>
+        <ThreadList
+          onCancelStream={handleCancel}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={handleToggleSidebar}
+        />
       </aside>
       <main className="chat-pane">
         <Header theme={theme} onToggleTheme={onToggleTheme} />
