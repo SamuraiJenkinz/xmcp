@@ -229,6 +229,8 @@ def chat_stream() -> Response:
                     "status": event["status"],
                     "params": event.get("params", {}),
                     "result": event.get("result"),
+                    "start_time": event.get("start_time"),
+                    "end_time": event.get("end_time"),
                 })
 
             # ---------------------------------------------------------------

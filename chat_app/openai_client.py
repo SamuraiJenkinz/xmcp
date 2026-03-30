@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from typing import Any
 
 from openai import OpenAI
@@ -290,6 +291,7 @@ def run_tool_loop(
                 except json.JSONDecodeError:
                     arguments = {}
                 logger.info("Dispatching MCP tool: %s(%s)", tool_name, arguments)
+                start_ts = time.time()
                 try:
                     result_text = call_mcp_tool(tool_name, arguments)
                     tool_events.append({
@@ -297,6 +299,8 @@ def run_tool_loop(
                         "status": "success",
                         "params": arguments,
                         "result": result_text,
+                        "start_time": start_ts,
+                        "end_time": time.time(),
                     })
                 except Exception as exc:
                     result_text = f"Tool error: {exc}"
@@ -305,6 +309,8 @@ def run_tool_loop(
                         "status": "error",
                         "params": arguments,
                         "result": result_text,
+                        "start_time": start_ts,
+                        "end_time": time.time(),
                     })
                     logger.warning("MCP tool %s failed: %s", tool_name, exc)
                 messages.append(
@@ -329,6 +335,7 @@ def run_tool_loop(
             except json.JSONDecodeError:
                 arguments = {}
             logger.info("Dispatching MCP tool (legacy function_call): %s(%s)", tool_name, arguments)
+            start_ts = time.time()
             try:
                 result_text = call_mcp_tool(tool_name, arguments)
                 tool_events.append({
@@ -336,6 +343,8 @@ def run_tool_loop(
                     "status": "success",
                     "params": arguments,
                     "result": result_text,
+                    "start_time": start_ts,
+                    "end_time": time.time(),
                 })
             except Exception as exc:
                 result_text = f"Tool error: {exc}"
@@ -344,6 +353,8 @@ def run_tool_loop(
                     "status": "error",
                     "params": arguments,
                     "result": result_text,
+                    "start_time": start_ts,
+                    "end_time": time.time(),
                 })
                 logger.warning("MCP tool %s failed: %s", tool_name, exc)
             messages.append(
