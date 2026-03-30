@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-9 (shipped 2026-03-22)
 - ✅ **v1.1 Colleague Lookup** — Phases 10-12 (shipped 2026-03-25)
-- ✅ **v1.2 UI/UX Redesign** — Phases 13-19 (shipped 2026-03-30)
+- 🚧 **v1.2 UI/UX Redesign** — Phases 13-20 (gap closure in progress)
 
 ## Phases
 
@@ -228,11 +228,28 @@ Plans:
 - [x] 19-01-PLAN.md — Global focus rings, skip navigation, outline:none cleanup
 - [x] 19-02-PLAN.md — ThreadItem button conversion, roving tabindex, focus management
 
+#### Phase 20: Streaming State Bridge
+**Goal**: Bridge isStreaming state from useStreamingMessage hook to all consuming components — Stop button renders during streaming, Escape cancel fires, thread switch mid-stream aborts; Vite dev proxy covers /chat/stream
+**Depends on**: Phase 19
+**Requirements**: CHAT-03 (fix), FRAME-08 (fix)
+**Gap Closure**: Closes all gaps from v1.2-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. During streaming, the Send button is replaced by a Stop button; pressing it cancels the stream and the button reverts to Send
+  2. Pressing Escape during streaming cancels the stream and shows "[response cancelled]"
+  3. Switching threads during an active stream aborts the stream before loading the new thread
+  4. `npm run dev` proxies POST /chat/stream to Flask without 404
+  5. SET_STREAMING dead code removed or repurposed
+**Plans**: 2 plans
+
+Plans:
+- [ ] 20-01-PLAN.md — Vite /chat proxy + isStreaming state bridge from hook to components
+- [ ] 20-02-PLAN.md — Dead code cleanup + E2E flow verification
+
 ## Progress
 
 **Execution Order:**
-v1.2 phases execute in order: 13 → 14 → 15 → 16 → 17 → 18 → 19
-Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallelized; Phase 19 requires all three complete.
+v1.2 phases execute in order: 13 → 14 → 15 → 16 → 17 → 18 → 19 → 20
+Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallelized; Phase 19 requires all three complete. Phase 20 closes audit gaps.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -255,3 +272,4 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 19. Accessibility Sweep | v1.2 | 2/2 | Complete | 2026-03-30 |
+| 20. Streaming State Bridge | v1.2 | 0/2 | Not Started | — |
