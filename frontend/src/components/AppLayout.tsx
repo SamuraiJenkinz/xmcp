@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createThread } from '../api/threads.ts';
 import { useChat } from '../contexts/ChatContext.tsx';
 import { useThreads } from '../contexts/ThreadContext.tsx';
@@ -18,7 +18,7 @@ export function AppLayout({ theme, onToggleTheme }: AppLayoutProps) {
   const { activeThreadId, dispatch: threadDispatch } = useThreads();
   const { isStreaming, dispatch: chatDispatch } = useChat();
 
-  const { startStream, cancelStream } = useStreamingMessage({
+  const { startStream, cancelStream, isStreaming: hookIsStreaming } = useStreamingMessage({
     onText: useCallback(
       (delta: string) => {
         chatDispatch({ type: 'APPEND_STREAMING_CHUNK', delta });
@@ -51,6 +51,10 @@ export function AppLayout({ theme, onToggleTheme }: AppLayoutProps) {
       chatDispatch({ type: 'CANCEL_STREAMING' });
     }, [chatDispatch]),
   });
+
+  useEffect(() => {
+    chatDispatch({ type: 'SET_STREAMING', isStreaming: hookIsStreaming });
+  }, [hookIsStreaming, chatDispatch]);
 
   const handleSend = useCallback(
     async (message: string) => {
