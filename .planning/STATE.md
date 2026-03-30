@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 16: Chat Experience Redesign
+**Current focus:** v1.2 UI/UX Redesign — Phase 17: Sidebar and Tool Panels
 
 ## Current Position
 
-Phase: 16 of 19 (Chat Experience Redesign) — Phase complete
-Plan: 3 of 3 in current phase — Plan 3 complete
-Status: Phase 16 complete — ready for Phase 17 (Sidebar Improvements)
-Last activity: 2026-03-29 — Completed 16-03-PLAN.md (hover-revealed copy button and timestamp overlay)
+Phase: 17 of 19 (Sidebar and Tool Panels)
+Plan: 1 of 3 in current phase — Plan 1 complete
+Status: In progress — ready for Plan 2 (sidebar recency grouping)
+Last activity: 2026-03-30 — Completed 17-01-PLAN.md (tool SSE timestamps)
 
-Progress: [██████████████████░] 90% (phase 16 complete, phases 17-19 remaining)
+Progress: [██████████████████░] 92% (phase 17 plan 1 complete, 17-02, 17-03, phases 18-19 remaining)
 
 ## Performance Metrics
 
@@ -76,6 +76,8 @@ Progress: [██████████████████░] 90% (phase
 - [16-03]: **Clipboard emoji U+1F4CB** — chosen over U+2398 (HELM SYMBOL) for rendering reliability in Segoe UI Variable on Windows
 - [16-03]: **Hover actions gated on !isStreaming** — copy and timestamp only render after stream finalises; streaming content is partial and timestamp is only meaningful on finalised messages
 - [16-03]: **Message hover overlay pattern** — .message-hover-actions at top:-4px right:4px, opacity 0→1 in 150ms on .message:hover; mirrors thread-actions pattern
+- [17-01]: **Tool timestamps as epoch float seconds** — time.time() captured around both call_mcp_tool call sites; .get() passthrough in chat.py for backward compat; optional on ToolPanelData so parseHistoricalMessages untouched
+- [17-01]: **SSE snake_case to camelCase mapping at parse boundary** — event.start_time→startTime, event.end_time→endTime in useStreamingMessage onTool handler
 
 ### Pending Todos
 
@@ -90,6 +92,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-03-29
-Stopped at: Completed 16-03-PLAN.md — Hover-revealed copy button and timestamp overlay on all message bubbles
-Resume file: None — ready for Phase 17 (Sidebar Improvements)
+Last session: 2026-03-30
+Stopped at: Completed 17-01-PLAN.md — Tool SSE timestamps (start_time/end_time epoch floats)
+Resume file: None — ready for 17-02 (sidebar recency grouping)
