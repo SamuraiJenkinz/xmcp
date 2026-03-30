@@ -2,14 +2,14 @@
 
 All tests mock ExchangeClient to avoid any live Exchange Online connection.
 Tests cover:
-    - list_tools returns all 15 registered tools (14 Exchange + ping)
+    - list_tools returns all 17 registered tools (16 Exchange + ping)
     - call_tool ping returns JSON-encoded pong result
     - call_tool unknown tool raises ValueError/RuntimeError
     - _sanitize_error strips PowerShell stderr sections
     - _sanitize_error adds transient retry hint for transient errors
     - _sanitize_error does NOT add hint for non-transient errors
     - server instance exists with correct name
-    - all 15 tool definitions have corresponding dispatch entries
+    - all 17 tool definitions have corresponding dispatch entries
     - all tool descriptions are under 800 characters
     - unknown tool raises RuntimeError with "Unknown tool"
     - ping dispatch returns {"status": "pong"}
