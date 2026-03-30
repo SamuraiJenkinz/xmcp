@@ -207,12 +207,12 @@ Plans:
   2. Colleague search result cards follow Fluent 2 list patterns and are visually consistent with profile cards
   3. The login/splash page has a professional landing appearance using Fluent 2 aesthetics — not a bare form
   4. All 3 test regressions pass (description phrasing, tool count assertion); get_user_photo_bytes() dead code removed; get_colleague_profile user_id schema description corrected
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 18-01: Profile card and search result card Fluent 2 alignment
-- [ ] 18-02: Splash/login page redesign
-- [ ] 18-03: Tech debt cleanup — fix 3 test regressions (DEBT-03), remove dead code (DEBT-04), fix schema description (DEBT-05)
+- [ ] 18-01-PLAN.md — Profile card and search result card Fluent 2 alignment
+- [ ] 18-02-PLAN.md — Splash/login page redesign
+- [ ] 18-03-PLAN.md — Tech debt cleanup: fix 3 test regressions (DEBT-03), remove dead code (DEBT-04), fix schema description (DEBT-05)
 
 #### Phase 19: Accessibility Sweep
 **Goal**: Keyboard navigation and WCAG AA focus rings verified across all redesigned components — the full UI is operable without a mouse
