@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 18 complete, ready for Phase 19
+**Current focus:** v1.2 UI/UX Redesign — Phase 19 in progress (accessibility sweep)
 
 ## Current Position
 
-Phase: 18 of 19 (Profile Cards and Splash Cleanup) — COMPLETE
-Plan: 3 of 3 in current phase — Phase 18 complete
-Status: Phase complete — ready for Phase 19
-Last activity: 2026-03-30 — Completed 18-03-PLAN.md (DEBT-03/04/05: fix 3 test regressions, remove get_user_photo_bytes dead code, clarify get_colleague_profile schema)
+Phase: 19 of 19 (Accessibility Sweep) — In progress
+Plan: 1 of 2 in current phase — Plan 19-01 complete
+Status: In progress — ready for Phase 19 Plan 02
+Last activity: 2026-03-30 — Completed 19-01-PLAN.md (focus rings, skip navigation, outline:none cleanup)
 
-Progress: [████████████████████] 98% (phases 13-18 complete, phase 19 remaining)
+Progress: [████████████████████] 99% (phases 13-19 in progress, 19-01 complete)
 
 ## Performance Metrics
 
@@ -91,6 +91,10 @@ Progress: [████████████████████] 98% (ph
 - [18-03]: **Stale $env: assertions removed from CBA test** — CBA implementation inlines credential values at script build time rather than relying on $env: reads inside generated PS
 - [18-03]: **get_user_photo_bytes() fully removed** — dead code replaced by get_user_photo_96(); removed with all 4 tests and docstring references as a unit
 - [18-03]: **get_colleague_profile user_id schema names source tool** — "Microsoft Graph API object ID (GUID) from search_colleagues results" reduces LLM confusion about what to pass
+- [19-01]: **Global :focus-visible outside @layer** — placed before @theme inline to get natural cascade precedence over layered component styles; no per-component duplication needed
+- [19-01]: **Dark mode focus outer ring = --atlas-accent** — black (#000) has insufficient contrast on dark surfaces; --atlas-accent (#115ea3) was Phase 15 contrast-verified
+- [19-01]: **tabIndex={-1} on #chat-messages** — makes div programmatically focusable for skip link without inserting it in natural tab sequence
+- [19-01]: **thread-list padding:2px** — overflow:auto on sidebar clips the 4px outer box-shadow focus ring; padding provides visual clearance
 
 ### Pending Todos
 
@@ -109,5 +113,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 18-03-PLAN.md — Tech debt cleanup (DEBT-03/04/05: test regressions, dead code, schema fix)
-Resume file: None — ready for Phase 19
+Stopped at: Completed 19-01-PLAN.md — Focus rings, skip navigation, outline:none cleanup
+Resume file: None — ready for 19-02
