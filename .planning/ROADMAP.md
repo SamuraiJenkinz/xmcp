@@ -191,12 +191,12 @@ Plans:
   3. Tool panels show a chevron toggle, a status badge (running / done / error), and elapsed time ("Ran in 1.2s") when expanded
   4. JSON inside tool panels is syntax-highlighted with a Fluent-aligned dark theme and has a per-panel copy button
   5. Backend SSE tool events carry start/end timestamps enabling elapsed time calculation (tracked backend PR separate from UI work)
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 17-01: Backend — add tool_start_time / tool_end_time to SSE tool events
-- [ ] 17-02: Sidebar redesign — recency grouping, collapse mode, spacing, active/hover states, pencil-plus new-chat button
-- [ ] 17-03: Tool panel redesign — chevron, status badge, elapsed time, syntax-highlighted JSON, per-panel copy
+- [ ] 17-01-PLAN.md — Backend: add start_time/end_time to SSE tool events and frontend type updates
+- [ ] 17-02-PLAN.md — Sidebar redesign: recency grouping, collapse mode, Compose icon new-chat, visual polish
+- [ ] 17-03-PLAN.md — Tool panel redesign: chevron toggle, status badge, elapsed time, syntax-highlighted JSON, per-panel copy
 
 #### Phase 18: Profile Cards, Splash Page, and Cleanup
 **Goal**: Profile and search result cards aligned with Fluent 2; professional splash/login page; three test regressions and two schema issues resolved
