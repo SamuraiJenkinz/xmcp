@@ -119,7 +119,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | FRAME-04 | Phase 14 | Complete |
 | FRAME-05 | Phase 14 | Complete |
 | FRAME-06 | Phase 14 | Complete |
-| FRAME-08 | Phase 14 → Phase 20 (fix) | Gap closure |
+| FRAME-08 | Phase 14 → Phase 20 (fix) | Complete |
 | DEBT-01 | Phase 14 | Complete |
 | DEBT-02 | Phase 14 | Complete |
 | DSGN-01 | Phase 15 | Complete |
@@ -128,7 +128,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DSGN-04 | Phase 15 | Complete |
 | CHAT-01 | Phase 16 | Complete |
 | CHAT-02 | Phase 16 | Complete |
-| CHAT-03 | Phase 16 → Phase 20 (fix) | Gap closure |
+| CHAT-03 | Phase 16 → Phase 20 (fix) | Complete |
 | CHAT-04 | Phase 16 | Complete |
 | CHAT-05 | Phase 16 | Complete |
 | CHAT-06 | Phase 16 | Complete |

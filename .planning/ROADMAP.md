@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-9 (shipped 2026-03-22)
 - ✅ **v1.1 Colleague Lookup** — Phases 10-12 (shipped 2026-03-25)
-- 🚧 **v1.2 UI/UX Redesign** — Phases 13-20 (gap closure in progress)
+- ✅ **v1.2 UI/UX Redesign** — Phases 13-20 (shipped 2026-03-30)
 
 ## Phases
 
@@ -109,7 +109,7 @@ Plans:
 
 </details>
 
-### 🚧 v1.2 UI/UX Redesign (In Progress)
+### ✅ v1.2 UI/UX Redesign (Complete)
 
 **Milestone Goal:** Replace vanilla JS with a React 19 + Fluent UI v9 + Tailwind v4 frontend delivering a Microsoft Copilot aesthetic — enterprise-ready appearance, consistent dark mode, and polished chat interactions — without changing the Flask backend.
 
@@ -242,8 +242,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 20-01-PLAN.md — Vite /chat proxy + isStreaming state bridge from hook to components
-- [ ] 20-02-PLAN.md — Dead code cleanup + E2E flow verification
+- [x] 20-01-PLAN.md — Vite /chat proxy + isStreaming state bridge from hook to components
+- [x] 20-02-PLAN.md — Dead code cleanup + E2E flow verification
 
 ## Progress
 
@@ -272,4 +272,4 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 19. Accessibility Sweep | v1.2 | 2/2 | Complete | 2026-03-30 |
-| 20. Streaming State Bridge | v1.2 | 0/2 | Not Started | — |
+| 20. Streaming State Bridge | v1.2 | 2/2 | Complete | 2026-03-30 |
