@@ -22,6 +22,10 @@
   --atlas-accent-text: #ffffff;
   --atlas-accent-subtle: #ebf3fc;
 
+  /* Focus ring strokes (Fluent 2 double-ring) */
+  --atlas-stroke-focus-inner: #ffffff;
+  --atlas-stroke-focus-outer: #000000;
+
   /* Status colors */
   --atlas-status-success: #107c10;
   --atlas-status-warning: #bc4b09;
@@ -75,6 +79,10 @@
   --atlas-accent: #115ea3;
   --atlas-accent-text: #ffffff;
   --atlas-accent-subtle: #061724;
+
+  /* Focus ring strokes (dark: outer uses accent — Phase 15 contrast-verified) */
+  --atlas-stroke-focus-inner: #ffffff;
+  --atlas-stroke-focus-outer: var(--atlas-accent);
 }
 
 /* -- Base Document Styles -- */
@@ -96,6 +104,25 @@
   }
 }
 
+/* === Global Focus Rings (Fluent 2 double-ring) === */
+/* Outside any @layer to ensure document-level specificity */
+:focus-visible {
+  outline: 2px solid var(--atlas-stroke-focus-inner);
+  outline-offset: 1px;
+  box-shadow: 0 0 0 4px var(--atlas-stroke-focus-outer);
+  border-radius: inherit;
+  scroll-margin: 8px;
+}
+
+/* Windows High Contrast: box-shadow is stripped by UA */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid ButtonText;
+    outline-offset: 2px;
+    box-shadow: none;
+  }
+}
+
 /* -- Tailwind v4 Theme Bridge -- */
 @theme inline {
   --color-atlas-canvas: var(--atlas-bg-canvas);
@@ -111,6 +138,29 @@
 
 /* -- Component Styles -- */
 @layer components {
+  /* === Skip Navigation === */
+  .skip-link {
+    position: absolute;
+    top: -9999px;
+    left: 8px;
+    z-index: 9999;
+    padding: 8px 16px;
+    background-color: var(--atlas-accent);
+    color: #ffffff;
+    font-size: var(--atlas-text-body);
+    font-weight: 600;
+    border-radius: 0 0 6px 6px;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .skip-link:focus-visible {
+    top: 0;
+    outline: 2px solid #ffffff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--atlas-accent);
+  }
+
   /* === Layout === */
   .app-container {
     display: flex;
@@ -185,7 +235,7 @@
   .thread-list {
     display: flex;
     flex-direction: column;
-    padding: 0;
+    padding: 2px;
     gap: 0;
   }
 
@@ -311,7 +361,6 @@
     padding: 2px 6px;
     font-size: var(--atlas-text-body);
     font-family: var(--atlas-font-base);
-    outline: none;
   }
 
   .thread-actions {
@@ -772,7 +821,6 @@
     line-height: var(--atlas-lh-body);
     color: var(--atlas-text-primary);
     background-color: var(--atlas-bg-canvas);
-    outline: none;
     min-height: 40px;
     max-height: 200px;
   }
