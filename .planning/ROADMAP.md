@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 MVP** — Phases 1-9 (shipped 2026-03-22)
 - ✅ **v1.1 Colleague Lookup** — Phases 10-12 (shipped 2026-03-25)
-- 🚧 **v1.2 UI/UX Redesign** — Phases 13-19 (in progress)
+- ✅ **v1.2 UI/UX Redesign** — Phases 13-19 (shipped 2026-03-30)
 
 ## Phases
 
@@ -222,11 +222,11 @@ Plans:
   1. Every interactive element (buttons, links, thread items, tool panels, textarea, chips) is reachable and activatable via keyboard Tab and Enter/Space
   2. Focus rings are visible on all focused elements with at least 3:1 contrast ratio against adjacent backgrounds (WCAG AA)
   3. Tab order follows a logical reading order — sidebar threads before chat pane, chat pane top-to-bottom, input area last
-**Plans**: 2 plans
+**Plans**: 2 plans (complete)
 
 Plans:
-- [ ] 19-01-PLAN.md — Global focus rings, skip navigation, outline:none cleanup
-- [ ] 19-02-PLAN.md — ThreadItem button conversion, roving tabindex, focus management
+- [x] 19-01-PLAN.md — Global focus rings, skip navigation, outline:none cleanup
+- [x] 19-02-PLAN.md — ThreadItem button conversion, roving tabindex, focus management
 
 ## Progress
 
@@ -254,4 +254,4 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 16. Chat Experience Redesign | v1.2 | 3/3 | Complete | 2026-03-29 |
 | 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 3/3 | Complete | 2026-03-30 |
-| 19. Accessibility Sweep | v1.2 | 0/2 | Not started | - |
+| 19. Accessibility Sweep | v1.2 | 2/2 | Complete | 2026-03-30 |

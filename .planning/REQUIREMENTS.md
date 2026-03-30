@@ -58,8 +58,8 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Accessibility
 
-- [ ] **A11Y-01**: Keyboard navigation with visible focus rings (WCAG AA 3:1 contrast)
-- [ ] **A11Y-02**: Logical tab order across all components
+- [x] **A11Y-01**: Keyboard navigation with visible focus rings (WCAG AA 3:1 contrast)
+- [x] **A11Y-02**: Logical tab order across all components
 
 ### Tech Debt
 
@@ -145,8 +145,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DEBT-03 | Phase 18 | Complete |
 | DEBT-04 | Phase 18 | Complete |
 | DEBT-05 | Phase 18 | Complete |
-| A11Y-01 | Phase 19 | Pending |
-| A11Y-02 | Phase 19 | Pending |
+| A11Y-01 | Phase 19 | Complete |
+| A11Y-02 | Phase 19 | Complete |
 
 **Coverage:**
 - v1.2 requirements: 35 total
