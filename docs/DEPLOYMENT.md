@@ -197,8 +197,8 @@ The pre-built React frontend is included in the repository under `frontend_dist/
 
 ```bash
 uv run python --version   # Should be 3.11+
-uv run python -c "import mcp; print('MCP OK')"
-uv run python -c "import flask; print('Flask OK')"
+uv run python -- -c "import mcp; print('MCP OK')"
+uv run python -- -c "import flask; print('Flask OK')"
 ```
 
 ## Configuration
