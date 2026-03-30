@@ -4,12 +4,24 @@ import type { Thread } from '../../types/index.ts';
 interface ThreadItemProps {
   thread: Thread;
   isActive: boolean;
+  tabIndexValue: 0 | -1;
+  itemRef: (el: HTMLButtonElement | null) => void;
+  onFocusInList: () => void;
   onSelect: (threadId: number) => void;
   onRename: (threadId: number, newName: string) => void;
   onDelete: (threadId: number) => void;
 }
 
-export function ThreadItem({ thread, isActive, onSelect, onRename, onDelete }: ThreadItemProps) {
+export function ThreadItem({
+  thread,
+  isActive,
+  tabIndexValue,
+  itemRef,
+  onFocusInList,
+  onSelect,
+  onRename,
+  onDelete,
+}: ThreadItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,7 +58,9 @@ export function ThreadItem({ thread, isActive, onSelect, onRename, onDelete }: T
     commitRename();
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+  function handleInputKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    // Stop propagation so arrow keys / Enter don't bubble up to the listbox handler
+    e.stopPropagation();
     if (e.key === 'Enter') {
       commitRename();
     } else if (e.key === 'Escape') {
@@ -58,7 +72,15 @@ export function ThreadItem({ thread, isActive, onSelect, onRename, onDelete }: T
   const itemClass = `thread-item${isActive ? ' thread-item-active' : ''}`;
 
   return (
-    <div className={itemClass} onClick={() => onSelect(thread.id)}>
+    <button
+      role="option"
+      aria-selected={isActive}
+      tabIndex={tabIndexValue}
+      ref={itemRef}
+      className={itemClass}
+      onClick={() => onSelect(thread.id)}
+      onFocus={onFocusInList}
+    >
       {isEditing ? (
         <input
           ref={inputRef}
@@ -66,28 +88,47 @@ export function ThreadItem({ thread, isActive, onSelect, onRename, onDelete }: T
           value={editName}
           onChange={(e) => setEditName(e.target.value)}
           onBlur={handleBlur}
-          onKeyDown={handleKeyDown}
+          onKeyDown={handleInputKeyDown}
           onClick={(e) => e.stopPropagation()}
+          tabIndex={-1}
         />
       ) : (
         <span className="thread-item-name">{displayName}</span>
       )}
       <div className="thread-actions">
-        <button
+        <span
+          role="button"
+          tabIndex={-1}
           className="thread-action-btn"
+          aria-label="Rename conversation"
           title="Rename"
           onClick={handleRenameClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleRenameClick(e as unknown as React.MouseEvent);
+            }
+          }}
         >
           ✏️
-        </button>
-        <button
+        </span>
+        <span
+          role="button"
+          tabIndex={-1}
           className="thread-action-btn"
+          aria-label="Delete conversation"
           title="Delete"
           onClick={handleDeleteClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleDeleteClick(e as unknown as React.MouseEvent);
+            }
+          }}
         >
           🗑️
-        </button>
+        </span>
       </div>
-    </div>
+    </button>
   );
 }

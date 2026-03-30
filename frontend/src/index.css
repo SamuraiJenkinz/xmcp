@@ -325,6 +325,16 @@
   }
 
   /* === Thread Item === */
+  button.thread-item {
+    border: none;
+    background: none;
+    font: inherit;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+  }
+
   .thread-item {
     display: flex;
     align-items: center;
