@@ -605,10 +605,11 @@
     display: flex;
     gap: 12px;
     align-items: flex-start;
-    padding: 12px 16px;
+    padding: 12px;
     margin: 8px 0;
+    max-width: 320px;
     background-color: var(--atlas-bg-elevated);
-    border: 1px solid var(--atlas-stroke-2);
+    border: 1px solid var(--atlas-stroke-1);
     border-radius: 8px;
   }
 
@@ -635,51 +636,74 @@
     flex-direction: column;
     gap: 2px;
     min-width: 0;
+    overflow: hidden;
   }
 
   .profile-card-name {
     font-weight: 600;
     font-size: var(--atlas-text-body);
     color: var(--atlas-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .profile-card-field {
     font-size: var(--atlas-text-caption1);
     color: var(--atlas-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .profile-card-dept {
     font-size: var(--atlas-text-caption1);
     color: var(--atlas-text-tertiary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .profile-card-email a {
     font-size: var(--atlas-text-caption1);
     color: var(--atlas-accent);
     text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .profile-card-email a:hover {
     text-decoration: underline;
   }
 
-  /* === Search Result Cards === */
+  /* === Search Result List === */
   .search-results {
     display: flex;
     flex-direction: column;
-    gap: 8px;
     margin: 8px 0;
+    background-color: var(--atlas-bg-elevated);
+    border: 1px solid var(--atlas-stroke-1);
+    border-radius: 8px;
+    padding: 0 12px;
+    max-height: 280px;
+    overflow-y: auto;
   }
 
-  .search-result-card {
+  .search-result-row {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--atlas-stroke-2);
+  }
+
+  .search-result-row:last-child {
+    border-bottom: none;
+  }
+
+  .search-result-primary-line {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
     gap: 4px;
-    padding: 10px 16px;
-    background-color: var(--atlas-bg-elevated);
-    border: 1px solid var(--atlas-stroke-2);
-    border-radius: 6px;
   }
 
   .search-result-name {
