@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 20 of 20 (Streaming State Bridge) — In Progress
-Plan: 2 of 2 in current phase (Task 1 complete, paused at human-verify checkpoint)
-Status: 20-02 Task 1 complete — dead code audit passed, build verified; awaiting human sign-off on streaming UX
-Last activity: 2026-03-30 — Completed 20-02 Task 1 (read-only audit + build verification)
+Phase: 20 of 20 (Streaming State Bridge) — COMPLETE
+Plan: 2 of 2 in current phase — COMPLETE
+Status: Phase 20 complete — all 5 streaming UX behaviors human-verified; v1.2 milestone closed
+Last activity: 2026-03-30 — Completed 20-02-PLAN.md (dead code audit + E2E human sign-off)
 
-Progress: [███████████████████░] 99% (checkpoint pending human approval)
+Progress: [████████████████████] 100%
 
 ## Performance Metrics
 
@@ -120,5 +120,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: 20-02 Task 1 complete — paused at human-verify checkpoint; awaiting streaming UX sign-off
+Stopped at: Completed 20-02-PLAN.md — Phase 20 and v1.2 milestone fully closed
 Resume file: None
