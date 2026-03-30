@@ -3,13 +3,15 @@
 {% block content %}
 <div class="splash-container">
     <div class="splash-card">
-        <span class="splash-icon">&#9889;</span>
+        <span class="splash-logo" aria-hidden="true">
+            <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+                <rect x="5" y="5" width="30" height="30" rx="6" ry="6"
+                      fill="var(--color-brand)" transform="rotate(45 20 20)"/>
+            </svg>
+        </span>
         <h1>Atlas</h1>
         <p class="splash-subtitle">MMC Exchange Infrastructure Assistant</p>
-        <p class="splash-description">
-            Ask questions about Exchange mailboxes, DAG health, mail flow,
-            connectors, and hybrid configuration &mdash; powered by live environment data.
-        </p>
+        <p class="splash-description">Conversational queries against live Exchange infrastructure data.</p>
         <a href="{{ url_for('auth.login') }}" class="btn-signin">
             <svg width="20" height="20" viewBox="0 0 21 21" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
