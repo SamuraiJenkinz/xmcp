@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 17 of 19 (Sidebar and Tool Panels)
-Plan: 2 of 3 in current phase — Plan 2 complete
-Status: In progress — ready for Plan 3 (remaining sidebar and tool panel work)
-Last activity: 2026-03-30 — Completed 17-02-PLAN.md (sidebar recency grouping and collapse mode)
+Phase: 17 of 19 (Sidebar and Tool Panels) — COMPLETE
+Plan: 3 of 3 in current phase — Phase 17 complete
+Status: Phase complete — ready for Phase 18
+Last activity: 2026-03-30 — Completed 17-03-PLAN.md (tool panel redesign: chevron, badges, elapsed time, syntax-highlighted JSON)
 
-Progress: [██████████████████░] 93% (phase 17 plans 1-2 complete, 17-03, phases 18-19 remaining)
+Progress: [███████████████████░] 95% (phases 13-17 complete, phases 18-19 remaining)
 
 ## Performance Metrics
 
@@ -81,6 +81,9 @@ Progress: [██████████████████░] 93% (phase
 - [17-02]: **@fluentui/react-icons v9 has no size suffix** — exports are ComposeRegular, PanelLeftContractRegular, PanelLeftExpandRegular; plan spec used "20Regular" variants which don't exist
 - [17-02]: **groupThreadsByRecency Sunday edge case** — getDay()===0 maps to 7 days lookback; without this fix, Sunday "This Week" collapses to same as Today
 - [17-02]: **new-chat-btn redesigned from accent button to transparent icon+text** — header-row placement with ComposeRegular icon; aligns with Fluent 2 command bar pattern
+- [17-03]: **ChevronRight16Regular used for tool panel** — 16px variant fits compact 12px caption summary row; both ChevronRightRegular (no size) and sized variants exist in @fluentui/react-icons
+- [17-03]: **syntaxHighlightJson accepts JSON.stringify output only** — never raw user input; XSS guard documented in JSDoc; JSON.parse+stringify done before dangerouslySetInnerHTML
+- [17-03]: **No running badge state in tool panels** — run_tool_loop is blocking in openai_client.py; SSE tool events only emit after all tools finish; live running state requires separate phase
 
 ### Pending Todos
 
@@ -96,5 +99,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 17-02-PLAN.md — Sidebar recency grouping and collapse mode with localStorage persistence
-Resume file: None — ready for 17-03
+Stopped at: Completed 17-03-PLAN.md — Tool panel redesign (chevron, Done/Error badges, elapsed time, syntax-highlighted JSON)
+Resume file: None — ready for Phase 18
