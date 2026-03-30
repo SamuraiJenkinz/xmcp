@@ -49,12 +49,12 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 ### Profile Cards
 
-- [ ] **PROF-01**: Profile card visual alignment with Fluent 2 card component
-- [ ] **PROF-02**: Search result cards aligned with Fluent 2 list patterns
+- [x] **PROF-01**: Profile card visual alignment with Fluent 2 card component
+- [x] **PROF-02**: Search result cards aligned with Fluent 2 list patterns
 
 ### Splash Page
 
-- [ ] **SPLA-01**: Redesigned login/splash page — professional landing with Fluent 2 aesthetic
+- [x] **SPLA-01**: Redesigned login/splash page — professional landing with Fluent 2 aesthetic
 
 ### Accessibility
 
@@ -65,9 +65,9 @@ Requirements for UI/UX Redesign milestone. Full visual overhaul targeting Micros
 
 - [x] **DEBT-01**: Persist tool events to SQLite so historical messages retain tool panels
 - [x] **DEBT-02**: Copy-to-clipboard on historical messages
-- [ ] **DEBT-03**: Fix 3 test regressions (description phrasing, tool count assertion)
-- [ ] **DEBT-04**: Remove get_user_photo_bytes() dead code
-- [ ] **DEBT-05**: Fix get_colleague_profile user_id schema description
+- [x] **DEBT-03**: Fix 3 test regressions (description phrasing, tool count assertion)
+- [x] **DEBT-04**: Remove get_user_photo_bytes() dead code
+- [x] **DEBT-05**: Fix get_colleague_profile user_id schema description
 
 ## Future Requirements
 
@@ -139,12 +139,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | TOOL-02 | Phase 17 | Complete |
 | TOOL-03 | Phase 17 | Complete |
 | TOOL-04 | Phase 17 | Complete |
-| PROF-01 | Phase 18 | Pending |
-| PROF-02 | Phase 18 | Pending |
-| SPLA-01 | Phase 18 | Pending |
-| DEBT-03 | Phase 18 | Pending |
-| DEBT-04 | Phase 18 | Pending |
-| DEBT-05 | Phase 18 | Pending |
+| PROF-01 | Phase 18 | Complete |
+| PROF-02 | Phase 18 | Complete |
+| SPLA-01 | Phase 18 | Complete |
+| DEBT-03 | Phase 18 | Complete |
+| DEBT-04 | Phase 18 | Complete |
+| DEBT-05 | Phase 18 | Complete |
 | A11Y-01 | Phase 19 | Pending |
 | A11Y-02 | Phase 19 | Pending |
 

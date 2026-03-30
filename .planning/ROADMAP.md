@@ -207,12 +207,12 @@ Plans:
   2. Colleague search result cards follow Fluent 2 list patterns and are visually consistent with profile cards
   3. The login/splash page has a professional landing appearance using Fluent 2 aesthetics — not a bare form
   4. All 3 test regressions pass (description phrasing, tool count assertion); get_user_photo_bytes() dead code removed; get_colleague_profile user_id schema description corrected
-**Plans**: 3 plans
+**Plans**: 3 plans (complete)
 
 Plans:
-- [ ] 18-01-PLAN.md — Profile card and search result card Fluent 2 alignment
-- [ ] 18-02-PLAN.md — Splash/login page redesign
-- [ ] 18-03-PLAN.md — Tech debt cleanup: fix 3 test regressions (DEBT-03), remove dead code (DEBT-04), fix schema description (DEBT-05)
+- [x] 18-01: Profile card and search result card Fluent 2 alignment
+- [x] 18-02: Splash/login page redesign
+- [x] 18-03: Tech debt cleanup: fix 3 test regressions (DEBT-03), remove dead code (DEBT-04), fix schema description (DEBT-05)
 
 #### Phase 19: Accessibility Sweep
 **Goal**: Keyboard navigation and WCAG AA focus rings verified across all redesigned components — the full UI is operable without a mouse
@@ -252,5 +252,5 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 15. Design System | v1.2 | 2/2 | Complete | 2026-03-29 |
 | 16. Chat Experience Redesign | v1.2 | 3/3 | Complete | 2026-03-29 |
 | 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
-| 18. Profile Cards, Splash, Cleanup | v1.2 | 0/3 | Not started | - |
+| 18. Profile Cards, Splash, Cleanup | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 19. Accessibility Sweep | v1.2 | 0/1 | Not started | - |
