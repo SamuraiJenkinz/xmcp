@@ -181,7 +181,7 @@ New-ManagementRoleAssignment -App "<AZURE_CLIENT_ID>" -Role "View-Only Configura
 
 ### Clone and Install
 
-```bash
+```powershell
 git clone https://github.com/SamuraiJenkinz/xmcp.git
 cd xmcp
 
@@ -195,7 +195,7 @@ The pre-built React frontend is included in the repository under `frontend_dist/
 
 ### Verify Python Environment
 
-```bash
+```powershell
 uv run python --version   # Should be 3.11+
 uv run python -- -c "import mcp; print('MCP OK')"
 uv run python -- -c "import flask; print('Flask OK')"
@@ -219,31 +219,39 @@ Store secrets in AWS Secrets Manager at `/mmc/cts/exchange-mcp` in `us-east-1`:
 
 Set these environment variables on the server:
 
-```bash
+```powershell
 # Required — not in Secrets Manager
-export CHATGPT_ENDPOINT="https://stg1.mmc-dallas-int-non-prod-ingress.mgti.mmc.com/coreapi/openai/v1/deployments/mmc-tech-gpt-4o-mini-128k-2024-07-18/chat/completions"
+$env:CHATGPT_ENDPOINT = "https://stg1.mmc-dallas-int-non-prod-ingress.mgti.mmc.com/coreapi/openai/v1/deployments/mmc-tech-gpt-4o-mini-128k-2024-07-18/chat/completions"
 
 # Required — activates React frontend
-export ATLAS_UI=react
+$env:ATLAS_UI = "react"
 
 # Optional — override defaults
-export CHAT_PORT=5000
-export CHAT_HOST=0.0.0.0
-export CHAT_DB_PATH=/opt/atlas/data/chat.db
-export SESSION_FILE_DIR=/opt/atlas/sessions
+$env:CHAT_PORT = "5000"
+$env:CHAT_HOST = "0.0.0.0"
+$env:CHAT_DB_PATH = "D:\atlas\data\chat.db"
+$env:SESSION_FILE_DIR = "D:\atlas\sessions"
 
 # For CBA Exchange auth (unattended)
-export AZURE_CERT_THUMBPRINT="<certificate-thumbprint>"
-export AZURE_CLIENT_ID="<app-client-id>"
-export AZURE_TENANT_DOMAIN="mmc.onmicrosoft.com"
+$env:AZURE_CERT_THUMBPRINT = "<certificate-thumbprint>"
+$env:AZURE_CLIENT_ID = "<app-client-id>"
+$env:AZURE_TENANT_DOMAIN = "mmc.onmicrosoft.com"
+```
+
+To persist environment variables across reboots, use System Properties or:
+
+```powershell
+[System.Environment]::SetEnvironmentVariable("ATLAS_UI", "react", "Machine")
+[System.Environment]::SetEnvironmentVariable("CHATGPT_ENDPOINT", "https://...", "Machine")
+# Repeat for each variable. Requires admin. Takes effect on new processes.
 ```
 
 ### Option B: .env File (Development)
 
 Create a `.env` file in the project root (copy from `.env.example`):
 
-```bash
-cp .env.example .env
+```powershell
+Copy-Item .env.example .env
 ```
 
 Edit `.env` with your values:
@@ -285,17 +293,18 @@ ATLAS_UI=react
 | `CHAT_HOST` | No | `0.0.0.0` | Waitress bind address |
 | `CHAT_PORT` | No | `5000` | Waitress listen port |
 | `CHAT_DB_PATH` | No | `../chat.db` | SQLite database file path |
-| `SESSION_FILE_DIR` | No | `/tmp/flask-sessions` | Server-side session file directory |
+| `SESSION_FILE_DIR` | No | `C:\temp\flask-sessions` | Server-side session file directory |
 | `AZURE_CERT_THUMBPRINT` | CBA only | — | Certificate thumbprint for unattended Exchange auth |
 | `AZURE_TENANT_DOMAIN` | CBA only | — | Primary tenant domain for CBA |
 
 ## Running the Application
 
-### Development Mode (Frontend)
+### Development Mode (Frontend Hot Reload)
 
-```bash
+```powershell
 # Terminal 1: Start Flask backend
-ATLAS_UI=react uv run python -m chat_app.app
+$env:ATLAS_UI = "react"
+uv run python -m chat_app.app
 
 # Terminal 2: Start Vite dev server (hot reload)
 cd frontend
@@ -306,7 +315,7 @@ Vite dev server runs on `http://localhost:5173` and proxies API requests (`/api/
 
 ### Development Mode (Backend Only)
 
-```bash
+```powershell
 # Interactive Exchange auth (browser popup on first tool call)
 uv run python -m chat_app.app
 ```
@@ -315,12 +324,12 @@ The app starts on `http://localhost:5000`. The MCP server subprocess is spawned 
 
 ### Production Mode
 
-```bash
-# With CBA Exchange auth (unattended)
-export ATLAS_UI=react
-export AZURE_CERT_THUMBPRINT="ABC123..."
-export AZURE_CLIENT_ID="..."
-export AZURE_TENANT_DOMAIN="mmc.onmicrosoft.com"
+```powershell
+# Set environment variables (or use .env file)
+$env:ATLAS_UI = "react"
+$env:AZURE_CERT_THUMBPRINT = "ABC123..."
+$env:AZURE_CLIENT_ID = "..."
+$env:AZURE_TENANT_DOMAIN = "mmc.onmicrosoft.com"
 
 uv run python -m chat_app.app
 ```
@@ -388,7 +397,7 @@ location / {
 
 ### 1. Verify Exchange Connectivity
 
-```bash
+```powershell
 uv run python scripts/verify_exchange.py
 ```
 
@@ -403,13 +412,13 @@ ALL EXCHANGE CHECKS PASSED
 
 ### 2. Verify DNS Resolution
 
-```bash
+```powershell
 uv run python scripts/verify_dns.py
 ```
 
 ### 3. Verify Unit Tests
 
-```bash
+```powershell
 uv run pytest tests/ -v --ignore=tests/test_integration.py
 ```
 
@@ -417,16 +426,16 @@ All tests should pass. Integration tests (`test_integration.py`) require a live 
 
 ### 4. Verify Frontend Assets
 
-```bash
-ls frontend_dist/   # Should contain index.html and assets/
+```powershell
+Get-ChildItem frontend_dist/   # Should contain index.html and assets/
 ```
 
 ### 5. Health Check
 
 After starting the app:
 
-```bash
-curl http://localhost:5000/api/health
+```powershell
+Invoke-RestMethod http://localhost:5000/api/health
 ```
 
 Expected:
@@ -466,8 +475,8 @@ Expected:
 
 ## Updating
 
-```bash
-cd xmcp
+```powershell
+cd D:\xmcp
 git pull origin master
 uv sync  # Install any new Python dependencies
 
@@ -483,9 +492,9 @@ The pre-built frontend assets update automatically with `git pull`. No npm or No
 
 The SQLite database contains all conversation threads and messages. Back it up regularly:
 
-```bash
+```powershell
 # While application is running (WAL mode makes this safe)
-cp chat.db chat.db.backup.$(date +%Y%m%d)
+Copy-Item chat.db "chat.db.backup.$(Get-Date -Format yyyyMMdd)"
 ```
 
 ### Session Files

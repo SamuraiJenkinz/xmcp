@@ -390,12 +390,12 @@ All application logs go to **stderr**. The MCP server enforces strict stderr-onl
 
 To capture logs:
 
-```bash
+```powershell
 # Console
 uv run python -m chat_app.app 2>atlas.log
 
 # Windows Service (NSSM)
-nssm set AtlasExchangeMCP AppStderr "C:\atlas\logs\atlas.log"
+nssm set AtlasExchangeMCP AppStderr "D:\atlas\logs\atlas.log"
 nssm set AtlasExchangeMCP AppStderrCreationDisposition 4  # Append
 ```
 
@@ -541,7 +541,7 @@ sqlite3 chat.db "PRAGMA integrity_check;"
 
 The MCP server can be tested independently of the chat app:
 
-```bash
+```powershell
 # Start MCP dev inspector
 uv run mcp dev exchange_mcp/server.py
 
@@ -553,13 +553,14 @@ uv run mcp dev exchange_mcp/server.py
 
 ### Switching Between Classic and React UI
 
-```bash
+```powershell
 # React frontend (recommended for v1.2+)
-export ATLAS_UI=react
+$env:ATLAS_UI = "react"
 
 # Classic Jinja2 templates (legacy)
-export ATLAS_UI=classic
-# or simply unset the variable (defaults to classic)
+$env:ATLAS_UI = "classic"
+# or remove the variable (defaults to classic)
+Remove-Item Env:\ATLAS_UI
 ```
 
 Both modes use the same Flask backend, database, and MCP server. Only the frontend rendering differs.
