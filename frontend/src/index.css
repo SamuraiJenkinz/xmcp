@@ -519,26 +519,47 @@
     background-color: var(--atlas-bg-surface);
   }
 
-  .tool-panel-icon {
-    display: inline-block;
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background-color: var(--atlas-accent);
+  /* Tool panel chevron */
+  .tool-panel-chevron {
+    flex-shrink: 0;
+    transition: transform 150ms ease;
+    color: var(--atlas-text-tertiary);
+  }
+
+  .tool-panel-chevron-open {
+    transform: rotate(90deg);
   }
 
   .tool-panel-name {
     font-weight: 600;
   }
 
-  .tool-panel-status {
+  /* Status badge — only Done (success) and Error states */
+  .tool-panel-badge {
     margin-left: auto;
     font-size: var(--atlas-text-caption2);
     font-weight: 600;
+    padding: 1px 6px;
+    border-radius: 4px;
   }
 
-  .status-success { color: var(--atlas-status-success); }
-  .status-error { color: var(--atlas-status-error); }
+  .tool-panel-badge-success {
+    color: var(--atlas-status-success);
+    background-color: color-mix(in srgb, var(--atlas-status-success) 12%, transparent);
+  }
+
+  .tool-panel-badge-error {
+    color: var(--atlas-status-error);
+    background-color: color-mix(in srgb, var(--atlas-status-error) 12%, transparent);
+  }
+
+  /* Elapsed time */
+  .tool-panel-elapsed {
+    font-size: var(--atlas-text-caption2);
+    color: var(--atlas-text-tertiary);
+    margin-left: 8px;
+    white-space: nowrap;
+  }
 
   .tool-panel-body {
     padding: 8px 12px;
@@ -571,6 +592,13 @@
     max-height: 300px;
     overflow-y: auto;
   }
+
+  /* === JSON Syntax Highlighting Tokens === */
+  .json-key    { color: #9cdcfe; }
+  .json-string { color: #ce9178; }
+  .json-number { color: #b5cea8; }
+  .json-bool   { color: #569cd6; }
+  .json-null   { color: #569cd6; }
 
   /* === Profile Card === */
   .profile-card {
