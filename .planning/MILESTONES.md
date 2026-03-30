@@ -1,5 +1,33 @@
 # Project Milestones: Exchange Infrastructure MCP Server
 
+## v1.2 UI/UX Redesign (Shipped: 2026-03-30)
+
+**Delivered:** Full frontend rewrite from vanilla JS to React 19 + Fluent UI v9 + Tailwind v4, delivering a Microsoft Copilot aesthetic with enterprise-grade dark mode, accessibility, and polished chat interactions — all without changing the Flask backend.
+
+**Phases completed:** 13-20 (22 plans total)
+
+**Key accomplishments:**
+
+- React 19 + Vite + TypeScript scaffold with Fluent UI v9 and Tailwind v4, wired into Flask via hybrid SPA pattern (ATLAS_UI feature flag for safe rollout)
+- Complete functional port of SSE streaming, thread management, message rendering, tool panels, and profile cards from vanilla JS to React components
+- Fluent 2 design system with 62 --atlas- semantic tokens, three-tier dark mode surface hierarchy, and Segoe UI Variable typography
+- Microsoft Copilot-style chat experience — message bubbles, entrance animations, stop-generation button, auto-resize textarea, welcome state with prompt chips
+- Redesigned sidebar (recency grouping, collapse mode) and tool panels (chevron toggle, status badges, elapsed time, syntax-highlighted JSON)
+- WCAG AA accessibility sweep — global focus rings, skip navigation, roving tabindex, logical tab order across all components
+
+**Stats:**
+
+- 114 files created/modified
+- 21,351 lines added (Python/TypeScript/CSS/HTML)
+- 8 phases, 22 plans
+- 4 days from milestone start to ship (2026-03-27 → 2026-03-30)
+
+**Git range:** `80677b8` (phase 13 context) → `a265cec` (phase 20 complete)
+
+**What's next:** v1.3 — feedback/analytics (thumbs up/down), thread search, conversation export, Motion animations
+
+---
+
 ## v1.1 Colleague Lookup (Shipped: 2026-03-25)
 
 **Delivered:** Colleague search and profile display via Microsoft Graph API — users ask about a colleague by name, Atlas auto-chains search to profile lookup, and an inline profile card renders with photo, name, title, department, and email.

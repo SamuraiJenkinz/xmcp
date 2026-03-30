@@ -4,47 +4,78 @@ This guide covers the internal architecture, tool reference, database management
 
 ## System Architecture
 
-Atlas consists of two main components:
+Atlas consists of three main components:
 
-1. **MCP Server** (`exchange_mcp/`) — a Model Context Protocol server that exposes 15 Exchange infrastructure tools over stdio JSON-RPC. It manages PowerShell subprocess execution and DNS lookups.
+1. **MCP Server** (`exchange_mcp/`) — a Model Context Protocol server that exposes 17 tools (15 Exchange infrastructure + 2 colleague lookup) over stdio JSON-RPC. It manages PowerShell subprocess execution, Microsoft Graph API calls, and DNS lookups.
 
-2. **Chat Application** (`chat_app/`) — a Flask web application that provides the user interface, Azure AD authentication, Azure OpenAI integration, and conversation persistence.
+2. **Chat Application** (`chat_app/`) — a Flask web application that provides Azure AD authentication, Azure OpenAI integration, conversation persistence, and serves the React frontend.
+
+3. **React Frontend** (`frontend/`) — a React 19 SPA built with Vite, Fluent UI v9, and Tailwind v4. Produces a static bundle in `frontend_dist/` that Flask serves via a catch-all route.
 
 The chat app spawns the MCP server as a child process at startup. They communicate over stdin/stdout using the MCP stdio transport protocol. A `threading.Lock` serializes all MCP calls (one tool invocation at a time).
 
 ```
-Flask App ──stdio──► MCP Server ──subprocess──► powershell.exe ──► Exchange Online
-    │                    │
-    │                    └──► dnspython ──► DNS (DMARC/SPF/DKIM)
-    │
-    ├──► Azure AD (MSAL auth code flow)
-    ├──► Azure OpenAI (tool-calling loop)
-    └──► SQLite (conversation persistence)
+React SPA (frontend_dist/) ──HTTP──> Flask App ──stdio──> MCP Server ──subprocess──> powershell.exe ──> Exchange Online
+    |                                    |                    |
+    |                                    |                    +──> dnspython ──> DNS (DMARC/SPF/DKIM)
+    |                                    |                    +──> graph_client ──> Microsoft Graph API
+    |                                    |
+    |                                    +──> Azure AD (MSAL auth code flow)
+    |                                    +──> Azure OpenAI (tool-calling loop)
+    |                                    +──> SQLite (conversation persistence)
+    |
+    +──> /api/me, /api/threads, /api/photo ──> Flask API routes
+    +──> /chat/stream ──> Flask SSE endpoint
+    +──> /auth/* ──> Flask auth routes
 ```
+
+### Frontend Architecture
+
+The React frontend uses a **hybrid SPA pattern** controlled by the `ATLAS_UI` environment variable:
+
+| `ATLAS_UI` Value | Behavior |
+|------------------|----------|
+| `react` (recommended) | Flask serves pre-built React SPA from `frontend_dist/` |
+| `classic` (default) | Flask serves Jinja2 templates (legacy vanilla JS UI) |
+
+The React app includes:
+- **Fluent UI v9** (`@fluentui/react-components`) for the FluentProvider and theme system
+- **Tailwind v4** for utility CSS with `tw:` prefix
+- **62 `--atlas-` CSS custom properties** for the design token system
+- **Three-tier surface hierarchy** matching Microsoft Fluent 2 webDarkTheme
+
+Key frontend files:
+- `frontend/src/App.tsx` — root component with provider nesting and theme management
+- `frontend/src/contexts/` — AuthContext, ThreadContext, ChatContext (React Context + useReducer)
+- `frontend/src/hooks/useStreamingMessage.ts` — SSE streaming with fetch + ReadableStream
+- `frontend/src/styles/atlas-tokens.css` — all 62 design tokens
+- `frontend/src/styles/components.css` — component styles using `@layer components`
 
 ## Tool Reference
 
 ### Tool Inventory
 
-All 15 tools are read-only. No tool can create, modify, or delete Exchange objects.
+All 17 tools are read-only. No tool can create, modify, or delete Exchange objects or Azure AD data.
 
-| # | Tool | Category | Exchange Cmdlets Used | Auth Required |
-|---|------|----------|----------------------|---------------|
-| 1 | `ping` | Connectivity | None | No |
-| 2 | `get_mailbox_stats` | Mailbox | Get-MailboxStatistics, Get-Mailbox | Yes |
-| 3 | `search_mailboxes` | Mailbox | Get-Mailbox | Yes |
-| 4 | `get_shared_mailbox_owners` | Mailbox | Get-MailboxPermission, Get-RecipientPermission, Get-Mailbox | Yes |
-| 5 | `list_dag_members` | DAG | Get-DatabaseAvailabilityGroup, Get-ExchangeServer, Get-MailboxDatabaseCopyStatus | Yes |
-| 6 | `get_dag_health` | DAG | Get-DatabaseAvailabilityGroup, Get-MailboxDatabaseCopyStatus | Yes |
-| 7 | `get_database_copies` | DAG | Get-MailboxDatabaseCopyStatus, Get-MailboxDatabase | Yes |
-| 8 | `check_mail_flow` | Mail Flow | Get-AcceptedDomain, Get-SendConnector, Get-ReceiveConnector | Yes |
-| 9 | `get_transport_queues` | Mail Flow | Get-TransportService, Get-Queue | Yes |
-| 10 | `get_smtp_connectors` | Mail Flow | Get-SendConnector, Get-ReceiveConnector | Yes |
-| 11 | `get_dkim_config` | Security | Get-DkimSigningConfig | Yes (+ DNS) |
-| 12 | `get_dmarc_status` | Security | None (pure DNS) | No |
-| 13 | `check_mobile_devices` | Security | Get-MobileDeviceStatistics | Yes |
-| 14 | `get_hybrid_config` | Hybrid | Get-OrganizationRelationship, Get-FederationTrust, Get-IntraOrganizationConnector, Get-AvailabilityAddressSpace, Get-SendConnector | Yes |
-| 15 | `get_connector_status` | Hybrid | Get-SendConnector, Get-ReceiveConnector, Get-ExchangeCertificate | Yes |
+| # | Tool | Category | Source | Auth Required |
+|---|------|----------|--------|---------------|
+| 1 | `ping` | Connectivity | Direct | No |
+| 2 | `get_mailbox_stats` | Mailbox | Exchange cmdlets | Yes |
+| 3 | `search_mailboxes` | Mailbox | Exchange cmdlets | Yes |
+| 4 | `get_shared_mailbox_owners` | Mailbox | Exchange cmdlets | Yes |
+| 5 | `list_dag_members` | DAG | Exchange cmdlets | Yes |
+| 6 | `get_dag_health` | DAG | Exchange cmdlets | Yes |
+| 7 | `get_database_copies` | DAG | Exchange cmdlets | Yes |
+| 8 | `check_mail_flow` | Mail Flow | Exchange cmdlets | Yes |
+| 9 | `get_transport_queues` | Mail Flow | Exchange cmdlets | Yes |
+| 10 | `get_smtp_connectors` | Mail Flow | Exchange cmdlets | Yes |
+| 11 | `get_dkim_config` | Security | Exchange + DNS | Yes |
+| 12 | `get_dmarc_status` | Security | DNS only | No |
+| 13 | `check_mobile_devices` | Security | Exchange cmdlets | Yes |
+| 14 | `get_hybrid_config` | Hybrid | Exchange cmdlets | Yes |
+| 15 | `get_connector_status` | Hybrid | Exchange cmdlets | Yes |
+| 16 | `search_colleagues` | Colleague | Microsoft Graph | Yes (app) |
+| 17 | `get_colleague_profile` | Colleague | Microsoft Graph | Yes (app) |
 
 ### Tool Parameters
 
@@ -124,6 +155,18 @@ All 15 tools are read-only. No tool can create, modify, or delete Exchange objec
 |-----------|------|----------|-------------|
 | `email_address` | string | Yes | UPN or email of the user whose devices to check |
 
+#### search_colleagues
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `name` | string | Yes | Name (or partial name) to search for in Azure AD |
+
+#### get_colleague_profile
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `user_id` | string | Yes | Microsoft Graph API object ID (GUID) from search_colleagues results |
+
 #### get_hybrid_config, get_connector_status, ping
 
 No parameters.
@@ -181,19 +224,44 @@ File: `exchange_mcp/exchange_client.py` — `run_cmdlet_with_retry()`
 
 Auth mode is auto-detected at `ExchangeClient.__init__()`. Both modes use per-call sessions.
 
+## Microsoft Graph Client
+
+File: `exchange_mcp/graph_client.py`
+
+### Authentication
+
+Uses MSAL `ConfidentialClientApplication` with client credentials flow (application permissions). Token is cached at module level with automatic refresh.
+
+### Endpoints Used
+
+| Endpoint | Permission | Purpose |
+|----------|-----------|---------|
+| `GET /users?$search="displayName:{name}"` | User.Read.All | Colleague search |
+| `GET /users/{id}` | User.Read.All | Colleague profile |
+| `GET /users/{id}/photo/$value` | ProfilePhoto.Read.All | Colleague photo (via Flask proxy) |
+
+### Photo Proxy
+
+File: `chat_app/routes.py` — `/api/photo/<user_id>`
+
+- Requires authentication (session check)
+- TTL cache prevents repeated Graph API calls for the same photo
+- Returns SVG placeholder with initials on 404 (no photo in Azure AD)
+- Binary photo data never enters the LLM context
+
 ## Error Handling Chain
 
 Errors flow through multiple layers with sanitization at each level:
 
 ```
 PowerShell stderr
-  → ExchangeClient: raise RuntimeError(stderr)
-    → tools.py handler: raise RuntimeError(user_message)
-      → server.py _sanitize_error(): strip PS tracebacks, add retry hints
-        → MCP SDK: CallToolResult(isError=True, content=sanitized_message)
-          → chat_app openai_client: tool_events[status="error"]
-            → SSE: {"type": "tool", "status": "error", ...}
-              → Browser: red "Error" badge on tool panel
+  -> ExchangeClient: raise RuntimeError(stderr)
+    -> tools.py handler: raise RuntimeError(user_message)
+      -> server.py _sanitize_error(): strip PS tracebacks, add retry hints
+        -> MCP SDK: CallToolResult(isError=True, content=sanitized_message)
+          -> chat_app openai_client: tool_events[status="error"]
+            -> SSE: {"type": "tool", "status": "error", ...}
+              -> React: "Error" badge on tool panel
 ```
 
 **Sanitization rules** (`server.py:_sanitize_error()`):
@@ -201,6 +269,28 @@ PowerShell stderr
 - Remove `PowerShell exited with code N.` prefix
 - Append "This may be a temporary issue — please try again." for transient errors
 - No retry hint for authentication/input errors
+
+## SSE Streaming Architecture
+
+File: `chat_app/openai_client.py` — `run_tool_loop()`
+
+The tool-calling loop is **blocking** — all tool calls complete before the SSE stream emits results. This means:
+
+- Tool events include `start_time` and `end_time` (epoch float seconds from `time.time()`)
+- The frontend calculates elapsed time from these timestamps
+- There is no real-time "Running" state for tool panels (tools complete before the stream resumes)
+- The Stop button works via `AbortController` on the fetch request in the React frontend
+
+### SSE Event Types
+
+| Event Type | Fields | Purpose |
+|------------|--------|---------|
+| `text` | `content` | Streaming text delta |
+| `tool` | `name`, `args`, `result`, `status`, `start_time`, `end_time` | Tool invocation result |
+| `done` | — | Stream complete |
+| `error` | `message` | Error occurred |
+| `cancel` | — | User cancelled stream |
+| `thread_name` | `name`, `thread_id` | Auto-naming event |
 
 ## Database Management
 
@@ -210,6 +300,8 @@ SQLite database with WAL mode and foreign keys enabled. Two tables:
 
 - **threads** — one row per conversation thread (user_id, name, timestamps)
 - **messages** — one row per thread containing the full message history as a JSON array
+
+The `messages_json` field includes tool events (tool name, arguments, result, status, timestamps) so that historical messages retain their tool panels.
 
 ### Database Location
 
@@ -284,13 +376,13 @@ Returns:
 {
   "status": "ok",
   "mcp_connected": true,
-  "tools_count": 15
+  "tools_count": 17
 }
 ```
 
 Monitor this endpoint. Key indicators:
 - `mcp_connected: false` — MCP subprocess crashed or failed to start
-- `tools_count < 15` — Tool registration issue
+- `tools_count < 17` — Tool registration issue (expected: 15 Exchange + 2 Graph)
 
 ### Application Logs
 
@@ -316,6 +408,7 @@ nssm set AtlasExchangeMCP AppStderrCreationDisposition 4  # Append
 | `TimeoutError` | PowerShell command exceeded 60s | Exchange may be overloaded |
 | `AADSTS` | Azure AD authentication error | Check credentials/certificate |
 | `MCP init failed` | Chat app couldn't connect to MCP server | Check PowerShell/Exchange access |
+| `Graph API error` | Microsoft Graph call failed | Check Graph API permissions and credentials |
 
 ### Performance Monitoring
 
@@ -325,9 +418,11 @@ Expected latencies:
 |-----------|----------|---------------|
 | Tool call (simple) | 2-4 seconds | > 10 seconds |
 | Tool call (composite, e.g., get_hybrid_config) | 5-10 seconds | > 20 seconds |
+| Colleague search | 1-2 seconds | > 5 seconds |
 | SSE stream start | < 1 second | > 3 seconds |
 | AI response generation | 1-3 seconds | > 10 seconds |
-| Page load | < 500ms | > 2 seconds |
+| Page load (React SPA) | < 500ms | > 2 seconds |
+| Frontend build (npm run build) | 5-15 seconds | > 30 seconds |
 
 ## Security Model
 
@@ -345,6 +440,8 @@ All 15 Exchange tools are strictly read-only. The following PowerShell cmdlets a
 
 No `Set-*`, `New-*`, `Remove-*`, `Enable-*`, or `Disable-*` cmdlets are used.
 
+The 2 colleague lookup tools use Microsoft Graph API `GET` requests only (read-only application permissions).
+
 ### No Free-Form PowerShell
 
 The AI model cannot execute arbitrary PowerShell. All Exchange queries go through the MCP tool dispatch table, which maps tool names to specific handler functions. There is no mechanism for the AI to construct or inject PowerShell commands.
@@ -353,10 +450,12 @@ The AI model cannot execute arbitrary PowerShell. All Exchange queries go throug
 
 | Layer | Mechanism | What it protects |
 |-------|-----------|-----------------|
-| User → Chat App | Azure AD SSO (MSAL auth code flow) | Only authenticated MMC colleagues can access the chat |
-| Chat App → User Data | `session["user"]["oid"]` ownership check | Users can only see their own threads |
-| Chat App → Exchange | Service account RBAC | Tool calls limited to assigned Exchange roles |
-| Chat App → Azure OpenAI | API key (from AWS Secrets Manager) | AI calls restricted to MMC corporate endpoint |
+| User -> Chat App | Azure AD SSO (MSAL auth code flow) | Only authenticated MMC colleagues can access the chat |
+| Chat App -> User Data | `session["user"]["oid"]` ownership check | Users can only see their own threads |
+| Chat App -> Exchange | Service account RBAC | Tool calls limited to assigned Exchange roles |
+| Chat App -> Graph API | MSAL client credentials (application permissions) | Directory reads scoped to User.Read.All, ProfilePhoto.Read.All |
+| Chat App -> Azure OpenAI | API key (from AWS Secrets Manager) | AI calls restricted to MMC corporate endpoint |
+| Photo Proxy | Authenticated session required | Photos served only to logged-in users |
 
 ### Data Privacy
 
@@ -364,6 +463,7 @@ The AI model cannot execute arbitrary PowerShell. All Exchange queries go throug
 - **Conversation isolation** — SQLite queries always filter by `user_id` (Azure AD OID)
 - **No data exfiltration** — the AI is instructed to only answer Exchange questions and cannot be prompted to send data externally
 - **Error sanitization** — PowerShell tracebacks are stripped before reaching users
+- **Photo privacy** — colleague photos served through authenticated proxy; binary data never enters AI context
 
 ### Secret Management
 
@@ -397,6 +497,19 @@ The AI model cannot execute arbitrary PowerShell. All Exchange queries go throug
 2. Update `AZURE_CLIENT_SECRET` in AWS Secrets Manager (or `.env`)
 3. Restart Atlas service
 4. Delete old secret from Azure AD
+
+### Frontend Updates
+
+When the React frontend is updated:
+
+```bash
+cd frontend
+npm install    # If package.json changed
+npm run build  # Rebuild to frontend_dist/
+# Restart Flask — it serves the new bundle immediately
+```
+
+No Node.js runtime is needed in production. The built assets are static files served by Flask.
 
 ### Adding Exchange RBAC Roles
 
@@ -437,12 +550,28 @@ uv run mcp dev exchange_mcp/server.py
 # - Inspect JSON results
 ```
 
+### Switching Between Classic and React UI
+
+```bash
+# React frontend (recommended for v1.2+)
+export ATLAS_UI=react
+
+# Classic Jinja2 templates (legacy)
+export ATLAS_UI=classic
+# or simply unset the variable (defaults to classic)
+```
+
+Both modes use the same Flask backend, database, and MCP server. Only the frontend rendering differs.
+
 ## Known Limitations
 
 | Limitation | Impact | Workaround |
 |------------|--------|------------|
-| Per-call PSSession (no pooling) | 2-4s latency per tool call | Acceptable for v1; PSSession pooling planned for v2 |
-| Tool events not persisted | Historical messages lose tool panels on reload | Copy JSON before navigating away |
+| Per-call PSSession (no pooling) | 2-4s latency per tool call | Acceptable; PSSession pooling planned for future |
+| Historical tool panels always show "Done" | Error status not persisted to SQLite | New streams show correct status; only affects reloaded history |
+| Historical tool panels lose elapsed time | Timestamps only in SSE events, not persisted | New streams show elapsed time correctly |
 | Single MCP connection with lock | One tool call at a time per instance | Scale horizontally with multiple instances if needed |
 | 128K context window | Very long conversations get pruned | Start new threads for separate topics |
 | SQLite single-writer | Limited concurrent write throughput | Sufficient for <100 concurrent users |
+| No "Running" badge on tool panels | Blocking SSE architecture | Tools complete before stream resumes; elapsed time shown after |
+| login_required returns 302 not 401 | API routes get redirect instead of JSON error | fetchMe catches non-JSON response and returns null |

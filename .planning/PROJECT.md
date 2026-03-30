@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a polished Python chat application. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history, collapsible tool visibility panels, copy-to-clipboard, keyboard shortcuts, and dark mode. No direct PowerShell access or cmdlet knowledge required.
+A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a modern React 19 chat application built on Fluent UI v9 and Tailwind v4. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history with recency grouping, collapsible tool panels with status badges and elapsed time, syntax-highlighted JSON, copy-to-clipboard, keyboard shortcuts, WCAG AA accessible focus management, and dark/light mode with Fluent 2 design tokens. No direct PowerShell access or cmdlet knowledge required.
 
 ## Core Value
 
@@ -29,49 +29,52 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 - Secure photo proxy route with TTL cache and SVG placeholder fallback — v1.1
 - Inline profile card DOM rendering (photo, name, title, department, email) — v1.1
 - System prompt colleague lookup routing with auto-chain and deduplication — v1.1
+- React 19 + Vite + Fluent UI v9 + Tailwind v4 frontend with hybrid SPA pattern (ATLAS_UI feature flag) — v1.2
+- Microsoft Copilot aesthetic — message bubbles, entrance animations, Fluent 2 design system with 62 --atlas- tokens — v1.2
+- Redesigned sidebar with recency grouping (Today/Yesterday/This Week/Older) and collapse mode — v1.2
+- Redesigned tool panels with chevron toggle, status badges, elapsed time, syntax-highlighted JSON — v1.2
+- Professional splash/login page with Fluent 2 aesthetic — v1.2
+- Stop generation button, auto-resize textarea, welcome state with prompt chips — v1.2
+- Profile cards and search result cards aligned with Fluent 2 component patterns — v1.2
+- WCAG AA accessibility — focus rings, skip navigation, roving tabindex, logical tab order — v1.2
+- Dark/light mode with three-tier Fluent 2 surface hierarchy and Segoe UI Variable typography — v1.2
+- Fix: Tool events persisted to SQLite (historical messages retain tool panels) — v1.2
+- Fix: Copy-to-clipboard on historical messages — v1.2
+- Fix: 3 test regressions, dead code removal, schema description correction — v1.2
 
 ### Active
 
-- Full UI/UX overhaul — Microsoft Copilot / Fluent Design aesthetic, enterprise-ready appearance — v1.2
-- Stitch-designed design system and screen mockups as implementation reference — v1.2
-- Frontend framework evaluation (React/Vue/Svelte) — open to replacing vanilla JS if it delivers better UX — v1.2
-- New landing page / splash screen — professional first impression — v1.2
-- Modernized chat layout, message bubbles, sidebar, input area — v1.2
-- Redesigned tool visibility panels — scannable for both engineers and managers — v1.2
-- Refined profile cards and search result cards — native to chat flow — v1.2
-- Polished loading/streaming states and animations — v1.2
-- Dark mode refresh aligned with new design system — v1.2
-- Fix: Persist tool events to SQLite so historical messages retain tool panels — v1.2
-- Fix: Copy-to-clipboard on historical messages — v1.2
-- Fix: 3 test regressions (description phrasing, tool count assertion) — v1.2
-- Fix: Remove get_user_photo_bytes() dead code — v1.2
-- Fix: get_colleague_profile user_id schema description misleading — v1.2
+(None — define requirements for next milestone with `/gsd:new-milestone`)
 
 ### Out of Scope
 
 - Write operations (mailbox modifications, transport rule changes, database operations) — requires separate privileged service account and approval gates
 - Exchange Online-only queries via Microsoft Graph API — hybrid on-prem focus for v1
-- Mobile app — browser-based internal tool only
-- Persistent PowerShell session pooling — per-call sessions for v1, optimize later if latency is a concern
-- Production Azure OpenAI endpoint — v1 targets stg1 non-prod ingress
+- Mobile app — browser-based internal tool only, desktop (1080p-1440p)
+- Persistent PowerShell session pooling — per-call sessions, optimize later if latency is a concern
+- Production Azure OpenAI endpoint — targets stg1 non-prod ingress
 - Future tools (accepted domains, retention policies, ABPs, certificates, CAS VDirs, public folders, BPA) — extend after v1
 - Pass-through user identity via Kerberos delegation — deferred to v2 (IDEN-01, IDEN-02)
+- Typewriter/per-character animation — artificial latency, frustrates fast readers
+- Real-time multi-user collaboration — IT engineers investigate solo
+- Mobile responsive layout — desktop-only tool
 
 ## Context
 
-- **Current state:** v1.2 UI/UX Redesign in progress. v1.1 shipped 2026-03-25. ~20K LOC (Python + JS/CSS/HTML/SQL). 12 phases, 44 plans complete across 2 milestones.
-- **Design reference:** `designux.md` in project root — comprehensive design brief for Stitch with component inventory, design tokens, and user flows
+- **Current state:** v1.2 shipped 2026-03-30. ~75K LOC (Python + TypeScript/CSS/HTML/SQL). 20 phases, 66 plans complete across 3 milestones.
+- **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 (frontend), PowerShell 5.1+ (Exchange cmdlets)
+- **Design reference:** `designux.md` in project root — comprehensive design brief with component inventory, design tokens, and user flows
 - **Environment:** Hybrid Exchange (Exchange 2019 on-prem + Exchange Online), 80,000+ mailboxes, multiple DAGs, AWS-hosted mailbox servers
 - **Organization:** Marsh McLennan Companies (MMC) — Colleague Tech Services (CTS) team
 - **Strategic alignment:** Supports One Marsh 2026 infrastructure consolidation and MMC Corporate AI Platform initiatives
 - **Existing pain point:** Shared mailbox governance (31,246 rows in ExoNotes.xlsx) currently requires batch exports — this enables on-demand live queries
 - **AI backend:** MMC-approved Azure OpenAI deployment at Dallas non-prod ingress (stg1), gpt-4o-mini-128k model, API version 2023-05-15
 - **Architecture doc:** `exchange-mcp-architecture.md` in project root — comprehensive reference for all tool schemas, data flows, and security model
-- **Known tech debt:** Tool events not persisted to SQLite (historical messages lose tool panels); copy button not on historical messages; CHATGPT_ENDPOINT not in secrets pipeline; v1.1 test regressions (description phrasing, tool count assertion); get_user_photo_bytes() dead code; get_colleague_profile user_id schema description misleading
+- **Known tech debt:** login_required returns 302 instead of 401 for API routes; historical tool panels always show "Done" badge (error status not persisted); historical tool panels lose elapsed time; AuthContext.error field unused; CHATGPT_ENDPOINT not in secrets pipeline
 
 ## Constraints
 
-- **Tech stack:** Python 3.11+ (MCP server + chat app), PowerShell 5.1+ (Exchange cmdlets), Flask 3.x + Waitress (backend); frontend stack open to framework (React/Vue/Svelte) or enhanced vanilla JS — decision during v1.2 research
+- **Tech stack:** Python 3.11+ (MCP server + chat app), PowerShell 5.1+ (Exchange cmdlets), Flask 3.x + Waitress (backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 (frontend)
 - **Deployment:** On-premises domain-joined Windows server — required for Kerberos authentication to Exchange
 - **AI endpoint:** Must use MMC corporate Azure OpenAI gateway only — no external AI services
 - **Security:** API keys sourced from AWS Secrets Manager at runtime — never hardcoded or committed. Service account credentials via Kerberos or Windows Credential Manager
@@ -98,7 +101,12 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | Lazy graph_client imports in handlers | Avoids Config evaluation at module import time; fails gracefully if Azure creds missing | Good — startup resilience |
 | System prompt rules 7-10 for colleague lookup | Auto-chain on single result, disambiguate on multiple, suppress text duplication of card fields | Good — reliable tool routing |
 
-| Open to frontend framework for v1.2 | Current vanilla JS + Jinja2 works but may limit design fidelity for Copilot-style UI; evaluate React/Vue/Svelte during research | — Pending |
+| React 19 over Svelte 5 for v1.2 | Fluent UI v9 is React-only from Microsoft; official packages for Copilot aesthetic | Good — full Fluent 2 integration |
+| Hybrid SPA pattern (ATLAS_UI flag) | Flask renders Jinja2 shell, React mounts on #app; no CORS, no cookie reconfiguration; safe dual-mode rollout | Good — zero regression path |
+| 62 --atlas- semantic design tokens | Three-tier surface hierarchy matching Fluent 2 webDarkTheme; single source of truth for light/dark | Good — clean token foundation |
+| Native details/summary for tool panels | Simpler than Fluent Accordion; fewer dependencies; consistent expand/collapse | Good — reliable cross-browser |
+| SSE via fetch + ReadableStream | Not EventSource; AbortController in useRef for cancel support | Good — full streaming control |
+| Migration order: scaffold → port → visual | Visual work before functional parity is the primary failure mode | Good — proven approach |
 
 ---
-*Last updated: 2026-03-27 after v1.2 milestone start*
+*Last updated: 2026-03-30 after v1.2 milestone*

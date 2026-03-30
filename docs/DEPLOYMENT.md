@@ -5,38 +5,55 @@ This guide covers deploying the Exchange Infrastructure MCP Server and Atlas cha
 ## Architecture Overview
 
 ```
-                                    ┌──────────────────────────┐
-                                    │   Azure AD / Entra ID    │
-                                    │   (SSO Authentication)   │
-                                    └──────────┬───────────────┘
-                                               │
-  ┌──────────┐     HTTPS      ┌────────────────▼───────────────┐
-  │ Browser  │◄──────────────►│  Flask + Waitress (port 5000)  │
-  │ (User)   │   SSE stream   │  chat_app/app.py               │
-  └──────────┘                │                                │
-                              │  ┌─────────────────────────┐   │
-                              │  │  Azure OpenAI (gpt-4o)  │   │
-                              │  │  MMC stg1 endpoint      │   │
-                              │  └─────────────────────────┘   │
-                              │                                │
-                              │  ┌─────────────────────────┐   │
-                              │  │  MCP Server (stdio)     │   │
-                              │  │  exchange_mcp/server.py  │   │
-                              │  │  15 Exchange tools       │   │
-                              │  └──────────┬──────────────┘   │
-                              └─────────────┼──────────────────┘
-                                            │
-                              ┌─────────────▼──────────────────┐
-                              │  PowerShell subprocess         │
-                              │  Connect-ExchangeOnline        │
-                              │  Per-call PSSession lifecycle  │
-                              └─────────────┬──────────────────┘
-                                            │
-                              ┌─────────────▼──────────────────┐
-                              │  Exchange Online / On-Prem     │
-                              │  80,000+ mailboxes             │
-                              └────────────────────────────────┘
+                                    +----------------------------+
+                                    |   Azure AD / Entra ID      |
+                                    |   (SSO Authentication)     |
+                                    +-------------+--------------+
+                                                  |
+  +----------+     HTTPS      +-------------------v------------------+
+  | Browser  |<-------------->|  Flask + Waitress (port 5000)        |
+  | (User)   |   SSE stream   |  chat_app/app.py                    |
+  +----------+                |                                      |
+                              |  React 19 SPA (frontend_dist/)       |
+                              |  Fluent UI v9 + Tailwind v4          |
+                              |                                      |
+                              |  +-----------------------------+     |
+                              |  |  Azure OpenAI (gpt-4o-mini) |     |
+                              |  |  MMC stg1 endpoint          |     |
+                              |  +-----------------------------+     |
+                              |                                      |
+                              |  +-----------------------------+     |
+                              |  |  Microsoft Graph API         |     |
+                              |  |  (User.Read.All, Photos)    |     |
+                              |  +-----------------------------+     |
+                              |                                      |
+                              |  +-----------------------------+     |
+                              |  |  MCP Server (stdio)          |     |
+                              |  |  exchange_mcp/server.py      |     |
+                              |  |  17 tools (15 Exchange + 2   |     |
+                              |  |  colleague lookup)           |     |
+                              |  +-------------+---------------+     |
+                              +----------------+---------------------+
+                                               |
+                              +----------------v---------------------+
+                              |  PowerShell subprocess               |
+                              |  Connect-ExchangeOnline              |
+                              |  Per-call PSSession lifecycle        |
+                              +----------------+---------------------+
+                                               |
+                              +----------------v---------------------+
+                              |  Exchange Online / On-Prem           |
+                              |  80,000+ mailboxes                   |
+                              +--------------------------------------+
 ```
+
+### Frontend Architecture (v1.2)
+
+Atlas uses a **hybrid SPA pattern**:
+- Flask serves the React SPA from `frontend_dist/` via a catch-all route
+- The React app (built with Vite) handles all client-side routing
+- API requests (`/api/*`, `/auth/*`, `/chat/*`) are served directly by Flask
+- **ATLAS_UI=react** environment variable activates the React frontend; default is "classic" (Jinja2 templates)
 
 ## Prerequisites
 
@@ -46,6 +63,7 @@ This guide covers deploying the Exchange Infrastructure MCP Server and Atlas cha
 |-------------|---------|
 | **Operating System** | Windows Server 2019+ or Windows 11 (domain-joined) |
 | **Python** | 3.11 or higher |
+| **Node.js** | 20+ (for frontend builds only — not needed at runtime) |
 | **uv** | Latest version ([install](https://docs.astral.sh/uv/getting-started/installation/)) |
 | **PowerShell** | 5.1+ (built-in) or PowerShell 7 |
 | **ExchangeOnlineManagement** | PowerShell module (see below) |
@@ -106,7 +124,9 @@ Atlas requires an Azure AD (Entra ID) app registration for SSO authentication.
 
 1. Go to **API permissions**
 2. Ensure **Microsoft Graph > User.Read** (Delegated) is present (added by default)
-3. Click **Grant admin consent for [organization]** if required by your tenant policy
+3. Add **Microsoft Graph > User.Read.All** (Application) — for colleague search
+4. Add **Microsoft Graph > ProfilePhoto.Read.All** (Application) — for colleague photos
+5. Click **Grant admin consent for [organization]**
 
 ### Step 5: Record Values
 
@@ -166,9 +186,17 @@ New-ManagementRoleAssignment -App "<AZURE_CLIENT_ID>" -Role "View-Only Configura
 git clone https://github.com/SamuraiJenkinz/xmcp.git
 cd xmcp
 
-# Install all dependencies (creates .venv automatically)
+# Install Python dependencies (creates .venv automatically)
 uv sync
+
+# Build React frontend
+cd frontend
+npm install
+npm run build
+cd ..
 ```
+
+The `npm run build` command produces optimized assets in `frontend_dist/` which Flask serves in production.
 
 ### Verify Python Environment
 
@@ -199,6 +227,9 @@ Set these environment variables on the server:
 ```bash
 # Required — not in Secrets Manager
 export CHATGPT_ENDPOINT="https://stg1.mmc-dallas-int-non-prod-ingress.mgti.mmc.com/coreapi/openai/v1/deployments/mmc-tech-gpt-4o-mini-128k-2024-07-18/chat/completions"
+
+# Required — activates React frontend
+export ATLAS_UI=react
 
 # Optional — override defaults
 export CHAT_PORT=5000
@@ -235,6 +266,9 @@ AZURE_TENANT_ID=<from-app-registration>
 CHATGPT_ENDPOINT=https://stg1.mmc-dallas-int-non-prod-ingress.mgti.mmc.com/coreapi/openai/v1/deployments/mmc-tech-gpt-4o-mini-128k-2024-07-18/chat/completions
 AZURE_OPENAI_API_KEY=<from-cts-team>
 
+# Frontend mode
+ATLAS_UI=react
+
 # Exchange MCP (for CBA — omit for interactive auth)
 # AZURE_CERT_THUMBPRINT=<thumbprint>
 # AZURE_TENANT_DOMAIN=mmc.onmicrosoft.com
@@ -250,6 +284,7 @@ AZURE_OPENAI_API_KEY=<from-cts-team>
 | `AZURE_TENANT_ID` | Yes | — | Azure AD tenant ID (GUID) |
 | `CHATGPT_ENDPOINT` | Yes | — | Full Azure OpenAI chat completions URL |
 | `AZURE_OPENAI_API_KEY` | Yes | — | Azure OpenAI API key |
+| `ATLAS_UI` | No | `classic` | Set to `react` to serve React SPA; `classic` serves Jinja2 templates |
 | `API_VERSION` | No | `2023-05-15` | Azure OpenAI API version |
 | `OPENAI_MODEL` | No | `mmc-tech-gpt-4o-mini-128k-2024-07-18` | Model deployment name |
 | `CHAT_HOST` | No | `0.0.0.0` | Waitress bind address |
@@ -261,21 +296,36 @@ AZURE_OPENAI_API_KEY=<from-cts-team>
 
 ## Running the Application
 
-### Development Mode
+### Development Mode (Frontend)
 
 ```bash
-cd xmcp
+# Terminal 1: Start Flask backend
+ATLAS_UI=react uv run python -m chat_app.app
 
+# Terminal 2: Start Vite dev server (hot reload)
+cd frontend
+npm run dev
+```
+
+Vite dev server runs on `http://localhost:5173` and proxies API requests (`/api/*`, `/auth/*`, `/chat/*`) to Flask on port 5000.
+
+### Development Mode (Backend Only)
+
+```bash
 # Interactive Exchange auth (browser popup on first tool call)
 uv run python -m chat_app.app
 ```
 
-The app will start on `http://localhost:5000`. The MCP server subprocess is spawned automatically.
+The app starts on `http://localhost:5000`. The MCP server subprocess is spawned automatically.
 
 ### Production Mode
 
 ```bash
+# Build frontend first
+cd frontend && npm run build && cd ..
+
 # With CBA Exchange auth (unattended)
+export ATLAS_UI=react
 export AZURE_CERT_THUMBPRINT="ABC123..."
 export AZURE_CLIENT_ID="..."
 export AZURE_TENANT_DOMAIN="mmc.onmicrosoft.com"
@@ -283,7 +333,7 @@ export AZURE_TENANT_DOMAIN="mmc.onmicrosoft.com"
 uv run python -m chat_app.app
 ```
 
-Waitress serves the app on `0.0.0.0:5000` by default. No separate MCP server process is needed — it is spawned as a subprocess.
+Waitress serves the app on `0.0.0.0:5000` by default. Flask serves the pre-built React SPA from `frontend_dist/`. No separate Node.js process is needed at runtime.
 
 ### Running as a Windows Service
 
@@ -296,7 +346,7 @@ choco install nssm
 # Create service
 nssm install AtlasExchangeMCP "C:\xmcp\.venv\Scripts\python.exe" "-m chat_app.app"
 nssm set AtlasExchangeMCP AppDirectory "C:\xmcp"
-nssm set AtlasExchangeMCP AppEnvironmentExtra "CHATGPT_ENDPOINT=https://..." "AZURE_CERT_THUMBPRINT=..."
+nssm set AtlasExchangeMCP AppEnvironmentExtra "ATLAS_UI=react" "CHATGPT_ENDPOINT=https://..." "AZURE_CERT_THUMBPRINT=..."
 nssm set AtlasExchangeMCP Description "Atlas Exchange Infrastructure Chat"
 nssm set AtlasExchangeMCP Start SERVICE_AUTO_START
 
@@ -310,7 +360,7 @@ nssm start AtlasExchangeMCP
 |-----------|------|-------------|---------|
 | Inbound | 5000 (configurable) | Atlas server | User access to chat UI |
 | Outbound | 443 | `login.microsoftonline.com` | Azure AD authentication |
-| Outbound | 443 | `graph.microsoft.com` | Microsoft Graph (user profile) |
+| Outbound | 443 | `graph.microsoft.com` | Microsoft Graph (user profiles, photos) |
 | Outbound | 443 | `outlook.office365.com` | Exchange Online PowerShell |
 | Outbound | 443 | `stg1.mmc-dallas-int-non-prod-ingress.mgti.mmc.com` | Azure OpenAI endpoint |
 | Outbound | 443 | `secretsmanager.us-east-1.amazonaws.com` | AWS Secrets Manager (prod) |
@@ -322,7 +372,8 @@ If placing Atlas behind IIS or Nginx as a reverse proxy:
 
 **IIS with URL Rewrite:**
 - Ensure WebSocket protocol is enabled
-- Set `X-Accel-Buffering: no` header for SSE to work
+- Set `responseBufferLimit="0"` in the ARR configuration for SSE streaming
+- Set `X-Accel-Buffering: no` header
 - Configure the rewrite rule to proxy to `http://localhost:5000`
 
 **Nginx:**
@@ -372,7 +423,15 @@ uv run pytest tests/ -v --ignore=tests/test_integration.py
 
 All tests should pass. Integration tests (`test_integration.py`) require a live Exchange connection.
 
-### 4. Health Check
+### 4. Verify Frontend Build
+
+```bash
+cd frontend
+npm run build
+ls ../frontend_dist/   # Should contain index.html and assets/
+```
+
+### 5. Health Check
 
 After starting the app:
 
@@ -382,7 +441,7 @@ curl http://localhost:5000/api/health
 
 Expected:
 ```json
-{"status": "ok", "mcp_connected": true, "tools_count": 15}
+{"status": "ok", "mcp_connected": true, "tools_count": 17}
 ```
 
 ## Troubleshooting
@@ -396,6 +455,7 @@ Expected:
 | `MSAL error: invalid_client` | Wrong client ID or secret | Verify `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` |
 | `Connection refused on port 5000` | App not running or port conflict | Check `CHAT_PORT`, verify no other process on port |
 | `MCP init timeout (120s)` | Exchange auth failed at startup | Check Exchange credentials and network connectivity |
+| `frontend_dist/ not found` | React app not built | Run `cd frontend && npm run build` |
 
 ### Exchange Tool Errors
 
@@ -410,16 +470,22 @@ Expected:
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| Response arrives all at once | Proxy buffering SSE | Add `X-Accel-Buffering: no` header, disable proxy buffering |
-| Response is blank | JavaScript error | Check browser console; verify `app.js` loaded |
-| "Connection refused" on chat | Flask session directory missing | Ensure `SESSION_FILE_DIR` directory exists |
+| Response arrives all at once | Proxy buffering SSE | Add `X-Accel-Buffering: no` header, disable proxy buffering; for IIS ARR set `responseBufferLimit="0"` |
+| Response is blank | JavaScript error | Check browser console (F12); verify `ATLAS_UI=react` is set |
+| Stop button doesn't appear | Stale frontend assets | Hard refresh (Ctrl+Shift+R) or rebuild frontend |
 
 ## Updating
 
 ```bash
 cd xmcp
 git pull origin master
-uv sync  # Install any new dependencies
+uv sync  # Install any new Python dependencies
+
+# Rebuild React frontend
+cd frontend
+npm install   # Install any new frontend dependencies
+npm run build
+cd ..
 
 # Restart the application
 nssm restart AtlasExchangeMCP  # If running as Windows service

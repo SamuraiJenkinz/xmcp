@@ -6,8 +6,8 @@ Atlas is an internal chat application that lets you query Exchange infrastructur
 
 ### Signing In
 
-1. Navigate to the Atlas URL provided by your team (e.g., `http://exchange-mcp.internal:5000`)
-2. Click **Sign in with Microsoft** on the landing page
+1. Navigate to the Atlas URL provided by your team (e.g., `https://usdf11v1784.mercer.com:5000`)
+2. Click **Sign in with Microsoft** on the splash page
 3. Complete the Azure AD login with your MMC corporate credentials
 4. You will be redirected to the Atlas chat interface
 
@@ -15,7 +15,7 @@ Your identity is verified server-side using Azure AD. All conversations are scop
 
 ### Your First Question
 
-Once signed in, you will see a welcome screen with four example queries. Click any of them to get started, or type your own question in the text box at the bottom.
+Once signed in, you will see a welcome screen with prompt suggestion chips — click any of them to get started, or type your own question in the text area at the bottom.
 
 **Example questions you can ask:**
 
@@ -34,62 +34,88 @@ Once signed in, you will see a welcome screen with four example queries. Click a
 
 When you ask a question, Atlas:
 
-1. **Identifies the right tool** — you will see a tool chip appear (e.g., "get_mailbox_stats" or "search_colleagues")
-2. **Queries live data** — a loading indicator shows while the query runs (typically 2-4 seconds)
-3. **Composes a response** — the answer streams in real-time with formatted text, and for colleague lookups, inline profile cards or search result cards render automatically
+1. **Identifies the right tool** — a tool panel appears showing which Exchange tool was invoked
+2. **Queries live data** — the panel shows a status badge while the query runs (typically 2-4 seconds)
+3. **Composes a response** — the answer streams in real-time with formatted text. For colleague lookups, inline profile cards or search result cards render automatically
+
+Messages stream token-by-token in real-time. You can cancel a streaming response at any time by pressing **Escape** or clicking the **Stop** button.
 
 ## Features
+
+### Chat Interface
+
+Atlas uses a modern chat interface inspired by Microsoft Copilot:
+
+- **Message bubbles** — your messages appear on the right with a distinct bubble style; Atlas responses appear on the left with a different style for clear role differentiation
+- **Smooth animations** — new messages animate in with a subtle fade-in effect
+- **Welcome state** — an empty conversation shows prompt suggestion chips to help you get started
+- **Auto-resize input** — the text area grows as you type (up to ~5 lines)
 
 ### Tool Visibility Panels
 
 Every response that involved an Exchange query includes a collapsible panel showing exactly what happened behind the scenes.
 
-- Click the panel header to expand it
+- Click the **chevron** to expand or collapse the panel
+- **Status badge** — shows "Done" when the query completed successfully, or "Error" if something went wrong
+- **Elapsed time** — shows how long the Exchange query took (e.g., "Ran in 1.2s")
 - **Parameters** — what was sent to the Exchange tool
-- **Exchange Result** — the raw JSON data returned from Exchange
-- Both sections have syntax-highlighted JSON for readability
-- Click **Copy JSON** on the panel to copy the raw Exchange result to your clipboard
+- **Exchange Result** — the raw JSON data, syntax-highlighted for readability
+- Click **Copy** on the panel to copy the raw Exchange JSON to your clipboard
 
 Panels are collapsed by default to keep the chat clean. Expand them when you need to verify the data or copy it for a ticket.
 
 ### Copy to Clipboard
 
-- **Copy a response** — hover over any assistant message to reveal the **Copy** button in the top-right corner. Click it to copy the AI's text answer.
-- **Copy Exchange JSON** — each tool panel has its own **Copy JSON** button that copies the raw Exchange data.
-- After copying, the button shows "Copied!" for 1.5 seconds, then reverts.
+- **Copy a response** — hover over any assistant message to reveal the **Copy** button and timestamp in the top-right corner. Click to copy the AI's text answer.
+- **Copy Exchange JSON** — each tool panel has its own **Copy** button for the raw Exchange data.
+- After copying, the button briefly confirms "Copied!" before reverting.
 
 ### Conversation Threads
 
-Atlas supports multiple conversation threads, similar to ChatGPT:
+Atlas supports multiple conversation threads:
 
-- **New Chat** — click the **+ New Chat** button in the sidebar to start a fresh conversation
+- **New Chat** — click the **Compose** icon in the sidebar to start a fresh conversation
 - **Switch threads** — click any thread in the sidebar to load its message history
-- **Rename** — click a thread name in the sidebar to edit it inline. Press Enter to confirm or Escape to cancel.
-- **Delete** — click the **x** button on a thread. A confirmation dialog will appear before deletion.
-- **Auto-naming** — new threads are automatically named from the first 30 characters of your first message
+- **Rename** — double-click a thread name to edit it inline. Press Enter to confirm or Escape to cancel.
+- **Delete** — click the **x** button on a thread to remove it
+- **Auto-naming** — new threads are automatically named from your first message
+- **Recency grouping** — threads are organized under **Today**, **Yesterday**, **This Week**, and **Older** headings
 
 Your conversations persist across browser sessions. Close the browser, come back later, and all your threads will still be there.
+
+### Sidebar
+
+The sidebar can be collapsed to icon-only mode for more chat space:
+
+- Click the **collapse** icon in the sidebar header to shrink it
+- Click the **expand** icon to restore the full sidebar
+- Your collapse preference is saved and persists across sessions
 
 ### Keyboard Shortcuts
 
 | Shortcut | Action |
 |----------|--------|
-| **Enter** | New line in the text box |
-| **Ctrl+Enter** (or Cmd+Enter on Mac) | Send message |
+| **Enter** | Send message |
+| **Shift+Enter** | New line in the text area |
 | **Escape** | Cancel an active streaming response |
+| **Tab** | Navigate between interactive elements |
 
 If you press Escape while a response is streaming, the partial text will remain visible with a "[response cancelled]" marker.
 
+A **Skip to chat** link is available for keyboard users — press Tab at the top of the page to reveal it, then Enter to jump directly to the message area.
+
 ### Dark Mode
 
-Click the theme toggle button (sun/moon icon) in the top-right corner of the header to switch between light and dark themes. Your preference is saved and will persist across sessions. On your first visit, Atlas will match your operating system's theme preference.
+Click the theme toggle button (sun/moon icon) in the header to switch between light and dark themes. Your preference is saved and persists across sessions. On first visit, Atlas matches your operating system's theme preference.
+
+Both themes use the Microsoft Fluent 2 design system with a consistent three-tier surface hierarchy for a professional appearance.
 
 ### Colleague Lookup
 
 Atlas can search for colleagues by name and display their profile as an inline card.
 
 - **Search** — ask "Look up Jane Smith" or "Find someone named Taylor". If multiple matches are found, Atlas displays search result cards showing each person's name, title, department, and email. Click an email to open a mailto link.
-- **Profile card** — when Atlas identifies a specific colleague, a profile card renders inline with their photo, name, job title, department, and email. Photos are served via a secure proxy — users without photos get a placeholder avatar.
+- **Profile card** — when Atlas identifies a specific colleague, a profile card renders inline with their photo, name, job title, department, and email. Colleagues without photos get an initials placeholder.
 - **Disambiguation** — if your search returns multiple results, Atlas will ask you to clarify which person you mean before loading the full profile.
 
 ### Formatted Responses
@@ -168,6 +194,7 @@ Atlas has access to 17 tools, organized by category:
 - **One topic per thread** — start a New Chat when switching to a different topic for cleaner conversation history
 - **Colleague lookup** — just say "Look up" followed by a name. If multiple results appear, tell Atlas which person you want (e.g., "the one in IT" or "Kevin Taylor")
 - **Connector queries** — Atlas will ask you to clarify on-premises vs Exchange Online when you ask about connectors
+- **Keyboard navigation** — Tab through the interface to reach any element; all buttons and controls are keyboard-accessible
 
 ## Troubleshooting
 
@@ -178,9 +205,10 @@ Atlas has access to 17 tools, organized by category:
 | "Exchange error: not found" | Mailbox or DAG name does not exist | Double-check the email address or DAG name spelling |
 | "This tool requires an on-premises Exchange connection" | You used a DAG/queue/SMTP connector tool against Exchange Online | These tools only work with on-prem Exchange; use EXO equivalents |
 | Colleague search returns "Graph API not configured" | Microsoft Graph credentials are missing or invalid | Contact your admin to verify Azure AD app permissions (User.Read.All, ProfilePhoto.Read.All) |
-| Profile card shows placeholder instead of photo | The colleague has no photo in Azure AD | This is expected — a placeholder avatar is shown instead |
+| Profile card shows initials instead of photo | The colleague has no photo in Azure AD | This is expected — initials are shown as a fallback |
 | Response is blank | Network interruption during streaming | Refresh the page and try again in a new message |
 | Dark mode reverts on reload | localStorage is disabled in your browser | Enable localStorage or use the toggle each time |
+| Stop button doesn't appear during streaming | Browser may be caching old assets | Hard refresh (Ctrl+Shift+R) to load latest version |
 
 ## Data Privacy
 
