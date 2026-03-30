@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 20 of 20 (Streaming State Bridge) — Not Started
-Plan: 0 of 2 in current phase
-Status: Gap closure phase added from v1.2 milestone audit
-Last activity: 2026-03-30 — Created Phase 20 from audit gaps
+Phase: 20 of 20 (Streaming State Bridge) — In Progress
+Plan: 1 of 2 in current phase
+Status: Plan 20-01 complete — /chat proxy + isStreaming bridge shipped
+Last activity: 2026-03-30 — Completed 20-01-PLAN.md
 
-Progress: [███████████████████░] 95% (19/20 phases complete)
+Progress: [███████████████████░] 97% (20-01/20-02 complete)
 
 ## Performance Metrics
 
@@ -99,6 +99,9 @@ Progress: [███████████████████░] 95% (19
 - [19-02]: **focusAfterDeletion deferred to useEffect** — async handleDelete; itemRefs not populated until React reconciles; defer via useState+useEffect depending on threads
 - [19-02]: **Collapsed-aware new-chat button fallback** — two refs (newChatBtnRef, newChatBtnCollapsedRef) selected at runtime using collapsed prop when list empties after delete
 - [19-02]: **Input keydown stops propagation in rename input** — without stopPropagation, Arrow keys and Enter bubble from input through button to listbox handler during text editing
+- [20-01]: **'/chat' proxy covers all SSE sub-paths** — single entry proxies /chat/stream and all sub-paths; no separate /chat/stream entry needed in Vite dev config
+- [20-01]: **hookIsStreaming alias avoids shadowing** — isStreaming from useStreamingMessage aliased as hookIsStreaming; isStreaming from useChat() remains in scope unchanged
+- [20-01]: **SET_STREAMING useEffect is unconditional** — chatDispatch is idempotent; no conditional guard needed; one-render lag (<16ms) acceptable
 
 ### Pending Todos
 
@@ -117,5 +120,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 19-02-PLAN.md — Thread list keyboard navigation, roving tabindex, post-delete focus management
-Resume file: None — Phase 20 not yet planned
+Stopped at: Completed 20-01-PLAN.md — /chat Vite proxy + hookIsStreaming→ChatContext bridge
+Resume file: None
