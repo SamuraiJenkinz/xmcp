@@ -310,29 +310,27 @@ html, body {
 .splash-card {
     background: var(--color-bg-surface);
     border: 1px solid var(--color-border);
-    border-radius: 16px;
-    padding: 48px 40px;
+    border-radius: 12px;
+    padding: 40px;
     max-width: 440px;
     width: 100%;
     text-align: center;
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
     transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
-.splash-icon {
+.splash-logo {
     display: block;
-    font-size: 48px;
-    color: var(--color-brand);
-    margin-bottom: 12px;
+    margin-bottom: 16px;
     line-height: 1;
 }
 
 .splash-card h1 {
     font-size: 28px;
-    font-weight: 800;
+    font-weight: 600;
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
     color: var(--color-text-primary);
     margin-bottom: 6px;
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
 }
 
 .splash-subtitle {
@@ -347,6 +345,10 @@ html, body {
     color: var(--color-text-secondary);
     line-height: 1.6;
     margin-bottom: 32px;
+    max-width: 320px;
+    text-align: center;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .btn-signin {
@@ -355,7 +357,7 @@ html, body {
     gap: 10px;
     background: var(--color-brand);
     color: var(--color-on-brand);
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
     text-decoration: none;
     padding: 12px 24px;
