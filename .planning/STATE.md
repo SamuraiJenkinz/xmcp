@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 17 complete, ready for Phase 18
+**Current focus:** v1.2 UI/UX Redesign — Phase 18 in progress (plan 1 of 3 complete)
 
 ## Current Position
 
-Phase: 17 of 19 (Sidebar and Tool Panels) — COMPLETE
-Plan: 3 of 3 in current phase — Phase 17 complete
-Status: Phase complete — ready for Phase 18
-Last activity: 2026-03-30 — Completed 17-03-PLAN.md (tool panel redesign: chevron, badges, elapsed time, syntax-highlighted JSON)
+Phase: 18 of 19 (Profile Cards and Splash Cleanup) — In progress
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-03-30 — Completed 18-01-PLAN.md (profile card Fluent 2 geometry + search results list restructure)
 
-Progress: [███████████████████░] 95% (phases 13-17 complete, phases 18-19 remaining)
+Progress: [███████████████████░] 96% (phases 13-17 complete, phase 18 plan 1/3 done, phase 19 remaining)
 
 ## Performance Metrics
 
@@ -84,6 +84,9 @@ Progress: [███████████████████░] 95% (ph
 - [17-03]: **ChevronRight16Regular used for tool panel** — 16px variant fits compact 12px caption summary row; both ChevronRightRegular (no size) and sized variants exist in @fluentui/react-icons
 - [17-03]: **syntaxHighlightJson accepts JSON.stringify output only** — never raw user input; XSS guard documented in JSDoc; JSON.parse+stringify done before dangerouslySetInnerHTML
 - [17-03]: **No running badge state in tool panels** — run_tool_loop is blocking in openai_client.py; SSE tool events only emit after all tools finish; live running state requires separate phase
+- [18-01]: **search-result-card class removed** — replaced by search-result-row inside a shared elevated container; Fluent 2 List pattern where container provides elevation, not individual items
+- [18-01]: **Profile card border upgraded to --atlas-stroke-1** — stronger border weight matches Fluent 2 Card specification vs --atlas-stroke-2 used previously
+- [18-01]: **Results capped at 5 via .slice(0, 5)** — client-side cap; max-height 280px provides scroll affordance for any overflow
 
 ### Pending Todos
 
@@ -99,5 +102,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 17-03-PLAN.md — Tool panel redesign (chevron, Done/Error badges, elapsed time, syntax-highlighted JSON)
-Resume file: None — ready for Phase 18
+Stopped at: Completed 18-01-PLAN.md — Profile card Fluent 2 geometry + search results list restructure
+Resume file: None — continue with 18-02-PLAN.md
