@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-03-27)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.2 UI/UX Redesign — Phase 18 in progress (plan 1 of 3 complete)
+**Current focus:** v1.2 UI/UX Redesign — Phase 18 complete, ready for Phase 19
 
 ## Current Position
 
-Phase: 18 of 19 (Profile Cards and Splash Cleanup) — In progress
-Plan: 1 of 3 in current phase
-Status: In progress
-Last activity: 2026-03-30 — Completed 18-01-PLAN.md (profile card Fluent 2 geometry + search results list restructure)
+Phase: 18 of 19 (Profile Cards and Splash Cleanup) — COMPLETE
+Plan: 2 of 2 in current phase — Phase 18 complete
+Status: Phase complete — ready for Phase 19
+Last activity: 2026-03-30 — Completed 18-02-PLAN.md (splash page Fluent 2 redesign: geometric SVG logo, 12px card, Segoe UI Variable h1)
 
-Progress: [███████████████████░] 96% (phases 13-17 complete, phase 18 plan 1/3 done, phase 19 remaining)
+Progress: [████████████████████] 98% (phases 13-18 complete, phase 19 remaining)
 
 ## Performance Metrics
 
@@ -98,9 +98,12 @@ None.
 - [Phase 14 gate — CLEARED]: All 7 regression smoke tests passed (human-verified 2026-03-28)
 - [Phase 17 evaluate — RESOLVED]: @fluentui-copilot/react-copilot-chat not used — native details/summary with ChevronRight16Regular chosen instead; simpler, fewer deps
 - [Phase 17 prereq — RESOLVED]: groupThreadsByRecency uses updated_at from Thread type, not created_at; column confirmed present
+- [18-02]: **Splash geometric mark is a rotated rounded-square SVG rect** — rx=6, rotate(45), fill=var(--color-brand); simpler than letterform or diamond path, renders cleanly at 40px
+- [18-02]: **splash-icon class removed entirely** — replaced by splash-logo; display:block centering, margin-bottom:16px
+- [18-02]: **Splash card locked geometry** — 12px border-radius, border (no shadow), 40px padding; Fluent 2 surface spec for login cards
 
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 18-01-PLAN.md — Profile card Fluent 2 geometry + search results list restructure
-Resume file: None — continue with 18-02-PLAN.md
+Stopped at: Completed 18-02-PLAN.md — Splash page Fluent 2 redesign (geometric SVG logo, 12px card, Segoe UI Variable h1)
+Resume file: None — ready for Phase 19
