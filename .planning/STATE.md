@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 
 ## Current Position
 
-Phase: 19 of 19 (Accessibility Sweep) — In progress
-Plan: 1 of 2 in current phase — Plan 19-01 complete
-Status: In progress — ready for Phase 19 Plan 02
-Last activity: 2026-03-30 — Completed 19-01-PLAN.md (focus rings, skip navigation, outline:none cleanup)
+Phase: 19 of 19 (Accessibility Sweep) — Complete
+Plan: 2 of 2 in current phase — ALL PLANS COMPLETE
+Status: Phase 19 complete — v1.2 UI/UX Redesign milestone complete
+Last activity: 2026-03-30 — Completed 19-02-PLAN.md (thread list keyboard navigation, roving tabindex)
 
-Progress: [████████████████████] 99% (phases 13-19 in progress, 19-01 complete)
+Progress: [████████████████████] 100% (all 19 phases complete)
 
 ## Performance Metrics
 
@@ -95,6 +95,10 @@ Progress: [████████████████████] 99% (ph
 - [19-01]: **Dark mode focus outer ring = --atlas-accent** — black (#000) has insufficient contrast on dark surfaces; --atlas-accent (#115ea3) was Phase 15 contrast-verified
 - [19-01]: **tabIndex={-1} on #chat-messages** — makes div programmatically focusable for skip link without inserting it in natural tab sequence
 - [19-01]: **thread-list padding:2px** — overflow:auto on sidebar clips the 4px outer box-shadow focus ring; padding provides visual clearance
+- [19-02]: **span role=button for action items** — button-inside-button is invalid HTML; span role=button tabIndex={-1} preserves click semantics while satisfying content model
+- [19-02]: **focusAfterDeletion deferred to useEffect** — async handleDelete; itemRefs not populated until React reconciles; defer via useState+useEffect depending on threads
+- [19-02]: **Collapsed-aware new-chat button fallback** — two refs (newChatBtnRef, newChatBtnCollapsedRef) selected at runtime using collapsed prop when list empties after delete
+- [19-02]: **Input keydown stops propagation in rename input** — without stopPropagation, Arrow keys and Enter bubble from input through button to listbox handler during text editing
 
 ### Pending Todos
 
@@ -113,5 +117,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 19-01-PLAN.md — Focus rings, skip navigation, outline:none cleanup
-Resume file: None — ready for 19-02
+Stopped at: Completed 19-02-PLAN.md — Thread list keyboard navigation, roving tabindex, post-delete focus management
+Resume file: None — v1.2 UI/UX Redesign milestone complete (all 19 phases done)
