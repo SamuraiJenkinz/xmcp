@@ -413,7 +413,7 @@ TOOL_DEFINITIONS: list[types.Tool] = [
             "properties": {
                 "user_id": {
                     "type": "string",
-                    "description": "The colleague's user ID from search results",
+                    "description": "The colleague's Microsoft Graph API object ID (GUID) from search_colleagues results",
                 },
             },
             "required": ["user_id"],

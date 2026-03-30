@@ -271,40 +271,6 @@ def search_users(term: str) -> list[dict]:
         return []
 
 
-def get_user_photo_bytes(user_id: str) -> bytes | None:
-    """Retrieve the profile photo for a user as raw bytes.
-
-    Returns ``None`` silently when the user has no photo (HTTP 404).  Missing
-    photos are normal in large organisations and must not generate log noise.
-
-    Args:
-        user_id: The Graph user object ID (GUID).  Empty string returns
-            ``None`` without a network request.
-
-    Returns:
-        JPEG or PNG bytes on success, ``None`` if the user has no photo or
-        Graph is disabled.  Never raises an exception to the caller.
-    """
-    if not _graph_enabled or not user_id:
-        return None
-
-    headers = _make_headers()
-    if headers is None:
-        return None
-
-    url = f"{Config.GRAPH_BASE_URL}/users/{user_id}/photo/$value"
-
-    try:
-        resp = _graph_request_with_retry("GET", url, headers=headers)
-        if resp.status_code == 404:
-            return None
-        resp.raise_for_status()
-        return resp.content
-    except Exception as exc:  # noqa: BLE001
-        logger.error("Graph get_user_photo_bytes failed for user %r: %s", user_id, exc)
-        return None
-
-
 def get_user_profile(user_id: str) -> dict | None:
     """Retrieve detailed profile for a user including manager display name.
 

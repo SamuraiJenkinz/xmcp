@@ -5,14 +5,10 @@ to avoid any real network calls.  No live Graph API connection is required.
 
 Tests cover:
     - Disabled-client fallback: search_users returns [] when _graph_enabled is False
-    - Disabled-client fallback: get_user_photo_bytes returns None when _graph_enabled is False
     - Empty/whitespace guard: search_users returns [] without a network call
-    - Empty user_id guard: get_user_photo_bytes returns None without a network call
     - ConsistencyLevel: eventual header is sent on every search_users call
     - Successful response parsing: search_users returns the ``value`` array
     - Exception safety: search_users returns [] on Timeout (not an exception)
-    - 404 path: get_user_photo_bytes returns None on HTTP 404
-    - 200 path: get_user_photo_bytes returns raw bytes on HTTP 200
 """
 
 from __future__ import annotations
@@ -94,17 +90,6 @@ def test_search_users_returns_empty_when_graph_disabled(
     mock_req.assert_not_called()
 
 
-def test_get_user_photo_bytes_returns_none_when_graph_disabled(
-    _disable_graph: None,
-) -> None:
-    """get_user_photo_bytes() returns None immediately when _graph_enabled is False."""
-    with patch("requests.request") as mock_req:
-        result = gc.get_user_photo_bytes("some-user-id")
-
-    assert result is None
-    mock_req.assert_not_called()
-
-
 # ---------------------------------------------------------------------------
 # Empty / whitespace guard tests
 # ---------------------------------------------------------------------------
@@ -125,17 +110,6 @@ def test_search_users_whitespace_only_returns_empty(_enable_graph: MagicMock) ->
         result = gc.search_users("   ")
 
     assert result == []
-    mock_req.assert_not_called()
-
-
-def test_get_user_photo_bytes_empty_user_id_returns_none(
-    _enable_graph: MagicMock,
-) -> None:
-    """get_user_photo_bytes('') returns None without making a network call."""
-    with patch("requests.request") as mock_req:
-        result = gc.get_user_photo_bytes("")
-
-    assert result is None
     mock_req.assert_not_called()
 
 
@@ -185,26 +159,3 @@ def test_search_users_returns_empty_on_exception(_enable_graph: MagicMock) -> No
 
     assert result == []
 
-
-# ---------------------------------------------------------------------------
-# get_user_photo_bytes tests
-# ---------------------------------------------------------------------------
-
-
-def test_get_user_photo_bytes_returns_none_on_404(_enable_graph: MagicMock) -> None:
-    """get_user_photo_bytes() returns None when Graph responds with 404."""
-    with patch("requests.request") as mock_req, patch("time.sleep"):
-        mock_req.return_value = _make_response(404, content=b"")
-        result = gc.get_user_photo_bytes("user-id-404")
-
-    assert result is None
-
-
-def test_get_user_photo_bytes_returns_bytes_on_200(_enable_graph: MagicMock) -> None:
-    """get_user_photo_bytes() returns raw bytes when Graph responds with 200."""
-    photo_bytes = b"\x89PNG\r\n\x1a\n"
-    with patch("requests.request") as mock_req, patch("time.sleep"):
-        mock_req.return_value = _make_response(200, content=photo_bytes)
-        result = gc.get_user_photo_bytes("user-id-200")
-
-    assert result == photo_bytes
