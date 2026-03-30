@@ -63,7 +63,6 @@ Atlas uses a **hybrid SPA pattern**:
 |-------------|---------|
 | **Operating System** | Windows Server 2019+ or Windows 11 (domain-joined) |
 | **Python** | 3.11 or higher |
-| **Node.js** | 20+ (for frontend builds only — not needed at runtime) |
 | **uv** | Latest version ([install](https://docs.astral.sh/uv/getting-started/installation/)) |
 | **PowerShell** | 5.1+ (built-in) or PowerShell 7 |
 | **ExchangeOnlineManagement** | PowerShell module (see below) |
@@ -188,15 +187,11 @@ cd xmcp
 
 # Install Python dependencies (creates .venv automatically)
 uv sync
-
-# Build React frontend
-cd frontend
-npm install
-npm run build
-cd ..
 ```
 
-The `npm run build` command produces optimized assets in `frontend_dist/` which Flask serves in production.
+The pre-built React frontend is included in the repository under `frontend_dist/`. No Node.js or npm is required on the production server.
+
+> **For developers rebuilding the frontend:** Install Node.js 20+, then `cd frontend && npm install && npm run build`. Commit the updated `frontend_dist/` to the repo.
 
 ### Verify Python Environment
 
@@ -321,9 +316,6 @@ The app starts on `http://localhost:5000`. The MCP server subprocess is spawned 
 ### Production Mode
 
 ```bash
-# Build frontend first
-cd frontend && npm run build && cd ..
-
 # With CBA Exchange auth (unattended)
 export ATLAS_UI=react
 export AZURE_CERT_THUMBPRINT="ABC123..."
@@ -423,12 +415,10 @@ uv run pytest tests/ -v --ignore=tests/test_integration.py
 
 All tests should pass. Integration tests (`test_integration.py`) require a live Exchange connection.
 
-### 4. Verify Frontend Build
+### 4. Verify Frontend Assets
 
 ```bash
-cd frontend
-npm run build
-ls ../frontend_dist/   # Should contain index.html and assets/
+ls frontend_dist/   # Should contain index.html and assets/
 ```
 
 ### 5. Health Check
@@ -455,7 +445,7 @@ Expected:
 | `MSAL error: invalid_client` | Wrong client ID or secret | Verify `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` |
 | `Connection refused on port 5000` | App not running or port conflict | Check `CHAT_PORT`, verify no other process on port |
 | `MCP init timeout (120s)` | Exchange auth failed at startup | Check Exchange credentials and network connectivity |
-| `frontend_dist/ not found` | React app not built | Run `cd frontend && npm run build` |
+| `frontend_dist/ not found` | React build missing from repo | Run `git pull` or rebuild locally: `cd frontend && npm install && npm run build` |
 
 ### Exchange Tool Errors
 
@@ -481,15 +471,11 @@ cd xmcp
 git pull origin master
 uv sync  # Install any new Python dependencies
 
-# Rebuild React frontend
-cd frontend
-npm install   # Install any new frontend dependencies
-npm run build
-cd ..
-
 # Restart the application
 nssm restart AtlasExchangeMCP  # If running as Windows service
 ```
+
+The pre-built frontend assets update automatically with `git pull`. No npm or Node.js needed on the server.
 
 ## Backup
 

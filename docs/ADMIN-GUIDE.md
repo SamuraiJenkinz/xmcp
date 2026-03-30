@@ -500,16 +500,17 @@ The AI model cannot execute arbitrary PowerShell. All Exchange queries go throug
 
 ### Frontend Updates
 
-When the React frontend is updated:
+The pre-built React frontend is committed to the repository under `frontend_dist/`. Production servers receive frontend updates via `git pull` — no Node.js or npm required.
+
+For developers modifying the frontend source (`frontend/src/`):
 
 ```bash
 cd frontend
 npm install    # If package.json changed
 npm run build  # Rebuild to frontend_dist/
+# Commit the updated frontend_dist/ to the repo
 # Restart Flask — it serves the new bundle immediately
 ```
-
-No Node.js runtime is needed in production. The built assets are static files served by Flask.
 
 ### Adding Exchange RBAC Roles
 
