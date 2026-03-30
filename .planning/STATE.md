@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-03-27)
 ## Current Position
 
 Phase: 17 of 19 (Sidebar and Tool Panels)
-Plan: 1 of 3 in current phase — Plan 1 complete
-Status: In progress — ready for Plan 2 (sidebar recency grouping)
-Last activity: 2026-03-30 — Completed 17-01-PLAN.md (tool SSE timestamps)
+Plan: 2 of 3 in current phase — Plan 2 complete
+Status: In progress — ready for Plan 3 (remaining sidebar and tool panel work)
+Last activity: 2026-03-30 — Completed 17-02-PLAN.md (sidebar recency grouping and collapse mode)
 
-Progress: [██████████████████░] 92% (phase 17 plan 1 complete, 17-02, 17-03, phases 18-19 remaining)
+Progress: [██████████████████░] 93% (phase 17 plans 1-2 complete, 17-03, phases 18-19 remaining)
 
 ## Performance Metrics
 
@@ -78,6 +78,9 @@ Progress: [██████████████████░] 92% (phase
 - [16-03]: **Message hover overlay pattern** — .message-hover-actions at top:-4px right:4px, opacity 0→1 in 150ms on .message:hover; mirrors thread-actions pattern
 - [17-01]: **Tool timestamps as epoch float seconds** — time.time() captured around both call_mcp_tool call sites; .get() passthrough in chat.py for backward compat; optional on ToolPanelData so parseHistoricalMessages untouched
 - [17-01]: **SSE snake_case to camelCase mapping at parse boundary** — event.start_time→startTime, event.end_time→endTime in useStreamingMessage onTool handler
+- [17-02]: **@fluentui/react-icons v9 has no size suffix** — exports are ComposeRegular, PanelLeftContractRegular, PanelLeftExpandRegular; plan spec used "20Regular" variants which don't exist
+- [17-02]: **groupThreadsByRecency Sunday edge case** — getDay()===0 maps to 7 days lookback; without this fix, Sunday "This Week" collapses to same as Today
+- [17-02]: **new-chat-btn redesigned from accent button to transparent icon+text** — header-row placement with ComposeRegular icon; aligns with Fluent 2 command bar pattern
 
 ### Pending Todos
 
@@ -93,5 +96,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-03-30
-Stopped at: Completed 17-01-PLAN.md — Tool SSE timestamps (start_time/end_time epoch floats)
-Resume file: None — ready for 17-02 (sidebar recency grouping)
+Stopped at: Completed 17-02-PLAN.md — Sidebar recency grouping and collapse mode with localStorage persistence
+Resume file: None — ready for 17-03
