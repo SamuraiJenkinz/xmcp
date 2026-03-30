@@ -4,6 +4,7 @@ import { useChat } from '../contexts/ChatContext.tsx';
 import { useThreads } from '../contexts/ThreadContext.tsx';
 import { useStreamingMessage } from '../hooks/useStreamingMessage.ts';
 import { ThreadList } from './Sidebar/ThreadList.tsx';
+import { SkipLink } from './SkipLink.tsx';
 import { MessageList } from './ChatPane/MessageList.tsx';
 import { InputArea } from './ChatPane/InputArea.tsx';
 import { Header } from './ChatPane/Header.tsx';
@@ -91,6 +92,7 @@ export function AppLayout({ theme, onToggleTheme }: AppLayoutProps) {
 
   return (
     <div className="app-container">
+      <SkipLink />
       <aside className="sidebar" data-collapsed={sidebarCollapsed ? 'true' : undefined}>
         <ThreadList
           onCancelStream={handleCancel}

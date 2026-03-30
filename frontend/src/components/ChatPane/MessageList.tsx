@@ -24,7 +24,7 @@ export function MessageList({ onChipSend }: MessageListProps) {
 
   if (messages.length === 0 && streamingMessage === null) {
     return (
-      <div className="chat-messages" ref={containerRef}>
+      <div className="chat-messages" id="chat-messages" tabIndex={-1} ref={containerRef}>
         <div className="welcome-state">
           <div className="welcome-icon" aria-hidden="true">&#9889;</div>
           <h2 className="welcome-heading">How can I help with Exchange today?</h2>
@@ -52,7 +52,7 @@ export function MessageList({ onChipSend }: MessageListProps) {
   }
 
   return (
-    <div className="chat-messages" ref={containerRef}>
+    <div className="chat-messages" id="chat-messages" tabIndex={-1} ref={containerRef}>
       {messages.map((msg, idx) => {
         if (msg.type === 'user') {
           return <UserMessage key={idx} content={msg.content} timestamp={msg.timestamp} />;
