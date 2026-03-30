@@ -2,13 +2,17 @@ import { useChat } from '../../contexts/ChatContext.tsx';
 import { useThreads } from '../../contexts/ThreadContext.tsx';
 import { createThread, deleteThread, getMessages, renameThread } from '../../api/threads.ts';
 import { parseHistoricalMessages } from '../../utils/parseHistoricalMessages.ts';
+import { groupThreadsByRecency } from '../../utils/groupThreadsByRecency.ts';
 import { ThreadItem } from './ThreadItem.tsx';
+import { ComposeRegular, PanelLeftContractRegular, PanelLeftExpandRegular } from '@fluentui/react-icons';
 
 interface ThreadListProps {
   onCancelStream?: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-export function ThreadList({ onCancelStream }: ThreadListProps) {
+export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: ThreadListProps) {
   const { threads, activeThreadId, dispatch: threadDispatch } = useThreads();
   const { isStreaming, dispatch: chatDispatch } = useChat();
 
@@ -67,21 +71,49 @@ export function ThreadList({ onCancelStream }: ThreadListProps) {
     }
   }
 
+  const groups = groupThreadsByRecency(threads);
+
   return (
     <div className="thread-list">
-      <button className="new-chat-btn" onClick={handleNewChat}>
-        + New Chat
-      </button>
-      {threads.map((thread) => (
-        <ThreadItem
-          key={thread.id}
-          thread={thread}
-          isActive={thread.id === activeThreadId}
-          onSelect={handleSelectThread}
-          onRename={handleRename}
-          onDelete={handleDelete}
-        />
+      <div className="thread-list-header">
+        <button
+          className="sidebar-toggle-btn"
+          onClick={onToggleCollapse}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        >
+          {collapsed ? <PanelLeftExpandRegular /> : <PanelLeftContractRegular />}
+        </button>
+        {!collapsed && (
+          <button className="new-chat-btn" onClick={handleNewChat} aria-label="New chat">
+            <ComposeRegular />
+            <span>New Chat</span>
+          </button>
+        )}
+      </div>
+      {!collapsed && groups.map((group) => (
+        <div key={group.label} className="thread-group">
+          <div className="thread-group-heading">{group.label}</div>
+          {group.threads.map((thread) => (
+            <ThreadItem
+              key={thread.id}
+              thread={thread}
+              isActive={thread.id === activeThreadId}
+              onSelect={handleSelectThread}
+              onRename={handleRename}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
       ))}
+      {collapsed && (
+        <button
+          className="new-chat-btn-collapsed"
+          onClick={handleNewChat}
+          aria-label="New chat"
+        >
+          <ComposeRegular />
+        </button>
+      )}
     </div>
   );
 }
