@@ -70,6 +70,8 @@ export function useStreamingMessage(options: UseStreamingMessageOptions): {
         params: event.params,
         result: event.result,
         status: event.status,
+        startTime: event.start_time,
+        endTime: event.end_time,
       });
     } else if (event.type === 'thread_named') {
       optionsRef.current.onThreadNamed(event.thread_id, event.name);

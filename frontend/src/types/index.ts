@@ -24,6 +24,8 @@ export interface ToolPanelData {
   params: Record<string, unknown>;
   result: string | null;
   status: 'success' | 'error';
+  startTime?: number;   // epoch seconds float from backend
+  endTime?: number;     // epoch seconds float from backend
 }
 
 // Display-ready message after parsing raw messages
@@ -37,7 +39,7 @@ export interface DisplayMessage {
 // SSE event types from POST /chat/stream
 export type SSEEvent =
   | { type: 'text'; delta: string }
-  | { type: 'tool'; name: string; status: 'success' | 'error'; params: Record<string, unknown>; result: string | null }
+  | { type: 'tool'; name: string; status: 'success' | 'error'; params: Record<string, unknown>; result: string | null; start_time?: number; end_time?: number }
   | { type: 'thread_named'; thread_id: number; name: string }
   | { type: 'done' }
   | { type: 'error'; message: string };
