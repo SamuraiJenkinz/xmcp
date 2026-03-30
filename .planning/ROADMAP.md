@@ -222,10 +222,11 @@ Plans:
   1. Every interactive element (buttons, links, thread items, tool panels, textarea, chips) is reachable and activatable via keyboard Tab and Enter/Space
   2. Focus rings are visible on all focused elements with at least 3:1 contrast ratio against adjacent backgrounds (WCAG AA)
   3. Tab order follows a logical reading order — sidebar threads before chat pane, chat pane top-to-bottom, input area last
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 19-01: Keyboard navigation audit and focus ring implementation across all v1.2 components
+- [ ] 19-01-PLAN.md — Global focus rings, skip navigation, outline:none cleanup
+- [ ] 19-02-PLAN.md — ThreadItem button conversion, roving tabindex, focus management
 
 ## Progress
 
@@ -253,4 +254,4 @@ Note: Phases 16, 17, and 18 all depend on Phase 15 and may be partially parallel
 | 16. Chat Experience Redesign | v1.2 | 3/3 | Complete | 2026-03-29 |
 | 17. Sidebar and Tool Panels | v1.2 | 3/3 | Complete | 2026-03-30 |
 | 18. Profile Cards, Splash, Cleanup | v1.2 | 3/3 | Complete | 2026-03-30 |
-| 19. Accessibility Sweep | v1.2 | 0/1 | Not started | - |
+| 19. Accessibility Sweep | v1.2 | 0/2 | Not started | - |
