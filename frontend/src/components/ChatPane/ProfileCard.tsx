@@ -41,11 +41,13 @@ export function ProfileCard({ resultJson }: Props) {
   }
 
   const displayName = profile.displayName ?? profile.name ?? '';
-  const photoSrc = '/api/photo/' + profile.id + '?name=' + encodeURIComponent(displayName);
+  const photoSrc = profile.photo_url
+    ? profile.photo_url + '?name=' + encodeURIComponent(displayName)
+    : null;
 
   return (
     <div className="profile-card">
-      {photoFailed ? (
+      {(!photoSrc || photoFailed) ? (
         <div className="profile-card-photo profile-card-initials">
           {getInitials(displayName)}
         </div>
