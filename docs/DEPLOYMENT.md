@@ -302,39 +302,33 @@ ATLAS_UI=react
 ### Development Mode (Frontend Hot Reload)
 
 ```powershell
-# Terminal 1: Start Flask backend
+# Terminal 1: Start Flask backend with HTTPS
 $env:ATLAS_UI = "react"
-uv run python -m chat_app.app
+uv run python start.py
 
-# Terminal 2: Start Vite dev server (hot reload)
+# Terminal 2: Start Vite dev server (hot reload, optional)
 cd frontend
 npm run dev
 ```
 
-Vite dev server runs on `http://localhost:5173` and proxies API requests (`/api/*`, `/auth/*`, `/chat/*`) to Flask on port 5000.
-
-### Development Mode (Backend Only)
-
-```powershell
-# Interactive Exchange auth (browser popup on first tool call)
-uv run python -m chat_app.app
-```
-
-The app starts on `http://localhost:5000`. The MCP server subprocess is spawned automatically.
+Vite dev server runs on `http://localhost:5173` and proxies API requests (`/api/*`, `/auth/*`, `/chat/*`) to Flask on port 5050.
 
 ### Production Mode
 
-```powershell
-# Set environment variables (or use .env file)
-$env:ATLAS_UI = "react"
-$env:AZURE_CERT_THUMBPRINT = "ABC123..."
-$env:AZURE_CLIENT_ID = "..."
-$env:AZURE_TENANT_DOMAIN = "mmc.onmicrosoft.com"
+`start.py` runs Flask with HTTPS using the server's TLS certificates on port 5050:
 
-uv run python -m chat_app.app
+```powershell
+$env:ATLAS_UI = "react"
+uv run python start.py
 ```
 
-Waitress serves the app on `0.0.0.0:5000` by default. Flask serves the pre-built React SPA from `frontend_dist/`. No separate Node.js process is needed at runtime.
+This requires the TLS certificate and key in the project root:
+- `usdf11v1784.mercer.com-chaincert-combined.crt`
+- `usdf11v1784.mercer.com-private.key`
+
+Flask serves the pre-built React SPA from `frontend_dist/`. No separate Node.js process is needed at runtime.
+
+> **Note:** `start.py` uses Flask's built-in server with SSL. For higher concurrency, place behind IIS as a reverse proxy with TLS termination and use `uv run python -m chat_app.app` (Waitress, plain HTTP) as the backend.
 
 ### Running as a Windows Service
 
@@ -345,8 +339,8 @@ To run Atlas as a Windows service, use [NSSM](https://nssm.cc/):
 choco install nssm
 
 # Create service
-nssm install AtlasExchangeMCP "C:\xmcp\.venv\Scripts\python.exe" "-m chat_app.app"
-nssm set AtlasExchangeMCP AppDirectory "C:\xmcp"
+nssm install AtlasExchangeMCP "D:\xmcp\.venv\Scripts\python.exe" "start.py"
+nssm set AtlasExchangeMCP AppDirectory "D:\xmcp"
 nssm set AtlasExchangeMCP AppEnvironmentExtra "ATLAS_UI=react" "CHATGPT_ENDPOINT=https://..." "AZURE_CERT_THUMBPRINT=..."
 nssm set AtlasExchangeMCP Description "Atlas Exchange Infrastructure Chat"
 nssm set AtlasExchangeMCP Start SERVICE_AUTO_START
@@ -359,7 +353,7 @@ nssm start AtlasExchangeMCP
 
 | Direction | Port | Destination | Purpose |
 |-----------|------|-------------|---------|
-| Inbound | 5000 (configurable) | Atlas server | User access to chat UI |
+| Inbound | 5050 | Atlas server | User access to chat UI (HTTPS) |
 | Outbound | 443 | `login.microsoftonline.com` | Azure AD authentication |
 | Outbound | 443 | `graph.microsoft.com` | Microsoft Graph (user profiles, photos) |
 | Outbound | 443 | `outlook.office365.com` | Exchange Online PowerShell |
