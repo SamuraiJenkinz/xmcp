@@ -9,6 +9,7 @@ from typing import Any
 import msal
 from flask import (
     Blueprint,
+    jsonify,
     redirect,
     render_template_string,
     request,
@@ -89,11 +90,13 @@ def get_token_silently() -> dict[str, Any] | None:
 
 
 def login_required(f):  # type: ignore[no-untyped-def]
-    """Decorator that redirects unauthenticated users to the splash page."""
+    """Decorator that returns 401 for API routes or redirects others to splash."""
 
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):  # type: ignore[no-untyped-def]
         if not session.get("user"):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "authentication required"}), 401
             return redirect(url_for("catch_all", path=""))
         return f(*args, **kwargs)
 
