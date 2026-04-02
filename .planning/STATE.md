@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 25 in progress (Plan 01 complete)
+**Current focus:** v1.3 — Phase 25 complete (all animation plans done)
 
 ## Current Position
 
-Phase: 25 of 25 in progress (Motion Animations)
-Plan: 25-01 of 2 complete — animation infrastructure (providers + CSS)
-Status: In progress
-Last activity: 2026-04-02 — 25-01 executed (2 tasks), motion installed, providers added, CSS cleaned
+Phase: 25 of 25 complete (Motion Animations)
+Plan: 25-02 of 2 complete — animation component wiring + historical gate
+Status: Phase complete — v1.3 complete
+Last activity: 2026-04-02 — 25-02 executed (2 tasks), m.div wired, isNew gate, feedback-scale-btn applied
 
-Progress: [████████░░░░░░░░░░░] 38% (v1.3 — 9/~10 plans)
+Progress: [████████████████████] 100% (v1.3 — 10/~10 plans)
 
 ## Performance Metrics
 
@@ -39,6 +39,9 @@ Progress: [████████░░░░░░░░░░░] 38% (v1.3 
 - Animation: LazyMotion + domAnimation from the start; no framer-motion package; MotionConfig reducedMotion="user" required before any animation ships
 - motion@12.38.0 confirmed React 19 compatible (25-01 spike resolved MEDIUM confidence blocker)
 - Provider order: MotionConfig > LazyMotion > FluentProvider (outermost to innermost)
+- Wrapper pattern for conditional m.div: const Wrapper = condition ? m.div : 'div' with spread motionProps — single return path — 25-02
+- loadedCountRef gate: snapshot messages.length in useEffect([activeThreadId]) so idx >= ref.current = isNew for animation — 25-02
+- feedback-scale-btn span wraps Button inside PopoverTrigger(disableButtonEnhancement) — span receives anchor ref, CSS :active fires on press — 25-02
 - role_required is the canonical route decorator (login_required retained but unused on routes) — 21-01
 - 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
 - /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
@@ -71,11 +74,11 @@ None.
 ### Blockers/Concerns
 
 - Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned
-- Phase 25 Plan 02: wire m.div into MessageItem/MessageList and apply feedback-scale-btn class in FeedbackButtons.tsx
+- Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center (unchanged)
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried from v1.2
 
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Phase 25 Plan 01 complete — ready to execute Plan 02 (m.div wiring + FeedbackButtons)
+Stopped at: Phase 25 Plan 02 complete — v1.3 fully shipped
 Resume file: None
