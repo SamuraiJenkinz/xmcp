@@ -12,6 +12,15 @@ export function MessageList({ onChipSend }: MessageListProps) {
   const { messages, streamingMessage } = useChat();
   const { activeThreadId } = useThreads();
   const containerRef = useRef<HTMLDivElement>(null);
+  // Snapshot the message count at the time of last thread load so that
+  // only messages added after the switch animate (ANIM historical gate).
+  const loadedCountRef = useRef(messages.length);
+
+  useEffect(() => {
+    // When thread changes, SET_MESSAGES has already run, so messages.length
+    // reflects the historical count. Any messages added after this are "new".
+    loadedCountRef.current = messages.length;
+  }, [activeThreadId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const el = containerRef.current;
@@ -56,8 +65,9 @@ export function MessageList({ onChipSend }: MessageListProps) {
   return (
     <div className="chat-messages" id="chat-messages" tabIndex={-1} ref={containerRef}>
       {messages.map((msg, idx) => {
+        const isNew = idx >= loadedCountRef.current;
         if (msg.type === 'user') {
-          return <UserMessage key={idx} content={msg.content} timestamp={msg.timestamp} />;
+          return <UserMessage key={idx} content={msg.content} timestamp={msg.timestamp} isNew={isNew} />;
         }
         // Compute assistant-message ordinal (0-based) for feedback keying
         const assistantIdx = messages
@@ -71,6 +81,7 @@ export function MessageList({ onChipSend }: MessageListProps) {
             timestamp={msg.timestamp}
             threadId={activeThreadId ?? undefined}
             messageIndex={assistantIdx}
+            isNew={isNew}
           />
         );
       })}

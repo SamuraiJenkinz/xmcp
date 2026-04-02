@@ -78,14 +78,16 @@ export function FeedbackButtons({ threadId, messageIndex }: Props) {
 
   return (
     <>
-      <Button
-        appearance="subtle"
-        size="small"
-        icon={<ThumbLikeIcon filled={vote === 'up'} />}
-        onClick={handleThumbUp}
-        aria-label={vote === 'up' ? 'Retract thumbs up' : 'Thumbs up'}
-        aria-pressed={vote === 'up'}
-      />
+      <span className="feedback-scale-btn">
+        <Button
+          appearance="subtle"
+          size="small"
+          icon={<ThumbLikeIcon filled={vote === 'up'} />}
+          onClick={handleThumbUp}
+          aria-label={vote === 'up' ? 'Retract thumbs up' : 'Thumbs up'}
+          aria-pressed={vote === 'up'}
+        />
+      </span>
       <Popover
         open={commentOpen}
         onOpenChange={(_, d) => {
@@ -97,14 +99,16 @@ export function FeedbackButtons({ threadId, messageIndex }: Props) {
         trapFocus
       >
         <PopoverTrigger disableButtonEnhancement>
-          <Button
-            appearance="subtle"
-            size="small"
-            icon={<ThumbDislikeIcon filled={vote === 'down'} />}
-            onClick={handleThumbDown}
-            aria-label={vote === 'down' ? 'Retract thumbs down' : 'Thumbs down'}
-            aria-pressed={vote === 'down'}
-          />
+          <span className="feedback-scale-btn">
+            <Button
+              appearance="subtle"
+              size="small"
+              icon={<ThumbDislikeIcon filled={vote === 'down'} />}
+              onClick={handleThumbDown}
+              aria-label={vote === 'down' ? 'Retract thumbs down' : 'Thumbs down'}
+              aria-pressed={vote === 'down'}
+            />
+          </span>
         </PopoverTrigger>
         <PopoverSurface>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', minWidth: '240px' }}>
