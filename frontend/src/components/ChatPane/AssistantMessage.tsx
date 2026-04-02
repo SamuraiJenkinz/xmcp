@@ -2,6 +2,7 @@ import { useRef, useEffect } from 'react';
 import type { ToolPanelData } from '../../types/index.ts';
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 import { CopyButton } from '../shared/CopyButton.tsx';
+import { FeedbackButtons } from './FeedbackButtons.tsx';
 import { ToolPanel } from './ToolPanel.tsx';
 import { ProfileCard } from './ProfileCard.tsx';
 import { SearchResultCard } from './SearchResultCard.tsx';
@@ -12,6 +13,8 @@ interface Props {
   toolPanels?: ToolPanelData[];
   isStreaming?: boolean;
   timestamp?: string;
+  threadId?: number;
+  messageIndex?: number; // assistant-message ordinal
 }
 
 function renderToolPanel(panel: ToolPanelData, idx: number) {
@@ -26,7 +29,7 @@ function renderToolPanel(panel: ToolPanelData, idx: number) {
   return <ToolPanel key={idx} {...panel} />;
 }
 
-export function AssistantMessage({ content, toolPanels, isStreaming, timestamp }: Props) {
+export function AssistantMessage({ content, toolPanels, isStreaming, timestamp, threadId, messageIndex }: Props) {
   // Track latest content in a ref so CopyButton's getText() always reads current value
   const contentRef = useRef(content);
   useEffect(() => {
@@ -44,6 +47,12 @@ export function AssistantMessage({ content, toolPanels, isStreaming, timestamp }
       {isStreaming && <span className="streaming-cursor" aria-hidden="true" />}
       {!isStreaming && (
         <div className="message-hover-actions">
+          {threadId !== undefined && messageIndex !== undefined && (
+            <FeedbackButtons
+              threadId={threadId}
+              messageIndex={messageIndex}
+            />
+          )}
           <CopyButton getText={() => contentRef.current} />
         </div>
       )}

@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useChat } from '../../contexts/ChatContext.tsx';
+import { useThreads } from '../../contexts/ThreadContext.tsx';
 import { UserMessage } from './UserMessage.tsx';
 import { AssistantMessage } from './AssistantMessage.tsx';
 
@@ -9,6 +10,7 @@ interface MessageListProps {
 
 export function MessageList({ onChipSend }: MessageListProps) {
   const { messages, streamingMessage } = useChat();
+  const { activeThreadId } = useThreads();
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,12 +59,18 @@ export function MessageList({ onChipSend }: MessageListProps) {
         if (msg.type === 'user') {
           return <UserMessage key={idx} content={msg.content} timestamp={msg.timestamp} />;
         }
+        // Compute assistant-message ordinal (0-based) for feedback keying
+        const assistantIdx = messages
+          .slice(0, idx + 1)
+          .filter(m => m.type === 'assistant').length - 1;
         return (
           <AssistantMessage
             key={idx}
             content={msg.content}
             toolPanels={msg.toolPanels}
             timestamp={msg.timestamp}
+            threadId={activeThreadId ?? undefined}
+            messageIndex={assistantIdx}
           />
         );
       })}

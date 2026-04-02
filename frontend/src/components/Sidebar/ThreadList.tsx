@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useChat } from '../../contexts/ChatContext.tsx';
 import { useThreads } from '../../contexts/ThreadContext.tsx';
 import { createThread, deleteThread, getMessages, renameThread } from '../../api/threads.ts';
+import { getFeedbackForThread } from '../../api/feedback.ts';
 import { parseHistoricalMessages } from '../../utils/parseHistoricalMessages.ts';
 import { groupThreadsByRecency } from '../../utils/groupThreadsByRecency.ts';
 import { ThreadItem } from './ThreadItem.tsx';
@@ -56,6 +57,7 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
     threadDispatch({ type: 'ADD_THREAD', thread });
     threadDispatch({ type: 'SET_ACTIVE', threadId: thread.id });
     chatDispatch({ type: 'SET_MESSAGES', messages: [] });
+    chatDispatch({ type: 'SET_FEEDBACK_MAP', votes: [] });
   }
 
   async function handleSelectThread(threadId: number) {
@@ -74,6 +76,14 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
     const { messages: rawMessages } = await getMessages(threadId);
     const parsed = parseHistoricalMessages(rawMessages);
     chatDispatch({ type: 'SET_MESSAGES', messages: parsed });
+
+    // Load feedback state for the selected thread
+    try {
+      const votes = await getFeedbackForThread(threadId);
+      chatDispatch({ type: 'SET_FEEDBACK_MAP', votes });
+    } catch {
+      chatDispatch({ type: 'SET_FEEDBACK_MAP', votes: [] });
+    }
   }
 
   async function handleRename(threadId: number, newName: string) {
@@ -96,6 +106,12 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
         const { messages: rawMessages } = await getMessages(next.id);
         const parsed = parseHistoricalMessages(rawMessages);
         chatDispatch({ type: 'SET_MESSAGES', messages: parsed });
+        try {
+          const votes = await getFeedbackForThread(next.id);
+          chatDispatch({ type: 'SET_FEEDBACK_MAP', votes });
+        } catch {
+          chatDispatch({ type: 'SET_FEEDBACK_MAP', votes: [] });
+        }
         setFocusAfterDeletion(nextIndex);
       } else {
         threadDispatch({ type: 'SET_ACTIVE', threadId: null });
