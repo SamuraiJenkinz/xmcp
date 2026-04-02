@@ -96,11 +96,11 @@ Plans:
 3. When no threads match the typed filter, an empty state message is displayed rather than a blank list
 4. Typing at least 2 characters and pausing 300ms triggers a backend FTS5 search across message content, returning matching threads with a snippet and a result count badge
 5. Clicking any search result navigates to that thread
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 23-01: threads_fts FTS5 virtual table, sync triggers, backfill, search endpoint with user scoping
-- [ ] 23-02: SearchInput component, client-side title filter, FTS5 results display, Ctrl+K shortcut
+- [ ] 23-01-PLAN.md — FTS5 virtual table, sync triggers, backfill, search endpoint with user scoping
+- [ ] 23-02-PLAN.md — SearchInput component, client-side title filter, FTS5 results display, Ctrl+K shortcut
 
 ---
 
@@ -151,6 +151,6 @@ Plans:
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
 | 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
-| 23. Thread Search | v1.3 | 0/TBD | Not started | - |
+| 23. Thread Search | v1.3 | 0/2 | Not started | - |
 | 24. Conversation Export | v1.3 | 0/TBD | Not started | - |
 | 25. Motion Animations | v1.3 | 0/TBD | Not started | - |
