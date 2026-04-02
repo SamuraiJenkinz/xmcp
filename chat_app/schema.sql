@@ -46,3 +46,56 @@ CREATE INDEX IF NOT EXISTS idx_feedback_thread
 
 CREATE INDEX IF NOT EXISTS idx_feedback_user_vote
     ON feedback(user_id, vote, created_at DESC);
+
+-- FTS5 full-text search index over thread message content.
+-- Only user and assistant role messages are indexed (system/tool messages excluded).
+-- unicode61 tokenizer preserves Exchange technical terms (e.g. DAGHealth, HMC).
+
+CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
+    body,
+    tokenize='unicode61'
+);
+
+-- Sync trigger: after new messages row inserted, rebuild FTS entry for that thread.
+CREATE TRIGGER IF NOT EXISTS messages_fts_ai
+AFTER INSERT ON messages
+BEGIN
+    DELETE FROM threads_fts WHERE rowid = NEW.thread_id;
+    INSERT INTO threads_fts(rowid, body)
+    SELECT NEW.thread_id,
+           group_concat(json_extract(j.value, '$.content'), ' ')
+    FROM   json_each(NEW.messages_json) j
+    WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+    AND    json_extract(j.value, '$.content') IS NOT NULL;
+END;
+
+-- Sync trigger: after messages row updated (new chat turn saved), rebuild FTS entry.
+CREATE TRIGGER IF NOT EXISTS messages_fts_au
+AFTER UPDATE ON messages
+BEGIN
+    DELETE FROM threads_fts WHERE rowid = NEW.thread_id;
+    INSERT INTO threads_fts(rowid, body)
+    SELECT NEW.thread_id,
+           group_concat(json_extract(j.value, '$.content'), ' ')
+    FROM   json_each(NEW.messages_json) j
+    WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+    AND    json_extract(j.value, '$.content') IS NOT NULL;
+END;
+
+-- Sync trigger: after thread deleted, remove FTS entry.
+CREATE TRIGGER IF NOT EXISTS threads_fts_ad
+AFTER DELETE ON threads
+BEGIN
+    DELETE FROM threads_fts WHERE rowid = OLD.id;
+END;
+
+-- Backfill: index all existing threads that have messages.
+-- INSERT OR IGNORE is idempotent — safe to run on every startup.
+INSERT OR IGNORE INTO threads_fts(rowid, body)
+SELECT m.thread_id,
+       group_concat(json_extract(j.value, '$.content'), ' ')
+FROM   messages m,
+       json_each(m.messages_json) j
+WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+AND    json_extract(j.value, '$.content') IS NOT NULL
+GROUP BY m.thread_id;

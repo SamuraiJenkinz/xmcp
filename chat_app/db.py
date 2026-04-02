@@ -68,11 +68,16 @@ def init_db() -> None:
 def migrate_db() -> None:
     """Apply additive schema migrations so existing databases gain new tables.
 
-    Uses CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS — fully
-    idempotent and safe to run on every startup without data loss.
-    Currently adds: feedback table + analytics indexes.
+    Uses CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS / CREATE
+    TRIGGER IF NOT EXISTS / INSERT OR IGNORE — fully idempotent and safe to
+    run on every startup without data loss.
+
+    Migration history:
+      v22: feedback table + analytics indexes
+      v23: threads_fts FTS5 virtual table, sync triggers, and backfill
     """
     db = get_db()
+    # v22 — feedback table and indexes
     db.executescript(
         """
         CREATE TABLE IF NOT EXISTS feedback (
@@ -94,6 +99,59 @@ def migrate_db() -> None:
             ON feedback(user_id, vote, created_at DESC);
         """
     )
+
+    # v23 — FTS5 full-text search index, sync triggers, and backfill.
+    # FTS5 virtual table creation and trigger creation are idempotent via
+    # IF NOT EXISTS.  The backfill INSERT OR IGNORE skips threads already
+    # present in threads_fts so repeated startups produce no duplicates.
+    db.executescript(
+        """
+        CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
+            body,
+            tokenize='unicode61'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS messages_fts_ai
+        AFTER INSERT ON messages
+        BEGIN
+            DELETE FROM threads_fts WHERE rowid = NEW.thread_id;
+            INSERT INTO threads_fts(rowid, body)
+            SELECT NEW.thread_id,
+                   group_concat(json_extract(j.value, '$.content'), ' ')
+            FROM   json_each(NEW.messages_json) j
+            WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+            AND    json_extract(j.value, '$.content') IS NOT NULL;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS messages_fts_au
+        AFTER UPDATE ON messages
+        BEGIN
+            DELETE FROM threads_fts WHERE rowid = NEW.thread_id;
+            INSERT INTO threads_fts(rowid, body)
+            SELECT NEW.thread_id,
+                   group_concat(json_extract(j.value, '$.content'), ' ')
+            FROM   json_each(NEW.messages_json) j
+            WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+            AND    json_extract(j.value, '$.content') IS NOT NULL;
+        END;
+
+        CREATE TRIGGER IF NOT EXISTS threads_fts_ad
+        AFTER DELETE ON threads
+        BEGIN
+            DELETE FROM threads_fts WHERE rowid = OLD.id;
+        END;
+
+        INSERT OR IGNORE INTO threads_fts(rowid, body)
+        SELECT m.thread_id,
+               group_concat(json_extract(j.value, '$.content'), ' ')
+        FROM   messages m,
+               json_each(m.messages_json) j
+        WHERE  json_extract(j.value, '$.role') IN ('user', 'assistant')
+        AND    json_extract(j.value, '$.content') IS NOT NULL
+        GROUP BY m.thread_id;
+        """
+    )
+
     db.commit()
 
 
