@@ -15,6 +15,7 @@ from chat_app.auth import auth_bp, role_required
 from chat_app.chat import chat_bp
 from chat_app.config import Config
 from chat_app.conversations import conversations_bp
+from chat_app.feedback import feedback_bp
 from chat_app.db import get_db
 from chat_app.graph_client import init_graph
 from chat_app.mcp_client import get_openai_tools, init_mcp, is_connected
@@ -102,6 +103,9 @@ def create_app() -> Flask:
 
     # Register conversations blueprint (provides /api/threads/* CRUD routes)
     app.register_blueprint(conversations_bp)
+
+    # Register feedback blueprint (provides /api/threads/*/feedback/* routes)
+    app.register_blueprint(feedback_bp)
 
     # Register auth blueprint (provides /login, /auth/callback, /logout)
     app.register_blueprint(auth_bp)
