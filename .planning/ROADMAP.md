@@ -56,11 +56,11 @@ Delivered full frontend rewrite to React 19 + Fluent UI v9 + Tailwind v4 with Mi
 3. The /chat/stream SSE endpoint and all /api/conversations routes return 403 (not 401) for an authenticated session that lacks the roles claim — no AI access through direct endpoint calls
 4. An IT engineer who is correctly assigned Atlas.User sees no change in behavior — the app loads and functions identically to v1.2
 5. The access denied page shows the user's own UPN with a one-click copy button and a mailto: link to the admin, so users know exactly who to contact and what identity to reference
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 21-01: role_required decorator, session roles extraction, 403/401 response paths (backend)
-- [ ] 21-02: AuthContext 403 state, AccessDenied component, AuthGuard routing (frontend)
+- [ ] 21-01-PLAN.md — role_required decorator, session roles extraction, 403/401 response paths (backend)
+- [ ] 21-02-PLAN.md — AuthContext 403 state, AccessDenied component, AuthGuard routing (frontend)
 
 ---
 
@@ -149,7 +149,7 @@ Plans:
 | 1-9. MVP | v1.0 | 35/35 | Complete | 2026-03-22 |
 | 10-12. Colleague Lookup | v1.1 | 9/9 | Complete | 2026-03-25 |
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
-| 21. App Role Access Control | v1.3 | 0/TBD | Not started | - |
+| 21. App Role Access Control | v1.3 | 0/2 | Not started | - |
 | 22. Per-Message Feedback | v1.3 | 0/TBD | Not started | - |
 | 23. Thread Search | v1.3 | 0/TBD | Not started | - |
 | 24. Conversation Export | v1.3 | 0/TBD | Not started | - |
