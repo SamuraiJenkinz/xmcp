@@ -59,8 +59,8 @@ Delivered full frontend rewrite to React 19 + Fluent UI v9 + Tailwind v4 with Mi
 **Plans:** 2 plans
 
 Plans:
-- [ ] 21-01-PLAN.md — role_required decorator, session roles extraction, 403/401 response paths (backend)
-- [ ] 21-02-PLAN.md — AuthContext 403 state, AccessDenied component, AuthGuard routing (frontend)
+- [x] 21-01-PLAN.md — role_required decorator, session roles extraction, 403/401 response paths (backend)
+- [x] 21-02-PLAN.md — AuthContext 403 state, AccessDenied component, AuthGuard routing (frontend)
 
 ---
 
@@ -149,7 +149,7 @@ Plans:
 | 1-9. MVP | v1.0 | 35/35 | Complete | 2026-03-22 |
 | 10-12. Colleague Lookup | v1.1 | 9/9 | Complete | 2026-03-25 |
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
-| 21. App Role Access Control | v1.3 | 0/2 | Not started | - |
+| 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 22. Per-Message Feedback | v1.3 | 0/TBD | Not started | - |
 | 23. Thread Search | v1.3 | 0/TBD | Not started | - |
 | 24. Conversation Export | v1.3 | 0/TBD | Not started | - |

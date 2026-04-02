@@ -9,13 +9,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Access Control
 
-- [ ] **AUTH-01**: App requires Atlas.User App Role — unauthenticated users get 401, authenticated users without role get 403
-- [ ] **AUTH-02**: Roles claim extracted from MSAL id_token_claims and stored in session on login
-- [ ] **AUTH-03**: New `role_required` decorator replaces `login_required` on all protected routes
-- [ ] **AUTH-04**: Access denied React component with Fluent 2 styling, explaining no access and showing contact instructions
-- [ ] **AUTH-05**: Admin mailto: link and copy-own-UPN button on access denied page
-- [ ] **AUTH-06**: AuthContext and AuthGuard distinguish 403 (not authorized) from 401 (not authenticated) with different UI paths
-- [ ] **AUTH-07**: Existing sessions without roles claim handled gracefully at deploy (session flush or fallback)
+- [x] **AUTH-01**: App requires Atlas.User App Role — unauthenticated users get 401, authenticated users without role get 403
+- [x] **AUTH-02**: Roles claim extracted from MSAL id_token_claims and stored in session on login
+- [x] **AUTH-03**: New `role_required` decorator replaces `login_required` on all protected routes
+- [x] **AUTH-04**: Access denied React component with Fluent 2 styling, explaining no access and showing contact instructions
+- [x] **AUTH-05**: Admin mailto: link and copy-own-UPN button on access denied page
+- [x] **AUTH-06**: AuthContext and AuthGuard distinguish 403 (not authorized) from 401 (not authenticated) with different UI paths
+- [x] **AUTH-07**: Existing sessions without roles claim handled gracefully at deploy (session flush or fallback)
 
 ### Feedback
 
@@ -99,13 +99,13 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 21 | Pending |
-| AUTH-02 | Phase 21 | Pending |
-| AUTH-03 | Phase 21 | Pending |
-| AUTH-04 | Phase 21 | Pending |
-| AUTH-05 | Phase 21 | Pending |
-| AUTH-06 | Phase 21 | Pending |
-| AUTH-07 | Phase 21 | Pending |
+| AUTH-01 | Phase 21 | Complete |
+| AUTH-02 | Phase 21 | Complete |
+| AUTH-03 | Phase 21 | Complete |
+| AUTH-04 | Phase 21 | Complete |
+| AUTH-05 | Phase 21 | Complete |
+| AUTH-06 | Phase 21 | Complete |
+| AUTH-07 | Phase 21 | Complete |
 | FEED-01 | Phase 22 | Pending |
 | FEED-02 | Phase 22 | Pending |
 | FEED-03 | Phase 22 | Pending |

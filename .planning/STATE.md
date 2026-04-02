@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 21: App Role Access Control
+**Current focus:** v1.3 — Phase 22: Per-Message Feedback
 
 ## Current Position
 
-Phase: 21 of 25 (App Role Access Control)
-Plan: 2 of 2 complete
-Status: Phase complete
-Last activity: 2026-04-02 — Completed 21-02-PLAN.md (frontend auth discrimination + AccessDenied component)
+Phase: 21 of 25 complete (App Role Access Control ✓)
+Plan: —
+Status: Phase 21 verified and approved, ready to plan Phase 22
+Last activity: 2026-04-02 — Phase 21 executed (2 plans, 2 waves), verified 5/5, approved
 
-Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 — 2/~20 plans)
+Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 — 2/~10 plans)
 
 ## Performance Metrics
 
@@ -22,7 +22,8 @@ Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- Total shipped: 66 plans, 20 phases, 3 milestones
+- v1.3: 2 plans in 1 day (2026-04-02, Phase 21)
+- Total shipped: 68 plans, 21 phases, 3 milestones
 
 ## Accumulated Context
 
@@ -50,12 +51,12 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 21 has an admin-dependency blocker: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned before end-to-end testing is possible
+- Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned
 - Phase 25 (animations): motion + React 19 compat is MEDIUM confidence — spike npm install motion and a basic m.div render before committing to full animation scope
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried from v1.2
 
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Completed 21-02-PLAN.md — frontend auth discrimination and AccessDenied component complete
+Stopped at: Phase 21 complete — ready to plan Phase 22 (Per-Message Feedback)
 Resume file: None
