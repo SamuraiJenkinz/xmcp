@@ -19,13 +19,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Feedback
 
-- [ ] **FEED-01**: Thumbs up/down buttons on each assistant message, visible on hover alongside existing copy button
-- [ ] **FEED-02**: Vote persisted to SQLite feedback table with (thread_id, message_index, user_id) composite key
-- [ ] **FEED-03**: Toggle behavior — second click on same button retracts vote
-- [ ] **FEED-04**: Buttons excluded during streaming — appear only after done SSE event
-- [ ] **FEED-05**: Optional freetext comment via Fluent Popover on thumbs-down
-- [ ] **FEED-06**: ARIA live region announces "Feedback submitted" to screen readers
-- [ ] **FEED-07**: Feedback table schema designed for future admin analytics queries
+- [x] **FEED-01**: Thumbs up/down buttons on each assistant message, visible on hover alongside existing copy button
+- [x] **FEED-02**: Vote persisted to SQLite feedback table with (thread_id, message_index, user_id) composite key
+- [x] **FEED-03**: Toggle behavior — second click on same button retracts vote
+- [x] **FEED-04**: Buttons excluded during streaming — appear only after done SSE event
+- [x] **FEED-05**: Optional freetext comment via Fluent Popover on thumbs-down
+- [x] **FEED-06**: ARIA live region announces "Feedback submitted" to screen readers
+- [x] **FEED-07**: Feedback table schema designed for future admin analytics queries
 
 ### Search
 
@@ -106,13 +106,13 @@ Deferred to later milestones.
 | AUTH-05 | Phase 21 | Complete |
 | AUTH-06 | Phase 21 | Complete |
 | AUTH-07 | Phase 21 | Complete |
-| FEED-01 | Phase 22 | Pending |
-| FEED-02 | Phase 22 | Pending |
-| FEED-03 | Phase 22 | Pending |
-| FEED-04 | Phase 22 | Pending |
-| FEED-05 | Phase 22 | Pending |
-| FEED-06 | Phase 22 | Pending |
-| FEED-07 | Phase 22 | Pending |
+| FEED-01 | Phase 22 | Complete |
+| FEED-02 | Phase 22 | Complete |
+| FEED-03 | Phase 22 | Complete |
+| FEED-04 | Phase 22 | Complete |
+| FEED-05 | Phase 22 | Complete |
+| FEED-06 | Phase 22 | Complete |
+| FEED-07 | Phase 22 | Complete |
 | SRCH-01 | Phase 23 | Pending |
 | SRCH-02 | Phase 23 | Pending |
 | SRCH-03 | Phase 23 | Pending |

@@ -79,8 +79,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 22-01: feedback SQLite table schema, feedback Blueprint (POST/DELETE endpoints)
-- [ ] 22-02: AssistantMessage feedback buttons, optimistic state, ARIA live region, Popover for comment
+- [x] 22-01-PLAN.md — feedback SQLite table schema, feedback Blueprint (POST/DELETE endpoints)
+- [x] 22-02-PLAN.md — AssistantMessage feedback buttons, optimistic state, ARIA live region, Popover for comment
 
 ---
 
@@ -150,7 +150,7 @@ Plans:
 | 10-12. Colleague Lookup | v1.1 | 9/9 | Complete | 2026-03-25 |
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
 | 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
-| 22. Per-Message Feedback | v1.3 | 0/TBD | Not started | - |
+| 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 23. Thread Search | v1.3 | 0/TBD | Not started | - |
 | 24. Conversation Export | v1.3 | 0/TBD | Not started | - |
 | 25. Motion Animations | v1.3 | 0/TBD | Not started | - |
