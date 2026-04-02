@@ -115,11 +115,10 @@ Plans:
 2. Clicking Markdown triggers a client-side download of a .md file containing the full conversation — user and assistant turns, plus tool panel data for Exchange queries
 3. The downloaded filename includes the slugified thread name and the current date (e.g., dag-health-check-2026-04-01.md)
 4. Attempting to export a thread belonging to another user returns 404 — thread ID enumeration does not expose other users' conversations
-**Plans**: TBD
+**Plans:** 1 plan
 
 Plans:
-- [ ] 24-01: export Blueprint, Markdown renderer, ownership check, Content-Disposition response
-- [ ] 24-02: ChatPane export button, Fluent Menu, client-side Blob download trigger
+- [ ] 24-01-PLAN.md — Export utilities (Markdown renderer, slugify, Blob download), ExportMenu component, Header integration
 
 ---
 
@@ -152,5 +151,5 @@ Plans:
 | 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 23. Thread Search | v1.3 | 2/2 | Complete | 2026-04-02 |
-| 24. Conversation Export | v1.3 | 0/TBD | Not started | - |
+| 24. Conversation Export | v1.3 | 0/1 | Not started | - |
 | 25. Motion Animations | v1.3 | 0/TBD | Not started | - |
