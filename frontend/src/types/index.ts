@@ -55,4 +55,16 @@ export interface User {
   displayName: string;
   email: string;
   oid: string;
+  roles: string[];
+}
+
+// Auth status discriminated union
+export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated' | 'forbidden' | 'error';
+
+// 403 response shape from role_required decorator
+export interface ForbiddenResponse {
+  error: string;
+  message: string;
+  required_role: string;
+  upn: string;
 }
