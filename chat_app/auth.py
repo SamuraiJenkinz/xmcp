@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime
 import functools
 import logging
 from typing import Any
@@ -22,6 +23,8 @@ from chat_app.config import Config
 logger = logging.getLogger(__name__)
 
 auth_bp = Blueprint("auth", __name__)
+
+REQUIRED_ROLE = "Atlas.User"
 
 # Minimal error page — no separate template file needed
 _ERROR_TEMPLATE = """
@@ -98,6 +101,57 @@ def login_required(f):  # type: ignore[no-untyped-def]
             if request.path.startswith("/api/"):
                 return jsonify({"error": "authentication required"}), 401
             return redirect(url_for("catch_all", path=""))
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def role_required(f):  # type: ignore[no-untyped-def]
+    """Decorator that enforces Atlas.User App Role on protected routes.
+
+    Behaviour:
+    - No session user (unauthenticated): 401 JSON for /api/ and /chat/ paths,
+      redirect to splash for all others.
+    - Authenticated but missing REQUIRED_ROLE: 403 JSON for /api/ and /chat/
+      paths (includes upn so frontend can display it), redirect to splash
+      for all others.  All 403 denials are logged with UPN, endpoint, and
+      timestamp.
+    - Authenticated with REQUIRED_ROLE: request passes through to the handler.
+    """
+
+    @functools.wraps(f)
+    def decorated_function(*args, **kwargs):  # type: ignore[no-untyped-def]
+        user = session.get("user")
+        if not user:
+            if request.path.startswith("/api/") or request.path.startswith("/chat/"):
+                return (
+                    jsonify({"error": "authentication_required", "message": "Login required"}),
+                    401,
+                )
+            return redirect(url_for("catch_all", path=""))
+
+        if REQUIRED_ROLE not in user.get("roles", []):
+            upn = user.get("preferred_username", "")
+            logger.warning(
+                "403 Forbidden: upn=%s endpoint=%s ts=%s",
+                upn,
+                request.path,
+                datetime.datetime.utcnow().isoformat(),
+            )
+            if request.path.startswith("/api/") or request.path.startswith("/chat/"):
+                return (
+                    jsonify(
+                        {
+                            "error": "forbidden",
+                            "message": "Atlas.User role required",
+                            "required_role": REQUIRED_ROLE,
+                            "upn": upn,
+                        }
+                    ),
+                    403,
+                )
+            return redirect(url_for("catch_all", path=""))
+
         return f(*args, **kwargs)
 
     return decorated_function
