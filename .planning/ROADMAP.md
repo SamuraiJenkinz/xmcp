@@ -99,8 +99,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 23-01-PLAN.md — FTS5 virtual table, sync triggers, backfill, search endpoint with user scoping
-- [ ] 23-02-PLAN.md — SearchInput component, client-side title filter, FTS5 results display, Ctrl+K shortcut
+- [x] 23-01-PLAN.md — FTS5 virtual table, sync triggers, backfill, search endpoint with user scoping
+- [x] 23-02-PLAN.md — SearchInput component, client-side title filter, FTS5 results display, Ctrl+K shortcut
 
 ---
 
@@ -151,6 +151,6 @@ Plans:
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
 | 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
-| 23. Thread Search | v1.3 | 0/2 | Not started | - |
+| 23. Thread Search | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 24. Conversation Export | v1.3 | 0/TBD | Not started | - |
 | 25. Motion Animations | v1.3 | 0/TBD | Not started | - |

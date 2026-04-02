@@ -29,14 +29,14 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Search
 
-- [ ] **SRCH-01**: Search input at top of sidebar thread list with clear button
-- [ ] **SRCH-02**: Instant client-side title filter as user types — does not affect active thread
-- [ ] **SRCH-03**: Empty state when no threads match filter
-- [ ] **SRCH-04**: SQLite FTS5 full-text search across message content via backend endpoint
-- [ ] **SRCH-05**: Search results show thread name + message snippet with result count badge
-- [ ] **SRCH-06**: Click search result navigates to thread
-- [ ] **SRCH-07**: Debounced FTS5 search (300ms, 2-char minimum)
-- [ ] **SRCH-08**: Ctrl+K keyboard shortcut to focus search input
+- [x] **SRCH-01**: Search input at top of sidebar thread list with clear button
+- [x] **SRCH-02**: Instant client-side title filter as user types — does not affect active thread
+- [x] **SRCH-03**: Empty state when no threads match filter
+- [x] **SRCH-04**: SQLite FTS5 full-text search across message content via backend endpoint
+- [x] **SRCH-05**: Search results show thread name + message snippet with result count badge
+- [x] **SRCH-06**: Click search result navigates to thread
+- [x] **SRCH-07**: Debounced FTS5 search (300ms, 2-char minimum)
+- [x] **SRCH-08**: Ctrl+K keyboard shortcut to focus search input
 
 ### Export
 
