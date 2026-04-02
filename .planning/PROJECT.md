@@ -44,7 +44,11 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ### Active
 
-(None — define requirements for next milestone with `/gsd:new-milestone`)
+- Azure AD App Role access gating with roles claim extraction, 403 handling, and access denied UI
+- Per-message thumbs up/down feedback buttons with SQLite persistence
+- Thread search — sidebar title filter (client-side) + full-text message search (SQLite FTS5 backend)
+- Conversation export in Markdown and JSON formats
+- Motion entrance animations and transitions across chat UI components
 
 ### Out of Scope
 
@@ -61,6 +65,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
+- **Current milestone:** v1.3 — Access Control, Feedback, Search, Export, Animations
 - **Current state:** v1.2 shipped 2026-03-30. ~75K LOC (Python + TypeScript/CSS/HTML/SQL). 20 phases, 66 plans complete across 3 milestones.
 - **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 (frontend), PowerShell 5.1+ (Exchange cmdlets)
 - **Design reference:** `designux.md` in project root — comprehensive design brief with component inventory, design tokens, and user flows
@@ -108,5 +113,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | SSE via fetch + ReadableStream | Not EventSource; AbortController in useRef for cancel support | Good — full streaming control |
 | Migration order: scaffold → port → visual | Visual work before functional parity is the primary failure mode | Good — proven approach |
 
+| App Roles over groupMembershipClaims for access gating | No overage problem at 80K+ users; decouples app from raw group GUIDs; manages access via group-to-role assignment in Entra ID | — Pending |
+
 ---
-*Last updated: 2026-03-30 after v1.2 milestone*
+*Last updated: 2026-04-01 after v1.3 milestone started*

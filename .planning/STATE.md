@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-30)
+See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Planning next milestone
+**Current focus:** v1.3 — Access Control, Feedback, Search, Export, Animations
 
 ## Current Position
 
-Phase: 20 of 20 — v1.2 COMPLETE
-Plan: All plans complete
-Status: v1.2 milestone shipped and archived
-Last activity: 2026-03-30 — v1.2 milestone complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-01 — Milestone v1.3 started
 
-Progress: [████████████████████] 100% (3 milestones shipped)
+Progress: [░░░░░░░░░░░░░░░░░░░] 0%
 
 ## Performance Metrics
 
@@ -30,6 +30,8 @@ Progress: [████████████████████] 100% (3
 
 (Full decision log in PROJECT.md Key Decisions table)
 
+- App Roles chosen over groupMembershipClaims for access gating (no overage, no raw GUIDs)
+
 ### Pending Todos
 
 None.
@@ -37,10 +39,9 @@ None.
 ### Blockers/Concerns
 
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var)
-- 4 non-blocking tech debt items from v1.2 (see milestones/v1.2-MILESTONE-AUDIT.md)
 
 ## Session Continuity
 
-Last session: 2026-03-30
-Stopped at: v1.2 milestone archived — ready for /gsd:new-milestone
+Last session: 2026-04-01
+Stopped at: Defining requirements for v1.3
 Resume file: None
