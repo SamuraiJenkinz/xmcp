@@ -118,7 +118,7 @@ Plans:
 **Plans:** 1 plan
 
 Plans:
-- [ ] 24-01-PLAN.md — Export utilities (Markdown renderer, slugify, Blob download), ExportMenu component, Header integration
+- [x] 24-01-PLAN.md — Export utilities (Markdown renderer, slugify, Blob download), ExportMenu component, Header integration
 
 ---
 
@@ -151,5 +151,5 @@ Plans:
 | 21. App Role Access Control | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 23. Thread Search | v1.3 | 2/2 | Complete | 2026-04-02 |
-| 24. Conversation Export | v1.3 | 0/1 | Not started | - |
+| 24. Conversation Export | v1.3 | 1/1 | Complete | 2026-04-02 |
 | 25. Motion Animations | v1.3 | 0/TBD | Not started | - |

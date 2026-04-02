@@ -40,10 +40,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Export
 
-- [ ] **EXPT-01**: Markdown export of current thread with tool panel data included
-- [ ] **EXPT-02**: Export button in ChatPane header with Fluent Menu for format selection
-- [ ] **EXPT-03**: Filename includes slugified thread name and date
-- [ ] **EXPT-04**: Client-side Blob download — no server round-trip for Markdown
+- [x] **EXPT-01**: Markdown export of current thread with tool panel data included
+- [x] **EXPT-02**: Export button in ChatPane header with Fluent Menu for format selection
+- [x] **EXPT-03**: Filename includes slugified thread name and date
+- [x] **EXPT-04**: Client-side Blob download — no server round-trip for Markdown
 
 ### Animations
 
@@ -113,18 +113,18 @@ Deferred to later milestones.
 | FEED-05 | Phase 22 | Complete |
 | FEED-06 | Phase 22 | Complete |
 | FEED-07 | Phase 22 | Complete |
-| SRCH-01 | Phase 23 | Pending |
-| SRCH-02 | Phase 23 | Pending |
-| SRCH-03 | Phase 23 | Pending |
-| SRCH-04 | Phase 23 | Pending |
-| SRCH-05 | Phase 23 | Pending |
-| SRCH-06 | Phase 23 | Pending |
-| SRCH-07 | Phase 23 | Pending |
-| SRCH-08 | Phase 23 | Pending |
-| EXPT-01 | Phase 24 | Pending |
-| EXPT-02 | Phase 24 | Pending |
-| EXPT-03 | Phase 24 | Pending |
-| EXPT-04 | Phase 24 | Pending |
+| SRCH-01 | Phase 23 | Complete |
+| SRCH-02 | Phase 23 | Complete |
+| SRCH-03 | Phase 23 | Complete |
+| SRCH-04 | Phase 23 | Complete |
+| SRCH-05 | Phase 23 | Complete |
+| SRCH-06 | Phase 23 | Complete |
+| SRCH-07 | Phase 23 | Complete |
+| SRCH-08 | Phase 23 | Complete |
+| EXPT-01 | Phase 24 | Complete |
+| EXPT-02 | Phase 24 | Complete |
+| EXPT-03 | Phase 24 | Complete |
+| EXPT-04 | Phase 24 | Complete |
 | ANIM-01 | Phase 25 | Pending |
 | ANIM-02 | Phase 25 | Pending |
 | ANIM-03 | Phase 25 | Pending |
