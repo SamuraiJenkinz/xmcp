@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 ## Current Position
 
-Phase: 21 of 25 complete (App Role Access Control ✓)
-Plan: —
-Status: Phase 21 verified and approved, ready to plan Phase 22
-Last activity: 2026-04-02 — Phase 21 executed (2 plans, 2 waves), verified 5/5, approved
+Phase: 22 of 25 in progress (Per-Message Feedback)
+Plan: 22-01 of 2 complete
+Status: In progress
+Last activity: 2026-04-02 — Completed 22-01-PLAN.md (feedback backend: schema + migration + Blueprint)
 
-Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 — 2/~10 plans)
+Progress: [███░░░░░░░░░░░░░░░░] 15% (v1.3 — 3/~10 plans)
 
 ## Performance Metrics
 
@@ -41,6 +41,9 @@ Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 
 - 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
 - /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
 - AuthStatus discriminated union replaces loading boolean — compiler enforces all branches are handled — 21-02
+- migrate_db() runs on every startup in app context — idempotent DDL, existing DBs gain feedback table on next restart — 22-01
+- POST vote=null retracts (same DELETE path) — one POST endpoint for both set and clear — 22-01
+- Comment truncated 500 chars at API layer, None if empty — DB column unconstrained — 22-01
 - error status on /api/me redirects to /login (network failure indistinguishable from session expiry) — 21-02
 - AccessDenied renders before ThreadProvider/ChatProvider to prevent cascading 403s — 21-02
 - SSE 401/403 triggers window.location.reload() so AuthGuard re-evaluates rather than surfacing error toast — 21-02
@@ -58,5 +61,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Phase 21 complete — ready to plan Phase 22 (Per-Message Feedback)
+Stopped at: Completed 22-01-PLAN.md — feedback backend (schema + migration + Blueprint)
 Resume file: None
