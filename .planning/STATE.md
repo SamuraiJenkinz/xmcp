@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 23 Plan 01 complete, FTS5 backend ready, frontend search next
+**Current focus:** v1.3 — Phase 23 complete, Thread Search fully shipped (FTS5 backend + frontend search UI)
 
 ## Current Position
 
-Phase: 23 of 25 in progress (Thread Search)
-Plan: 23-01 of 2 complete
-Status: In progress
-Last activity: 2026-04-02 — Completed 23-01-PLAN.md (FTS5 backend: table, triggers, backfill, search endpoint)
+Phase: 23 of 25 complete (Thread Search)
+Plan: 23-02 of 2 complete — Phase 23 done
+Status: Phase complete
+Last activity: 2026-04-02 — Completed 23-02-PLAN.md (frontend search: useDebounce, searchThreads, SearchInput, ThreadList wired)
 
-Progress: [████░░░░░░░░░░░░░░░] 22% (v1.3 — 6/~10 plans)
+Progress: [█████░░░░░░░░░░░░░░] 25% (v1.3 — 7/~10 plans)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [████░░░░░░░░░░░░░░░] 22% (v1.3 
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- v1.3: 5 plans in 1 day (2026-04-02, Phases 21-23 partial)
-- Total shipped: 71 plans, 22 complete phases + 1 in progress, 3 milestones
+- v1.3: 7 plans in 1 day (2026-04-02, Phases 21-23 complete)
+- Total shipped: 73 plans, 23 complete phases, 3 milestones
 
 ## Accumulated Context
 
@@ -53,6 +53,10 @@ Progress: [████░░░░░░░░░░░░░░░] 22% (v1.3 
 - DELETE+INSERT in sync triggers (not FTS content table) — simpler with group_concat, correct for single-row-per-thread — 23-01
 - try/except on FTS MATCH execute — malformed input returns [] not 500, consistent UX — 23-01
 - _build_fts5_query quotes each token individually — neutralises bare AND/OR/NOT operators — 23-01
+- SearchBox ref forwarded to underlying input directly — confirmed ForwardRefComponent<SearchBoxProps> — 23-02
+- Client-side filter feeds groupThreadsByRecency (active thread not pinned, disappears if no match) — 23-02
+- Ctrl+K uses setTimeout(0) deferred focus when expanding sidebar — ensures DOM update before focus — 23-02
+- Cancelled flag for FTS fetch cleanup (not AbortController) — simpler for single non-streaming GET — 23-02
 
 ### Pending Todos
 
@@ -67,5 +71,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Completed 23-01-PLAN.md — FTS5 backend done, frontend search (23-02) is next
+Stopped at: Completed 23-02-PLAN.md — Thread Search phase fully complete
 Resume file: None
