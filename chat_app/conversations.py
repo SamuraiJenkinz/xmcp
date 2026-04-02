@@ -11,7 +11,7 @@ import json
 
 from flask import Blueprint, jsonify, request, session
 
-from chat_app.auth import login_required
+from chat_app.auth import role_required
 from chat_app.db import get_db
 
 conversations_bp = Blueprint("conversations_bp", __name__)
@@ -27,7 +27,7 @@ def _user_id() -> str:
 
     The OID (object ID) is a stable UUID string that uniquely identifies
     the user across the Azure AD tenant.  Falls back to empty string if
-    the session has no user (should not occur under @login_required).
+    the session has no user (should not occur under @role_required).
     """
     return (session.get("user") or {}).get("oid", "")
 
@@ -38,7 +38,7 @@ def _user_id() -> str:
 
 
 @conversations_bp.route("/api/threads", methods=["GET"])
-@login_required
+@role_required
 def list_threads():
     """Return all threads for the current user, newest first."""
     db = get_db()
@@ -51,7 +51,7 @@ def list_threads():
 
 
 @conversations_bp.route("/api/threads", methods=["POST"])
-@login_required
+@role_required
 def create_thread():
     """Create a new empty thread and its associated messages row.
 
@@ -72,7 +72,7 @@ def create_thread():
 
 
 @conversations_bp.route("/api/threads/<int:thread_id>/messages", methods=["GET"])
-@login_required
+@role_required
 def get_messages(thread_id: int):
     """Return the message history for a thread owned by the current user.
 
@@ -96,7 +96,7 @@ def get_messages(thread_id: int):
 
 
 @conversations_bp.route("/api/threads/<int:thread_id>", methods=["PATCH"])
-@login_required
+@role_required
 def rename_thread(thread_id: int):
     """Rename a thread owned by the current user.
 
@@ -117,7 +117,7 @@ def rename_thread(thread_id: int):
 
 
 @conversations_bp.route("/api/threads/<int:thread_id>", methods=["DELETE"])
-@login_required
+@role_required
 def delete_thread(thread_id: int):
     """Delete a thread owned by the current user.
 

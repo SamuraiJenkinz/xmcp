@@ -11,7 +11,7 @@ from flask import Flask, Response, jsonify, redirect, render_template, request, 
 from flask_session import Session
 
 from chat_app import db as _db
-from chat_app.auth import auth_bp, login_required
+from chat_app.auth import auth_bp, role_required
 from chat_app.chat import chat_bp
 from chat_app.config import Config
 from chat_app.conversations import conversations_bp
@@ -145,7 +145,7 @@ def create_app() -> Flask:
 
     # --- Chat route (protected) ---
     @app.route("/chat")
-    @login_required
+    @role_required
     def chat():
         user = session.get("user")
         display_name = user.get("name", "Colleague")
@@ -180,7 +180,7 @@ def create_app() -> Flask:
 
     # --- Photo proxy endpoint ---
     @app.route("/api/photo/<user_id>")
-    @login_required
+    @role_required
     def photo_proxy(user_id):
         """Proxy colleague photos from Graph API with caching and placeholder fallback."""
         from chat_app.graph_client import get_user_photo_96
@@ -209,15 +209,16 @@ def create_app() -> Flask:
 
     # --- Current user identity endpoint (for React SPA) ---
     @app.route("/api/me")
-    @login_required
+    @role_required
     def api_me():
-        """Return current user's display name, email, and OID from MSAL session."""
+        """Return current user's display name, email, OID, and roles from MSAL session."""
         user = session.get("user", {})
         return jsonify(
             {
                 "displayName": user.get("name", ""),
                 "email": user.get("preferred_username", ""),
                 "oid": user.get("oid", ""),
+                "roles": user.get("roles", []),
             }
         )
 

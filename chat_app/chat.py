@@ -48,7 +48,7 @@ from typing import Any, Generator
 
 from flask import Blueprint, Response, request, session, stream_with_context
 
-from chat_app.auth import login_required
+from chat_app.auth import role_required
 from chat_app.context_mgr import prune_conversation
 from chat_app.db import get_db
 from chat_app.openai_client import (
@@ -127,7 +127,7 @@ def _sse(event_dict: dict[str, Any]) -> str:
 
 
 @chat_bp.route("/chat/stream", methods=["POST"])
-@login_required
+@role_required
 def chat_stream() -> Response:
     """SSE endpoint: process a user message and stream the AI response.
 
