@@ -68,3 +68,10 @@ export interface ForbiddenResponse {
   required_role: string;
   upn: string;
 }
+
+// Per-message feedback vote
+export interface FeedbackVote {
+  assistant_message_idx: number;
+  vote: 'up' | 'down';
+  comment?: string;
+}

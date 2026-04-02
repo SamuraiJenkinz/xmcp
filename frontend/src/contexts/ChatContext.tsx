@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, type ReactNode } from 'react';
-import type { DisplayMessage, StreamingMessageState, ToolPanelData } from '../types/index.ts';
+import type { DisplayMessage, FeedbackVote, StreamingMessageState, ToolPanelData } from '../types/index.ts';
 
 // State
 
@@ -8,6 +8,7 @@ interface ChatState {
   streamingMessage: StreamingMessageState | null;
   isStreaming: boolean;
   error: string | null;
+  feedbackMap: Record<number, 'up' | 'down'>;
 }
 
 const initialState: ChatState = {
@@ -15,6 +16,7 @@ const initialState: ChatState = {
   streamingMessage: null,
   isStreaming: false,
   error: null,
+  feedbackMap: {},
 };
 
 // Actions
@@ -28,7 +30,9 @@ export type ChatAction =
   | { type: 'SET_STREAMING'; isStreaming: boolean }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'ADD_USER_MESSAGE'; content: string }
-  | { type: 'CLEAR_ERROR' };
+  | { type: 'CLEAR_ERROR' }
+  | { type: 'SET_FEEDBACK_MAP'; votes: FeedbackVote[] }
+  | { type: 'SET_FEEDBACK_VOTE'; messageIndex: number; vote: 'up' | 'down' | null };
 
 // Reducer
 
@@ -120,6 +124,24 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'CLEAR_ERROR':
       return { ...state, error: null };
 
+    case 'SET_FEEDBACK_MAP': {
+      const map: Record<number, 'up' | 'down'> = {};
+      for (const v of action.votes) {
+        map[v.assistant_message_idx] = v.vote;
+      }
+      return { ...state, feedbackMap: map };
+    }
+
+    case 'SET_FEEDBACK_VOTE': {
+      const next = { ...state.feedbackMap };
+      if (action.vote === null) {
+        delete next[action.messageIndex];
+      } else {
+        next[action.messageIndex] = action.vote;
+      }
+      return { ...state, feedbackMap: next };
+    }
+
     default:
       return state;
   }
@@ -132,6 +154,7 @@ interface ChatContextValue {
   streamingMessage: StreamingMessageState | null;
   isStreaming: boolean;
   error: string | null;
+  feedbackMap: Record<number, 'up' | 'down'>;
   dispatch: React.Dispatch<ChatAction>;
 }
 
@@ -147,6 +170,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     streamingMessage: state.streamingMessage,
     isStreaming: state.isStreaming,
     error: state.error,
+    feedbackMap: state.feedbackMap,
     dispatch,
   };
 
