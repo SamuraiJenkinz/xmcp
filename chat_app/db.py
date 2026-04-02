@@ -65,6 +65,38 @@ def init_db() -> None:
         db.executescript(f.read().decode("utf-8"))
 
 
+def migrate_db() -> None:
+    """Apply additive schema migrations so existing databases gain new tables.
+
+    Uses CREATE TABLE IF NOT EXISTS / CREATE INDEX IF NOT EXISTS — fully
+    idempotent and safe to run on every startup without data loss.
+    Currently adds: feedback table + analytics indexes.
+    """
+    db = get_db()
+    db.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS feedback (
+            id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+            thread_id             INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+            assistant_message_idx INTEGER NOT NULL,
+            user_id               TEXT    NOT NULL,
+            vote                  TEXT    NOT NULL CHECK(vote IN ('up', 'down')),
+            comment               TEXT,
+            created_at            TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            updated_at            TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+            UNIQUE(thread_id, assistant_message_idx, user_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_feedback_thread
+            ON feedback(thread_id, assistant_message_idx);
+
+        CREATE INDEX IF NOT EXISTS idx_feedback_user_vote
+            ON feedback(user_id, vote, created_at DESC);
+        """
+    )
+    db.commit()
+
+
 @click.command("init-db")
 def init_db_command() -> None:
     """Create or reset the conversation database tables."""
@@ -76,3 +108,8 @@ def init_app(app) -> None:  # type: ignore[no-untyped-def]
     """Register db teardown and CLI command with the Flask app factory."""
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+
+    # Run additive migrations on every startup so existing databases
+    # gain new tables (e.g. feedback) without manual intervention.
+    with app.app_context():
+        migrate_db()
