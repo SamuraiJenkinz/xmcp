@@ -1,422 +1,640 @@
-# Architecture Patterns: UI/UX Redesign — Frontend Framework Integration
+# Architecture Patterns: v1.3 Feature Integration
 
 **Project:** Atlas — Exchange Infrastructure Chat App
-**Milestone:** Full UI/UX Overhaul (Subsequent Milestone)
-**Researched:** 2026-03-27
-**Scope:** How a modern frontend framework integrates with the existing Flask/Waitress/Jinja2 backend without disrupting the working API layer.
+**Milestone:** v1.3 — App Role Access Control, Feedback, Search, Export, Animations
+**Researched:** 2026-04-01
+**Scope:** How five new features integrate with the existing Flask 3.x + React 19 + SQLite architecture.
 
 ---
 
-## Executive Summary
-
-The recommended approach for Atlas is the **Flask-served SPA** pattern: Svelte 5 (compiled via Vite) is built to a static bundle, served by Flask from a dedicated `frontend/dist/` directory, and the entire app runs on a single origin (same host, same port). This preserves the session-cookie auth flow intact, eliminates all CORS complexity, and requires zero changes to the Flask API routes or auth blueprint.
-
-The current Jinja2 templates are replaced by the compiled SPA index.html. Flask gets one catch-all route that returns the index.html for any non-API, non-auth path, enabling client-side routing. During development a Vite dev server proxies all `/api/*`, `/chat/*`, `/login`, `/auth/*`, and `/logout` requests back to Flask, keeping cookies on localhost same-origin.
-
-This is the lowest-risk path for a single developer because: (1) the SSE streaming already uses `fetch()` + `ReadableStream` (not `EventSource`), so it ports directly to Svelte with no protocol changes; (2) auth is fully server-side MSAL — the frontend never touches tokens; (3) Flask stays unchanged except for three config lines and one catch-all route.
-
----
-
-## Current Architecture (Baseline)
+## Baseline Architecture (as of v1.2)
 
 ```
 Browser (on-prem / VPN)
     |
     | HTTPS (self-signed cert, Waitress WSGI)
     v
-+--------------------------------------------------+
-|  Flask 3.x / Waitress                            |
-|  Blueprints:                                     |
-|    auth_bp      → /login, /auth/callback,        |
-|                   /logout                        |
-|    chat_bp      → POST /chat/stream (SSE)        |
-|    conversations_bp → /api/threads (CRUD)        |
-|  Routes (app.py):                                |
-|    GET  /            → splash.html (Jinja2)      |
-|    GET  /chat        → chat.html (Jinja2)        |
-|    GET  /api/photo/<user_id>  → Graph photo proxy|
-|    GET  /api/health           → JSON             |
-|  Session: filesystem (flask-session, signed)     |
-|  Auth: MSAL ConfidentialClientApplication        |
-|  DB: SQLite WAL (threads + messages tables)      |
-|  MCP: async subprocess JSON-RPC stdio            |
-+--------------------------------------------------+
++-----------------------------------------------+
+|  Flask 3.x / Waitress                         |
+|  Blueprints:                                  |
+|    auth_bp         /login /auth/callback      |
+|                    /logout                    |
+|    chat_bp         POST /chat/stream (SSE)    |
+|    conversations_bp /api/threads/* (CRUD)     |
+|  Routes (app.py):                             |
+|    GET /api/me       → user identity JSON     |
+|    GET /api/photo/<id> → Graph photo proxy    |
+|    GET /api/health   → JSON                   |
+|  Session: filesystem (flask-session)          |
+|    session["user"] = id_token_claims dict     |
+|      contains: oid, name, preferred_username  |
+|      v1.3 adds:  roles (list[str])            |
+|  Auth: MSAL ConfidentialClientApplication     |
+|  DB: SQLite WAL                               |
+|    threads(id, user_id, name, created_at,     |
+|            updated_at)                        |
+|    messages(id, thread_id, messages_json)     |
++-----------------------------------------------+
     |
-    | JSON-RPC stdio
-    v
-+---------------------------+
-|  exchange_mcp server      |
-|  (Python subprocess)      |
-+---------------------------+
+    +-- React 19 SPA (served from frontend_dist/)
+    |     AuthContext   (user state, no roles yet)
+    |     ThreadContext (thread list + active id)
+    |     ChatContext   (messages + streaming)
+    |
+    +-- SQLite WAL (chat.db)
+    |
+    +-- exchange_mcp server (subprocess JSON-RPC)
 ```
 
-**Static assets:** `chat_app/static/app.js` (~400 lines vanilla JS), `style.css` (~800 lines), served by Flask.
-
-**Jinja2 data injection:** `chat.html` receives `user`, `display_name`, `last_thread_id` from the `/chat` route. The `last_thread_id` is passed via a `data-last-thread-id` attribute on `.app-layout`. `base.html` injects `session.user.name` into the header.
+**Key constraint for v1.3:** Session already contains `id_token_claims` from MSAL. The `roles` claim is populated automatically by Azure AD when the user has been assigned an App Role — it arrives as `session["user"]["roles"]` (list of strings, e.g. `["Atlas.User"]`). No token re-acquisition is needed; the claim is present in the ID token that MSAL already captures at `auth_callback`.
 
 ---
 
-## Integration Options Evaluated
+## Feature 1: App Role Access Control
 
-### Option A: Flask-Served SPA (Recommended)
+### How roles appear in the existing session
 
-Svelte/Vite builds to `frontend/dist/`. Flask serves this directory as the SPA. Single origin. Auth cookies require no reconfiguration.
+MSAL's `acquire_token_by_auth_code_flow` returns `id_token_claims` in the result. Azure AD populates a `roles` claim (list of strings) in the ID token when App Roles are configured and assigned. The existing `auth_callback` in `auth.py` stores the entire `id_token_claims` dict as `session["user"]` — so `session["user"].get("roles", [])` is already the right access pattern. No changes to the auth flow are needed.
 
-**How it works in production:**
-- Flask `static_folder` → `frontend/dist/assets/` (hashed JS/CSS bundles)
-- Flask catch-all route → returns `frontend/dist/index.html`
-- All `/api/*`, `/chat/*`, `/login`, `/auth/*`, `/logout` routes continue as-is
-- `flask-session` cookies set with `SameSite=Lax`, `Secure` (already on HTTPS) — unchanged
+**HIGH confidence** — confirmed by [Microsoft Entra docs: Add app roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps): "for an app that signs in users, the roles claims are included in the ID token."
 
-**How it works in development:**
-- Vite dev server runs on `:5173`, Flask on `:5000`
-- `vite.config.js` proxy: any path matching `/api/*`, `/chat/*`, `/login`, `/auth/*`, `/logout`, `/static/*` is forwarded to `http://localhost:5000`
-- Browser talks to Vite at `:5173` — cookies set by Flask arrive as same-origin because Vite proxy strips the cross-origin boundary
-- `credentials: 'include'` on fetch calls handles cookie forwarding through the proxy
+### Backend changes
 
-**Confidence:** HIGH — this pattern is documented by Flask's official SPA patterns page and confirmed working with Waitress.
+**Modified file: `chat_app/auth.py`**
 
----
-
-### Option B: Separate Frontend Server (Not Recommended)
-
-SPA runs on `:5173` or `:3000` in production (e.g., served by Nginx). Flask on `:5000`. Cross-origin in production.
-
-**Problems for Atlas specifically:**
-1. `SameSite=Lax` session cookies do not cross origins. Would require `SameSite=None; Secure`, which changes security posture.
-2. MSAL auth code flow redirects to `/auth/callback` — the callback lands on Flask, sets session cookie, then must redirect to the frontend origin. This requires tracking the frontend origin in the Flask redirect, adding complexity.
-3. CORS middleware (`flask-cors`) must be added and configured for exact origin with `supports_credentials=True`.
-4. The `/api/photo/<user_id>` photo proxy would need CORS headers for image responses.
-5. On-prem with self-signed cert: two separate HTTPS origins means two separate cert exceptions for users.
-
-**Single-developer cost:** Meaningful — adds CORS config, changes cookie settings, complicates auth callback, adds Nginx config for production.
-
-**Verdict:** Rejected. No benefit for this deployment model.
-
----
-
-### Option C: Enhanced Vanilla JS (Defer the Framework Decision)
-
-Keep Jinja2 templates and vanilla JS, but rewrite `app.js` as ES modules with a cleaner component model. Add a CSS design system.
-
-**When appropriate:** If UI polish is the primary goal and the team wants zero build tooling risk.
-
-**Problems:**
-- No component reactivity — DOM manipulation code grows proportionally with UI complexity
-- No TypeScript — harder to maintain as features expand
-- CSS-in-JS or scoped styles require manual discipline
-- Cannot use modern component libraries (shadcn/svelte, etc.)
-
-**Verdict:** Valid fallback if the framework migration proves too complex, but forfeits the long-term maintainability gains. Not recommended as the primary approach.
-
----
-
-## Recommended Architecture: Flask-Served Svelte 5 SPA
-
-### Why Svelte 5 Over React and Vue 3
-
-| Criterion | React 18 | Vue 3 | Svelte 5 |
-|-----------|----------|-------|----------|
-| Bundle size (typical SPA) | ~42KB runtime + app | ~20KB runtime + app | ~1.6KB runtime + app |
-| Build tooling | Vite (Create React App deprecated) | Vite | Vite (native) |
-| Flask + Vite integration templates | Many | Many | Specific Flask+Svelte5 template exists |
-| SSE (fetch/ReadableStream) support | Standard | Standard | Standard |
-| Reactivity model | Hooks (learned patterns required) | Composition API (moderate) | Runes — closest to plain JS |
-| Single-developer ergonomics | Complex state management | Good | Excellent — minimal boilerplate |
-| Ecosystem maturity | Largest | Large | Growing rapidly |
-
-Svelte 5 is recommended for Atlas because: the app is one screen (chat interface), state is simple (threads list, current thread, streaming state), and Svelte's compile-to-vanilla-JS approach produces the smallest output. The developer experience is closest to the existing vanilla JS codebase — migrating from `app.js` to Svelte components is a natural progression rather than a paradigm shift.
-
-React would be the right choice if future staffing required React-familiar developers. Vue 3 is a reasonable alternative if Svelte 5 feels unfamiliar. Either can use the same Flask-served SPA architecture described here.
-
----
-
-## Component Boundaries
-
-```
-App (root Svelte component)
-├── Header
-│   ├── AppLogo
-│   ├── ThemeToggle         (replaces localStorage theme logic from app.js)
-│   └── UserInfo + Logout   (receives user from Flask-injected JSON or /api/me)
-│
-├── Sidebar
-│   ├── NewChatButton
-│   └── ThreadList
-│       └── ThreadItem      (inline rename, delete, active state)
-│
-└── ChatPane
-    ├── MessageList
-    │   ├── WelcomeMessage  (example query buttons)
-    │   ├── UserMessage
-    │   └── AssistantMessage
-    │       ├── ThinkingDots
-    │       ├── ToolPanel   (collapsible details, JSON highlight)
-    │       ├── ProfileCard
-    │       ├── SearchResultCards
-    │       └── MarkdownRenderer
-    │
-    └── InputArea
-        ├── AutoExpandTextarea
-        └── SendButton      (disabled during streaming)
-```
-
-**State that crosses component boundaries:**
-- `currentThreadId` — owned by App, passed to Sidebar and ChatPane
-- `isStreaming` — owned by ChatPane, passed to InputArea
-- `user` — fetched once on mount from `/api/me` (new endpoint) or injected via `<script>` tag
-
----
-
-## Data Flow
-
-```
-User types message
-    → InputArea emits "submit"
-    → ChatPane calls POST /chat/stream
-    → Flask chat_bp processes: tool loop → streaming response
-    → ChatPane reads ReadableStream (existing SSE protocol unchanged)
-    → SSE events dispatched to: ToolPanel, MarkdownRenderer, ThreadList (thread_named)
-    → On "done": finalize markdown, refetch /api/threads
-
-User clicks thread
-    → ThreadList emits "select"
-    → ChatPane calls GET /api/threads/{id}/messages
-    → Renders historical messages
-
-User renames thread
-    → ThreadItem emits "rename"
-    → PATCH /api/threads/{id}
-    → ThreadList updates locally
-
-User logs out
-    → Header triggers window.location = '/logout'
-    → Flask clears session, redirects to splash
-```
-
----
-
-## SSE Streaming Integration
-
-**Key finding:** The existing SSE implementation uses `fetch()` + `ReadableStream.getReader()` — NOT the native `EventSource` API. This is by design because the endpoint is POST (sends `message` and `thread_id` in the JSON body). `EventSource` only supports GET requests.
-
-This means the SSE consumer ports directly to Svelte with zero protocol changes:
-
-```javascript
-// Current app.js pattern (works identically in Svelte)
-const response = await fetch('/chat/stream', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ message: text, thread_id: currentThreadId }),
-    signal: abortController.signal
-});
-const reader = response.body.getReader();
-// ... pump loop reads SSE data: lines
-```
-
-In Svelte, this lives in a `stream.js` service module. The streaming state (`isStreaming`, abort controller) becomes a Svelte rune or store. The event types (`tool`, `text`, `thread_named`, `done`, `error`) are handled the same way — the only difference is that state mutations trigger reactive UI updates rather than direct DOM manipulation.
-
-**No changes required to `chat.py` or the SSE event protocol.**
-
----
-
-## Auth Flow Continuity
-
-The MSAL auth code flow is entirely server-side in Flask. The frontend never sees tokens. The SPA simply:
-
-1. On mount, calls `GET /api/me` (new lightweight endpoint) — returns 200 with user JSON or 401
-2. If 401 → redirect to `/login` (window.location, not client-side routing)
-3. Flask `/login` → Azure AD → `/auth/callback` → sets session cookie → redirects to `/` (which loads SPA)
-4. SPA loads, calls `/api/me`, gets user data, renders authenticated UI
-
-**New endpoint needed:** `GET /api/me` — returns `session["user"]` as JSON (name, preferred_username, oid). This is a 5-line Flask route. Replaces Jinja2 template variable injection.
-
-**Session cookie behavior:**
-- Existing config: `SESSION_TYPE=filesystem`, `SESSION_USE_SIGNER=True`
-- Cookie attributes: Flask default is `SameSite=Lax`, `HttpOnly=True`
-- Since SPA is served from the same origin as Flask, `SameSite=Lax` is correct and does not need to change
-- `SESSION_COOKIE_SECURE=True` is already correct for the HTTPS on-prem deployment
-- No CORS configuration required
-
-**MSAL redirect URI:** The `/auth/callback` route remains unchanged. The callback URL registered in Azure AD Entra (`https://<server>/auth/callback`) does not change.
-
-**Splash page:** The `splash.html` with the "Sign in with Microsoft" button can remain a Jinja2 template served at `/` for unauthenticated users (simplest path), OR it can be replaced by the SPA rendering the login screen conditionally. The simplest migration keeps Flask serving the splash for unauthenticated requests and the SPA for authenticated ones — but a cleaner SPA approach has the SPA always serve the root, with `/api/me` determining render state.
-
-**Recommendation:** Replace splash with SPA-rendered login screen. Avoids the split-template complexity and makes the entire UI consistent.
-
----
-
-## Build and Serve Strategy
-
-### Directory Structure
-
-```
-xmcp/
-├── chat_app/             # Flask app (unchanged)
-│   ├── static/           # Legacy static (removed after migration)
-│   ├── templates/        # Legacy Jinja2 (removed after migration)
-│   ├── app.py
-│   ├── auth.py
-│   ├── chat.py
-│   └── ...
-│
-└── frontend/             # New Svelte/Vite project
-    ├── src/
-    │   ├── App.svelte
-    │   ├── lib/
-    │   │   ├── components/
-    │   │   └── services/
-    │   │       ├── api.js      # /api/threads CRUD
-    │   │       └── stream.js   # /chat/stream SSE consumer
-    │   └── main.js
-    ├── dist/             # Vite build output (gitignored)
-    ├── package.json
-    └── vite.config.js
-```
-
-### Vite Configuration (Development)
-
-```javascript
-// frontend/vite.config.js
-import { defineConfig } from 'vite';
-import { svelte } from '@sveltejs/vite-plugin-svelte';
-
-export default defineConfig({
-    plugins: [svelte()],
-    server: {
-        proxy: {
-            '/api': { target: 'http://localhost:5000', changeOrigin: true },
-            '/chat': { target: 'http://localhost:5000', changeOrigin: true },
-            '/login': { target: 'http://localhost:5000', changeOrigin: true },
-            '/auth': { target: 'http://localhost:5000', changeOrigin: true },
-            '/logout': { target: 'http://localhost:5000', changeOrigin: true },
-            '/static': { target: 'http://localhost:5000', changeOrigin: true },
-        }
-    },
-    build: {
-        outDir: '../chat_app/frontend_dist',  // Build directly into Flask static tree
-    }
-});
-```
-
-### Flask Changes for SPA (Production)
+Add a new decorator alongside the existing `login_required`. The new decorator checks both session existence AND roles claim:
 
 ```python
-# app.py additions — approximately 15 lines
+REQUIRED_ROLE = "Atlas.User"  # or read from Config
 
-# 1. New /api/me endpoint
-@app.route("/api/me")
-@login_required
-def me():
-    return jsonify(session.get("user"))
-
-# 2. Serve SPA static assets
-app = Flask(
-    __name__,
-    static_folder="../frontend_dist/assets",
-    static_url_path="/assets",
-)
-
-# 3. Catch-all route returns SPA index.html
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def spa_index(path):
-    # Let Flask handle its own routes first; this catch-all is lowest priority
-    # because specific routes are registered before it.
-    return send_from_directory("../frontend_dist", "index.html")
+def role_required(f):
+    """Decorator: requires authentication AND the Atlas.User app role."""
+    @functools.wraps(f)
+    def decorated(*args, **kwargs):
+        user = session.get("user")
+        if not user:
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "authentication required"}), 401
+            return redirect(url_for("catch_all", path=""))
+        roles = user.get("roles") or []
+        if REQUIRED_ROLE not in roles:
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "access denied", "code": "insufficient_role"}), 403
+            return redirect(url_for("access_denied"))
+        return f(*args, **kwargs)
+    return decorated
 ```
 
-Note: The catch-all must be registered AFTER all blueprints and specific routes, so Flask's URL matching resolves `/api/*`, `/chat/*`, `/login`, `/auth/*`, and `/logout` first.
+The `REQUIRED_ROLE` value string must exactly match the **Value** field of the App Role in the Azure AD manifest (case-sensitive).
 
-### Build Integration
+**Decorator replacement strategy:** Replace `@login_required` with `@role_required` on all protected routes in `conversations_bp`, `chat_bp`, and `app.py` (`/api/me`, `/api/photo`, `/api/health`). The `login_required` decorator can remain for `/api/health` if that endpoint should be accessible to all authenticated users regardless of role.
+
+**New route in `app.py`:** `GET /access-denied` — serves a React-compatible response. In React SPA mode, this returns `index.html` so the frontend can render the access-denied screen. Alternatively the `/api/me` response can include a `hasAccess: false` flag and the frontend renders the gate.
+
+**Preferred approach:** Return a `403` from `/api/me` (not a JSON body with `hasAccess: false`) when the user is authenticated but lacks the role. This means `api_me` in `app.py` also uses `@role_required`. The React `AuthGuard` in `App.tsx` already handles 401; it needs a 403 branch added.
+
+### Frontend changes
+
+**Modified file: `frontend/src/api/me.ts`**
+
+Handle `403` response distinctly from `401`:
+```typescript
+if (res.status === 401) return null;       // not authenticated → redirect to /login
+if (res.status === 403) throw new AccessDeniedError();  // authenticated, no role
+```
+
+**Modified file: `frontend/src/contexts/AuthContext.tsx`**
+
+Add `accessDenied: boolean` to `AuthState`. Set it when `/api/me` returns 403.
+
+**Modified file: `frontend/src/App.tsx`**
+
+Extend `AuthGuard` to render an `<AccessDenied />` component when `accessDenied` is true, instead of redirecting to login.
+
+**New file: `frontend/src/components/AccessDenied.tsx`**
+
+Standalone screen explaining the user is authenticated but does not have access. Shows their email, a contact-IT message, and a logout link.
+
+### Azure AD manifest changes
+
+1. Open App Registration in Entra admin center.
+2. Under **App roles**, create a new role:
+   - Display name: `Atlas User`
+   - Allowed member types: `Users/Groups`
+   - Value: `Atlas.User` (this exact string goes in `REQUIRED_ROLE`)
+   - Description: `Can access the Atlas Exchange chat application`
+   - Enabled: `true`
+3. Under **Enterprise Applications** → the app → **Users and groups**, assign the pilot group or individual users to the `Atlas.User` role.
+4. No manifest JSON editing is required; the portal UI handles it.
+
+**No new environment variables needed** — the role name string can be hardcoded as a constant in `auth.py` or added to `Config` if it needs to vary across environments.
+
+---
+
+## Feature 2: Thumbs Up/Down Feedback
+
+### Data model
+
+**New SQLite table (add to `schema.sql`):**
+
+```sql
+CREATE TABLE IF NOT EXISTS feedback (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id   INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+    message_idx INTEGER NOT NULL,   -- 0-based index into messages_json array
+    user_id     TEXT    NOT NULL,
+    rating      INTEGER NOT NULL CHECK (rating IN (1, -1)),
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    UNIQUE (thread_id, message_idx, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_thread
+    ON feedback(thread_id);
+```
+
+`message_idx` is the position of the assistant message within the `messages_json` array. Using an index (not a content hash or timestamp) is simplest given the existing storage model — the array is append-only and messages do not reorder.
+
+The `UNIQUE` constraint prevents double-voting and makes upsert semantics possible (a second vote on the same message flips or removes the rating).
+
+### Backend changes
+
+**New file: `chat_app/feedback.py`** — new Blueprint with two endpoints:
+
+- `POST /api/threads/<thread_id>/messages/<int:message_idx>/feedback` — body `{"rating": 1}` or `{"rating": -1}`. Verifies thread ownership first (same ownership pattern as `conversations.py`). Upserts feedback row using `INSERT OR REPLACE`.
+- `DELETE /api/threads/<thread_id>/messages/<int:message_idx>/feedback` — removes the user's feedback row (allows un-rating).
+
+**Modified file: `chat_app/app.py`**
+
+Register `feedback_bp` blueprint.
+
+### Frontend changes
+
+**New file: `frontend/src/api/feedback.ts`** — `submitFeedback(threadId, messageIdx, rating)` and `deleteFeedback(threadId, messageIdx)`.
+
+**Modified file: `frontend/src/types/index.ts`**
+
+Add `feedback?: 1 | -1 | null` to `DisplayMessage`.
+
+**Modified file: `frontend/src/components/ChatPane/AssistantMessage.tsx`**
+
+Add thumbs-up / thumbs-down buttons below assistant message content. On click, call `submitFeedback`. Show active state (filled vs outline icon) based on local optimistic state. Use Fluent UI `ThumbLike20Regular` / `ThumbLike20Filled` / `ThumbDislike20Regular` / `ThumbDislike20Filled` icons (already available from `@fluentui/react-icons`).
+
+**State management note:** Feedback state is local to each message component — no global state changes needed. The `DisplayMessage` type gets a `feedback` field, populated when loading historical messages if feedback data is included in the response.
+
+**Loading historical feedback:** The `GET /api/threads/<id>/messages` endpoint in `conversations.py` currently returns only `messages_json`. Options:
+
+- Option A: Add a separate `GET /api/threads/<id>/feedback` endpoint that returns `{messageIdx: rating}` map. Frontend fetches this alongside messages when switching threads.
+- Option B: Extend the existing messages endpoint to include feedback in the response.
+
+Recommendation: Option A (separate endpoint). It keeps `conversations.py` unchanged and allows feedback to load lazily without blocking message display.
+
+---
+
+## Feature 3: Thread Search
+
+### Storage design
+
+The messages are stored as a JSON array in `messages.messages_json`. FTS5 cannot index JSON arrays directly. Two approaches:
+
+**Option A: FTS5 external content table on threads.name only (thread-level search)**
+
+Search thread names only. Simple to implement — thread names are plain text strings.
+
+```sql
+CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
+    name,
+    content='threads',
+    content_rowid='id'
+);
+```
+
+**Option B: FTS5 on a denormalized message_text table (message-level search)**
+
+Maintain a separate `message_text(id, thread_id, message_idx, role, content)` table alongside `messages`. FTS5 indexes this table. The `chat.py` SSE endpoint writes to `message_text` after each conversation turn.
+
+Recommendation: **Option A first, Option B later.** Thread-name search satisfies the use case of "find that conversation about Exchange quota issues." Searching within message content can be a v1.4 feature. Thread names are meaningful (auto-named from first message), searchable, and index simply.
+
+**Schema additions for thread search (add to `schema.sql`):**
+
+```sql
+-- FTS5 index on thread names (content table approach)
+CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
+    name,
+    content='threads',
+    content_rowid='id'
+);
+
+-- Triggers to keep FTS index in sync with threads table
+CREATE TRIGGER IF NOT EXISTS threads_fts_ai AFTER INSERT ON threads BEGIN
+    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
+END;
+
+CREATE TRIGGER IF NOT EXISTS threads_fts_au AFTER UPDATE OF name ON threads BEGIN
+    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
+    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
+END;
+
+CREATE TRIGGER IF NOT EXISTS threads_fts_ad AFTER DELETE ON threads BEGIN
+    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
+END;
+```
+
+**Important:** FTS5 external content tables do not auto-populate on creation. After running the schema migration, a one-time backfill is required:
+
+```sql
+INSERT INTO threads_fts(rowid, name) SELECT id, name FROM threads WHERE name != '';
+```
+
+This backfill must run as part of the `flask init-db` command or as a separate migration step.
+
+### Backend changes
+
+**Modified file: `chat_app/conversations.py`**
+
+Add one new endpoint:
+
+```python
+@conversations_bp.route("/api/threads/search")
+@role_required
+def search_threads():
+    q = request.args.get("q", "").strip()
+    if not q:
+        return jsonify([])
+    db = get_db()
+    rows = db.execute(
+        """
+        SELECT t.id, t.name, t.updated_at
+        FROM threads_fts
+        JOIN threads t ON threads_fts.rowid = t.id
+        WHERE threads_fts MATCH ?
+          AND t.user_id = ?
+        ORDER BY bm25(threads_fts)
+        LIMIT 20
+        """,
+        (q, _user_id()),
+    ).fetchall()
+    return jsonify([dict(r) for r in rows])
+```
+
+The `AND t.user_id = ?` join ensures users can only search their own threads — same ownership model as the rest of `conversations.py`.
+
+### Frontend changes
+
+**Modified file: `frontend/src/api/threads.ts`**
+
+Add `searchThreads(q: string): Promise<Thread[]>`.
+
+**Modified file: `frontend/src/components/Sidebar/ThreadList.tsx`**
+
+Add a search input at the top of the thread list. When focused or when the user types, switch between the full thread list and search results. A debounced `onChange` handler calls `searchThreads`. An empty query string reverts to the normal thread list.
+
+**State:** Search query string and search results are local state within `ThreadList` — no context changes needed.
+
+**New file (optional): `frontend/src/components/Sidebar/SearchInput.tsx`**
+
+Extracted input component for the search box — Fluent UI `SearchBox` or a styled `<input type="search">`.
+
+---
+
+## Feature 4: Conversation Export
+
+### Design decisions
+
+Export is generated server-side from the stored `messages_json`. This keeps the frontend thin and ensures the export accurately reflects what is persisted (not transient UI state).
+
+**Supported formats:**
+
+- Markdown (`.md`) — human-readable, copy-pasteable, renders in tools like Obsidian/VS Code
+- JSON (`.json`) — full fidelity, includes tool events and metadata
+
+### Backend changes
+
+**New file: `chat_app/export.py`** — Blueprint with one endpoint:
+
+```python
+@export_bp.route("/api/threads/<int:thread_id>/export")
+@role_required
+def export_thread(thread_id: int):
+    fmt = request.args.get("format", "markdown")  # "markdown" or "json"
+    db = get_db()
+    # ownership check (same pattern as conversations.py)
+    thread = db.execute(
+        "SELECT id, name FROM threads WHERE id = ? AND user_id = ?",
+        (thread_id, _user_id()),
+    ).fetchone()
+    if thread is None:
+        return jsonify({"error": "Not found"}), 404
+
+    row = db.execute(
+        "SELECT messages_json FROM messages WHERE thread_id = ?", (thread_id,)
+    ).fetchone()
+    messages = json.loads(row["messages_json"]) if row else []
+
+    if fmt == "json":
+        payload = json.dumps({
+            "thread_id": thread_id,
+            "name": thread["name"],
+            "exported_at": datetime.utcnow().isoformat() + "Z",
+            "messages": messages,
+        }, indent=2)
+        filename = f"atlas-thread-{thread_id}.json"
+        return Response(
+            payload,
+            mimetype="application/json",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+    # Markdown format
+    lines = [f"# {thread['name'] or f'Thread {thread_id}'}", ""]
+    for msg in messages:
+        role = msg.get("role", "")
+        content = msg.get("content") or ""
+        if role == "system":
+            continue
+        if role == "user":
+            lines += [f"**You:** {content}", ""]
+        elif role == "assistant":
+            lines += [f"**Atlas:** {content}", ""]
+        # tool and tool_calls messages are omitted from markdown export
+
+    payload = "\n".join(lines)
+    safe_name = (thread["name"] or f"thread-{thread_id}").replace(" ", "-")[:50]
+    filename = f"atlas-{safe_name}.md"
+    return Response(
+        payload,
+        mimetype="text/markdown",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+```
+
+**Modified file: `chat_app/app.py`**
+
+Register `export_bp` blueprint.
+
+### Frontend changes
+
+**Modified file: `frontend/src/components/Sidebar/ThreadItem.tsx`**
+
+Add "Export" to the existing thread item context menu (or as an icon button alongside rename/delete). The export triggers a `window.location.href` navigation to `/api/threads/<id>/export?format=markdown` — the browser handles the file download natively. No API module change needed for the simplest path.
+
+Alternatively, add `exportThread(id, format)` to `frontend/src/api/threads.ts` using `fetch` + `URL.createObjectURL` for a programmatic download, which avoids navigating away. The programmatic approach is cleaner for a SPA.
+
+---
+
+## Feature 5: Motion Animations
+
+### Library
+
+**Package:** `motion` (formerly framer-motion, rebranded). Import from `"motion/react"`.
 
 ```bash
-# Development workflow
-cd frontend && npm run dev   # Vite dev server on :5173 with Flask proxy
-cd chat_app && python -m flask run  # Flask on :5000
+npm install motion
+```
 
-# Production build
-cd frontend && npm run build  # Outputs to chat_app/frontend_dist/
-# Flask/Waitress serves everything from one process as before
+The package is `motion`, not `framer-motion`. The import path is `motion/react` for React components. React 19 compatibility is not explicitly documented but the library uses standard React APIs (hooks, ref forwarding) — no known incompatibility.
+
+**Confidence: MEDIUM** — library docs verified via WebFetch but explicit React 19 compat statement not found. Risk is low; motion uses standard React APIs.
+
+### Integration points
+
+Animations are additive to existing components — no structural changes required. The `motion.div` / `motion.button` etc. wrappers replace the plain HTML elements where animations are wanted.
+
+**Candidate locations:**
+
+| Component | Animation | Motion API |
+|-----------|-----------|------------|
+| `AssistantMessage.tsx` | Fade + slide in on mount | `initial={{ opacity: 0, y: 8 }}` → `animate={{ opacity: 1, y: 0 }}` |
+| `UserMessage.tsx` | Fade in on mount | Same pattern |
+| `ThreadItem.tsx` | Subtle scale on hover | `whileHover={{ scale: 1.01 }}` |
+| `Sidebar` | Slide transition on collapse/expand | `animate={{ width: collapsed ? 48 : 260 }}` |
+| Feedback thumbs | Scale bounce on click | `whileTap={{ scale: 0.85 }}` |
+| `AccessDenied.tsx` | Fade in on mount | `initial={{ opacity: 0 }}` |
+
+**Anti-pattern to avoid:** Animating streaming message chunks. Each SSE `text` delta appends to the assistant message content string. Wrapping the entire streaming message in a `motion` component and animating on every `content` change will cause jank. Animation on mount (when the component first appears) is fine. Content updates during streaming should not trigger re-animation.
+
+**LazyMotion:** For bundle size, use `LazyMotion` with `domAnimation` feature set if bundle size becomes a concern. Not needed immediately given the internal deployment context.
+
+---
+
+## New Components Summary
+
+### New backend files
+
+| File | Type | Purpose |
+|------|------|---------|
+| `chat_app/feedback.py` | New Blueprint | POST/DELETE feedback endpoints |
+| `chat_app/export.py` | New Blueprint | GET export endpoint (Markdown + JSON) |
+
+### Modified backend files
+
+| File | Change |
+|------|--------|
+| `chat_app/auth.py` | Add `role_required` decorator, `REQUIRED_ROLE` constant |
+| `chat_app/app.py` | Register feedback + export blueprints; update `api_me` to use `role_required`; add access-denied route |
+| `chat_app/conversations.py` | Add `GET /api/threads/search` endpoint; switch to `role_required` |
+| `chat_app/chat.py` | Switch `@login_required` to `@role_required` |
+| `chat_app/schema.sql` | Add `feedback` table, `threads_fts` virtual table, three FTS sync triggers |
+
+### New frontend files
+
+| File | Purpose |
+|------|---------|
+| `frontend/src/components/AccessDenied.tsx` | Access denied screen for role-gated users |
+| `frontend/src/components/Sidebar/SearchInput.tsx` | Search input component |
+| `frontend/src/api/feedback.ts` | Feedback API calls |
+
+### Modified frontend files
+
+| File | Change |
+|------|--------|
+| `frontend/src/api/me.ts` | Handle 403 → `AccessDeniedError` |
+| `frontend/src/api/threads.ts` | Add `searchThreads`, optionally `exportThread` |
+| `frontend/src/contexts/AuthContext.tsx` | Add `accessDenied` state field |
+| `frontend/src/types/index.ts` | Add `feedback` field to `DisplayMessage`; add `AccessDeniedError` |
+| `frontend/src/App.tsx` | Extend `AuthGuard` for 403 → `<AccessDenied />` |
+| `frontend/src/components/ChatPane/AssistantMessage.tsx` | Add feedback buttons; add motion animations |
+| `frontend/src/components/ChatPane/UserMessage.tsx` | Add motion animations |
+| `frontend/src/components/Sidebar/ThreadList.tsx` | Add search input + results mode |
+| `frontend/src/components/Sidebar/ThreadItem.tsx` | Add export action; add motion hover |
+
+---
+
+## SQLite Schema Additions
+
+Full additions to append to `chat_app/schema.sql`:
+
+```sql
+-- Feedback ratings for assistant messages
+CREATE TABLE IF NOT EXISTS feedback (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    thread_id   INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+    message_idx INTEGER NOT NULL,
+    user_id     TEXT    NOT NULL,
+    rating      INTEGER NOT NULL CHECK (rating IN (1, -1)),
+    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    UNIQUE (thread_id, message_idx, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_feedback_thread
+    ON feedback(thread_id);
+
+-- FTS5 virtual table for thread name search
+CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
+    name,
+    content='threads',
+    content_rowid='id'
+);
+
+-- Triggers to keep threads_fts in sync with threads.name
+CREATE TRIGGER IF NOT EXISTS threads_fts_ai AFTER INSERT ON threads BEGIN
+    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
+END;
+
+CREATE TRIGGER IF NOT EXISTS threads_fts_au AFTER UPDATE OF name ON threads BEGIN
+    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
+    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
+END;
+
+CREATE TRIGGER IF NOT EXISTS threads_fts_ad AFTER DELETE ON threads BEGIN
+    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
+END;
+```
+
+**Migration note:** `CREATE VIRTUAL TABLE IF NOT EXISTS` is safe to run on an existing database. However, the FTS index will be empty until the backfill runs. Add a backfill step to the `flask init-db` CLI command or as a separate `flask backfill-fts` command:
+
+```python
+@click.command("backfill-fts")
+def backfill_fts_command():
+    """Populate threads_fts from existing thread names."""
+    db = get_db()
+    db.execute(
+        "INSERT INTO threads_fts(rowid, name) SELECT id, name FROM threads WHERE name != ''"
+    )
+    db.commit()
+    click.echo("FTS backfill complete.")
 ```
 
 ---
 
-## Migration Strategy
+## Azure AD Manifest Changes
 
-### Phase 1: Parallel Infrastructure (No Visible Change)
+All changes are made via Entra admin center UI — no raw manifest JSON editing needed.
 
-1. Scaffold `frontend/` with Vite + Svelte 5
-2. Configure Vite proxy to Flask
-3. Implement `GET /api/me` in Flask (5-line addition)
-4. Create a bare-bones `App.svelte` that calls `/api/me` and renders "authenticated" or "login"
-5. Wire the build output into Flask catch-all route (behind a feature flag or config toggle)
-6. Verify: cookies work, SSE works, auth round-trip works
+**App Registration → App roles:**
 
-**Risk at this phase:** Zero. Original Jinja2 templates still serve in production. The SPA build is only active when explicitly enabled.
+| Field | Value |
+|-------|-------|
+| Display name | `Atlas User` |
+| Allowed member types | `Users/Groups` |
+| Value | `Atlas.User` |
+| Description | `Can access the Atlas Exchange chat application` |
+| Enabled | `true` |
 
-### Phase 2: Core Chat Functionality
+**Enterprise Applications → [App name] → Users and groups:**
 
-Migrate in this order (each self-contained, testable before next):
+- Assign the pilot group or individual users to the `Atlas.User` role.
+- Users without an assignment will receive a `roles` claim with no entries, triggering the 403 path.
 
-1. **Stream service** (`stream.js`) — port existing `readSSEStream()` and `doSend()` from app.js. Test against live `/chat/stream`. This is the highest-risk piece; isolate it first.
-2. **Thread management** — port `fetchThreads()`, `renderThreadList()`, `switchThread()`, `createNewThread()`, `deleteThread()`, `makeRenameHandler()` to ThreadList + ThreadItem components
-3. **Message rendering** — port `createMessageEl()`, `appendUserMessage()`, `createAssistantMessage()`, `renderMarkdown()`, tool panel builder, profile card builder, search result cards
-4. **Welcome message** — example query buttons
-5. **Input area** — auto-expanding textarea, form submit, keyboard shortcuts (Ctrl+Enter, Escape to cancel)
-6. **Header** — user info, logout link, theme toggle
+**No redirect URI changes.** The auth code flow callback URL (`/auth/callback`) is unchanged.
 
-**Migrate splash last** (or keep as Jinja2 — it has no dynamic JS, just a link to `/login`).
-
-### Phase 3: UI Polish (The Actual Redesign)
-
-Once the Svelte port is feature-complete and verified against the existing UI behavior, apply the design system changes: layout, typography, colour system, animations, component polish. By this point the component boundaries are established and styling is scoped.
-
-This sequencing is critical: **don't redesign and migrate simultaneously**. Separating the "structural port" from the "visual redesign" phases makes each individually verifiable and reduces rollback scope.
-
-### Rollback Strategy
-
-During Phase 2, Flask can be configured to conditionally serve either the Jinja2 templates or the SPA index.html based on an environment variable. If the SPA has a critical regression, flip the flag. Remove this dual-serving capability after Phase 3 is complete and validated.
+**Important:** The `roles` claim appears in the **ID token** (not just the access token) because this is a web app signing in users, not a daemon calling an API. MSAL's `acquire_token_by_auth_code_flow` returns `id_token_claims` which includes `roles`. This is already what `auth_callback` stores as `session["user"]`.
 
 ---
 
-## Anti-Patterns to Avoid
+## Data Flow Changes
 
-### Anti-Pattern 1: CORS Configuration for Same-Server Deployment
+### Access control flow (new)
 
-Adding `flask-cors` and configuring cross-origin headers is unnecessary when Flask serves the SPA from the same origin. Adding it anyway introduces security surface and is a signal the architecture is wrong.
+```
+Browser → GET /api/me
+    ↓
+Flask api_me → @role_required
+    → session["user"]["roles"] contains "Atlas.User" → 200 JSON
+    → session["user"]["roles"] missing "Atlas.User" → 403 JSON
+    → session["user"] not set → 401 JSON
 
-### Anti-Pattern 2: JWT/Token Auth for the SPA
+React AuthGuard:
+    → 200 → render app
+    → 403 → render <AccessDenied />
+    → 401 → redirect to /login
+```
 
-Some Flask+SPA tutorials replace session cookies with JWTs because "SPAs need stateless auth." For Atlas, session cookies are correct — the MSAL token is already server-side, the session is short-lived, and the deployment is internal (not a public API). Introducing JWTs would require storing them (localStorage = XSS risk, memory = lost on refresh) and adds significant complexity for no benefit.
+### Feedback flow (new)
 
-### Anti-Pattern 3: Using EventSource for the SSE Endpoint
+```
+User clicks thumbs-up on message[idx]
+    → optimistic UI update (local state)
+    → POST /api/threads/<id>/messages/<idx>/feedback {"rating": 1}
+    → Flask: ownership check → INSERT OR REPLACE feedback
+    → 200 → confirm
+    → error → revert optimistic state
+```
 
-The existing `/chat/stream` endpoint is POST (because it needs a JSON body with `message` and `thread_id`). `EventSource` only handles GET. The current `fetch()` + `ReadableStream` approach is correct and must be preserved. Do not refactor to GET+EventSource.
+### Search flow (new)
 
-### Anti-Pattern 4: Big-Bang Rewrite
+```
+User types in search box (debounced, 300ms)
+    → GET /api/threads/search?q=<term>
+    → Flask: FTS5 MATCH query + user_id filter → list of threads
+    → ThreadList renders search results instead of full list
+    → User clicks result → handleSelectThread (existing)
+```
 
-Rewriting all Jinja2 templates and all of `app.js` simultaneously before testing any of it against the live Flask backend is how frontend migrations fail. The phased approach (infrastructure → core → polish) limits the blast radius of any given phase.
+### Export flow (new)
 
-### Anti-Pattern 5: SvelteKit Instead of Svelte
-
-SvelteKit is a full-stack framework with its own routing, SSR, and server endpoints. For Atlas, Flask IS the server. Using SvelteKit would create a Node.js server layer in front of Flask, complicating auth (two session layers), SSE (SvelteKit's SSE requires its own endpoint patterns), and deployment (two processes). Use plain Svelte 5 with Vite, not SvelteKit.
+```
+User clicks Export on ThreadItem
+    → GET /api/threads/<id>/export?format=markdown
+    → Flask: ownership check → build Markdown → Response with Content-Disposition
+    → Browser: native file download
+```
 
 ---
 
-## Scalability Considerations
+## Suggested Build Order
 
-| Concern | Current (Jinja2 + vanilla JS) | After SPA Migration |
-|---------|-------------------------------|---------------------|
-| Auth | Unchanged | Unchanged |
-| SSE streaming | Unchanged | Unchanged |
-| API surface | Unchanged | +1 endpoint (/api/me) |
-| Static file serving | Flask serves .js + .css | Flask serves hashed bundles |
-| Build complexity | None | npm + Vite build step |
-| Deployment | python -m waitress | npm run build then python -m waitress |
-| Bundle caching | Manual (filenames static) | Automatic (Vite content hash) |
+Dependencies drive this order. Each feature can be built and tested independently after its prerequisites.
 
-The largest operational change is adding `npm run build` to the deployment process. This is well-understood and can be scripted in the existing `scripts/` directory.
+```
+1. App Role Access Control  (no dependencies — pure auth layer change)
+   Backend:  auth.py → role_required decorator
+             app.py  → update api_me, add access-denied handling
+             conversations.py / chat.py → swap decorators
+   Frontend: me.ts → 403 handling
+             AuthContext → accessDenied state
+             App.tsx → AuthGuard 403 branch
+             AccessDenied.tsx → new component
+   Azure AD: create Atlas.User app role, assign test users
+
+2. Feedback              (depends on: auth control complete)
+   Backend:  schema.sql → feedback table
+             feedback.py → new Blueprint + endpoints
+             app.py → register blueprint
+   Frontend: types → DisplayMessage.feedback
+             api/feedback.ts → new
+             AssistantMessage.tsx → thumbs buttons
+
+3. Thread Search         (depends on: auth control complete; independent of feedback)
+   Backend:  schema.sql → threads_fts + triggers
+             conversations.py → /api/threads/search endpoint
+             db.py → backfill-fts CLI command
+   Frontend: api/threads.ts → searchThreads
+             ThreadList.tsx → search mode
+             SearchInput.tsx → new component
+
+4. Export                (depends on: auth control complete; independent of 2 and 3)
+   Backend:  export.py → new Blueprint
+             app.py → register blueprint
+   Frontend: ThreadItem.tsx → export action
+
+5. Animations            (depends on: all other features complete or concurrent)
+   Frontend: npm install motion
+             AssistantMessage, UserMessage, ThreadItem, Sidebar → motion wrappers
+             AccessDenied → fade-in
+             Feedback buttons → whileTap
+```
+
+Features 2, 3, and 4 can be built in parallel after feature 1 is complete. Feature 5 is additive and can be layered on at any point, but it is cleanest to apply after the component structure is settled.
 
 ---
 
@@ -424,26 +642,19 @@ The largest operational change is adding `npm run build` to the deployment proce
 
 | Area | Confidence | Basis |
 |------|------------|-------|
-| Flask-served SPA pattern | HIGH | Flask official SPA docs, confirmed working pattern |
-| Vite proxy for dev | HIGH | Vite official docs, widely used pattern |
-| Session cookie preservation | HIGH | Same-origin = no cookie changes needed |
-| SSE via fetch/ReadableStream in Svelte | HIGH | Standard fetch API, framework-agnostic |
-| MSAL auth flow unchanged | HIGH | Flask handles all auth; frontend only calls /api/me |
-| Svelte 5 with Vite | MEDIUM | Svelte 5 is stable (released Oct 2024); specific Flask+Svelte5 template exists but is not official |
-| Migration phasing | MEDIUM | Based on general strangler-fig patterns; Atlas-specific ordering is reasoned but not empirically validated |
+| App Roles in ID token claims | HIGH | Microsoft Entra docs confirm `roles` in ID token for user sign-in scenario |
+| `session["user"]["roles"]` access pattern | HIGH | `auth_callback` stores full `id_token_claims`; `roles` is a standard claim |
+| FTS5 external content table + triggers | HIGH | SQLite FTS5 official documentation, verified via WebFetch |
+| FTS5 backfill requirement | HIGH | FTS5 doc: content tables do not auto-populate |
+| BM25 ranking direction (lower = better) | HIGH | SQLite FTS5 doc: "better matches receive lower numeric values" |
+| `feedback` table design (index-based) | MEDIUM | Reasonable given messages are append-only; fragile if message deletion is added later |
+| Motion library React 19 compat | MEDIUM | Standard React APIs used; no explicit React 19 statement found in docs |
+| Export server-side generation | HIGH | Standard Flask `Response` with `Content-Disposition`; no new dependencies |
 
 ---
 
 ## Sources
 
-- [Flask Single-Page Applications (official docs)](https://flask.palletsprojects.com/en/stable/patterns/singlepageapplications/)
-- [Session-based Auth with Flask for Single Page Apps — TestDriven.io](https://testdriven.io/blog/flask-spa-auth/)
-- [Flask + Svelte integration — Medium (Alex Cabrera)](https://cabreraalex.medium.com/svelte-js-flask-combining-svelte-with-a-simple-backend-server-d1bc46190ab9)
-- [Flask-Svelte-Template (Svelte 5 + Vite)](https://github.com/martinm07/flask-svelte-template)
-- [SvelteKit static adapter + Flask](https://github.com/saas-templates/flask-sveltekit-static)
-- [Vite Server Options (proxy configuration)](https://vite.dev/config/server-options)
-- [Unbreaking Cookies in Local Dev with Vite Proxy (2025)](https://mattslifebytes.com/2025/03/30/unbreaking-cookies-in-local-dev-with-vite-proxy/)
-- [SSE POST fetch ReadableStream vs EventSource — Medium](https://medium.com/@david.richards.tech/sse-server-sent-events-using-a-post-request-without-eventsource-1c0bd6f14425)
-- [React vs Vue vs Svelte 2025 comparison — merge.rocks](https://merge.rocks/blog/comparing-front-end-frameworks-for-startups-in-2025-svelte-vs-react-vs-vue)
-- [Frontend migration guide — Frontend Mastery](https://frontendmastery.com/posts/frontend-migration-guide/)
-- [Cookie Security for Flask — Miguel Grinberg](https://blog.miguelgrinberg.com/post/cookie-security-for-flask-applications)
+- [Microsoft Entra: Add app roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps)
+- [SQLite FTS5 documentation](https://sqlite.org/fts5.html)
+- [Motion for React quick start](https://motion.dev/docs/react-quick-start)
