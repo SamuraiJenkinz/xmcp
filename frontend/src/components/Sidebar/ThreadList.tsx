@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useChat } from '../../contexts/ChatContext.tsx';
 import { useThreads } from '../../contexts/ThreadContext.tsx';
-import { createThread, deleteThread, getMessages, renameThread } from '../../api/threads.ts';
+import { createThread, deleteThread, getMessages, renameThread, searchThreads } from '../../api/threads.ts';
+import type { SearchResult } from '../../api/threads.ts';
 import { getFeedbackForThread } from '../../api/feedback.ts';
 import { parseHistoricalMessages } from '../../utils/parseHistoricalMessages.ts';
 import { groupThreadsByRecency } from '../../utils/groupThreadsByRecency.ts';
 import { ThreadItem } from './ThreadItem.tsx';
+import { SearchInput } from './SearchInput.tsx';
+import { useDebounce } from '../../hooks/useDebounce.ts';
 import { ComposeRegular, PanelLeftContractRegular, PanelLeftExpandRegular } from '@fluentui/react-icons';
 
 interface ThreadListProps {
@@ -18,6 +21,13 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
   const { threads, activeThreadId, dispatch: threadDispatch } = useThreads();
   const { isStreaming, dispatch: chatDispatch } = useChat();
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const debouncedQuery = useDebounce(searchQuery, 300);
+  const [ftsResults, setFtsResults] = useState<SearchResult[]>([]);
+  const [ftsLoading, setFtsLoading] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Roving tabindex state
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const [focusedIndex, setFocusedIndex] = useState(0);
@@ -25,7 +35,14 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
   const newChatBtnCollapsedRef = useRef<HTMLButtonElement>(null);
   const [focusAfterDeletion, setFocusAfterDeletion] = useState<number | null>(null);
 
-  const groups = groupThreadsByRecency(threads);
+  // Client-side title filter — does NOT pin active thread
+  const filteredThreads = searchQuery.trim()
+    ? threads.filter((t) =>
+        (t.name || 'New Chat').toLowerCase().includes(searchQuery.trim().toLowerCase())
+      )
+    : threads;
+
+  const groups = groupThreadsByRecency(filteredThreads);
   const flatThreads = groups.flatMap((g) => g.threads);
 
   // Clamp focusedIndex when list changes
@@ -46,6 +63,60 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
       setFocusAfterDeletion(null);
     }
   }, [focusAfterDeletion, threads]);
+
+  // FTS5 backend search — triggered by debounced query with 2-char minimum
+  useEffect(() => {
+    const trimmed = debouncedQuery.trim();
+    if (trimmed.length < 2) {
+      setFtsResults([]);
+      setFtsLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setFtsLoading(true);
+
+    searchThreads(trimmed)
+      .then((results) => {
+        if (!cancelled) {
+          setFtsResults(results);
+          setFtsLoading(false);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setFtsResults([]);
+          setFtsLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
+
+  // Ctrl+K / Cmd+K global shortcut — focus search, expanding sidebar if collapsed
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        if (collapsed) {
+          onToggleCollapse();
+          // Defer focus until sidebar DOM has expanded
+          setTimeout(() => {
+            searchInputRef.current?.focus();
+          }, 0);
+        } else {
+          searchInputRef.current?.focus();
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [collapsed, onToggleCollapse]);
 
   async function handleNewChat() {
     const newThread = await createThread();
@@ -122,6 +193,13 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
     }
   }
 
+  async function handleSelectSearchResult(threadId: number) {
+    await handleSelectThread(threadId);
+    // Clear search state after navigating to result
+    setSearchQuery('');
+    setFtsResults([]);
+  }
+
   function handleListKeyDown(e: React.KeyboardEvent) {
     const len = flatThreads.length;
     if (len === 0) return;
@@ -173,29 +251,43 @@ export function ThreadList({ onCancelStream, collapsed, onToggleCollapse }: Thre
         )}
       </div>
       {!collapsed && (
-        <div role="listbox" aria-label="Conversations" onKeyDown={handleListKeyDown}>
-          {groups.map((group) => (
-            <div key={group.label} className="thread-group">
-              <div className="thread-group-heading" role="presentation">{group.label}</div>
-              {group.threads.map((thread) => {
-                const globalIndex = flatThreads.findIndex((t) => t.id === thread.id);
-                return (
-                  <ThreadItem
-                    key={thread.id}
-                    thread={thread}
-                    isActive={thread.id === activeThreadId}
-                    tabIndexValue={globalIndex === focusedIndex ? 0 : -1}
-                    itemRef={(el) => { itemRefs.current[globalIndex] = el; }}
-                    onFocusInList={() => setFocusedIndex(globalIndex)}
-                    onSelect={handleSelectThread}
-                    onRename={handleRename}
-                    onDelete={handleDelete}
-                  />
-                );
-              })}
-            </div>
-          ))}
-        </div>
+        <>
+          <SearchInput
+            query={searchQuery}
+            onQueryChange={setSearchQuery}
+            ftsResults={ftsResults}
+            ftsLoading={ftsLoading}
+            onSelectResult={handleSelectSearchResult}
+            inputRef={searchInputRef}
+          />
+          <div role="listbox" aria-label="Conversations" onKeyDown={handleListKeyDown}>
+            {flatThreads.length === 0 && searchQuery.trim() ? (
+              <div className="search-no-threads">No threads match</div>
+            ) : (
+              groups.map((group) => (
+                <div key={group.label} className="thread-group">
+                  <div className="thread-group-heading" role="presentation">{group.label}</div>
+                  {group.threads.map((thread) => {
+                    const globalIndex = flatThreads.findIndex((t) => t.id === thread.id);
+                    return (
+                      <ThreadItem
+                        key={thread.id}
+                        thread={thread}
+                        isActive={thread.id === activeThreadId}
+                        tabIndexValue={globalIndex === focusedIndex ? 0 : -1}
+                        itemRef={(el) => { itemRefs.current[globalIndex] = el; }}
+                        onFocusInList={() => setFocusedIndex(globalIndex)}
+                        onSelect={handleSelectThread}
+                        onRename={handleRename}
+                        onDelete={handleDelete}
+                      />
+                    );
+                  })}
+                </div>
+              ))
+            )}
+          </div>
+        </>
       )}
       {collapsed && (
         <button
