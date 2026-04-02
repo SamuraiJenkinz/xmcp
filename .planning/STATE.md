@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 24 complete and verified, ready to plan Phase 25
+**Current focus:** v1.3 — Phase 25 in progress (Plan 01 complete)
 
 ## Current Position
 
-Phase: 24 of 25 complete (Conversation Export)
-Plan: 24-01 of 1 complete — Phase 24 done
-Status: Phase complete
-Last activity: 2026-04-02 — Phase 24 executed (1 plan, 1 wave), verified 5/5, passed
+Phase: 25 of 25 in progress (Motion Animations)
+Plan: 25-01 of 2 complete — animation infrastructure (providers + CSS)
+Status: In progress
+Last activity: 2026-04-02 — 25-01 executed (2 tasks), motion installed, providers added, CSS cleaned
 
-Progress: [███████░░░░░░░░░░░░] 35% (v1.3 — 8/~10 plans)
+Progress: [████████░░░░░░░░░░░] 38% (v1.3 — 9/~10 plans)
 
 ## Performance Metrics
 
@@ -37,6 +37,8 @@ Progress: [███████░░░░░░░░░░░░] 35% (v1.3 
 - Export: Markdown client-side Blob, JSON server-side Response (hybrid per research resolution)
 - FTS5 tokenizer: unicode61 only — porter over-stems Exchange technical terms (DAGHealth, etc.)
 - Animation: LazyMotion + domAnimation from the start; no framer-motion package; MotionConfig reducedMotion="user" required before any animation ships
+- motion@12.38.0 confirmed React 19 compatible (25-01 spike resolved MEDIUM confidence blocker)
+- Provider order: MotionConfig > LazyMotion > FluentProvider (outermost to innermost)
 - role_required is the canonical route decorator (login_required retained but unused on routes) — 21-01
 - 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
 - /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
@@ -69,11 +71,11 @@ None.
 ### Blockers/Concerns
 
 - Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned
-- Phase 25 (animations): motion + React 19 compat is MEDIUM confidence — spike npm install motion and a basic m.div render before committing to full animation scope
+- Phase 25 Plan 02: wire m.div into MessageItem/MessageList and apply feedback-scale-btn class in FeedbackButtons.tsx
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried from v1.2
 
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Phase 24 complete — ready to plan Phase 25 (Motion Animations)
+Stopped at: Phase 25 Plan 01 complete — ready to execute Plan 02 (m.div wiring + FeedbackButtons)
 Resume file: None
