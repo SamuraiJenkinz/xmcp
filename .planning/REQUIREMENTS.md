@@ -47,12 +47,12 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Animations
 
-- [ ] **ANIM-01**: New assistant message entrance animation (fade-in + upward translate, 200ms ease-out)
-- [ ] **ANIM-02**: New user message entrance animation (same pattern, 150ms)
-- [ ] **ANIM-03**: All animations wrapped in `prefers-reduced-motion: no-preference` media query
-- [ ] **ANIM-04**: No animation during SSE streaming — only on message mount
-- [ ] **ANIM-05**: Sidebar collapse/expand width transition (200-250ms ease-in-out, pure CSS)
-- [ ] **ANIM-06**: Feedback button scale micro-interaction on click (100ms)
+- [x] **ANIM-01**: New assistant message entrance animation (fade-in + upward translate, 200ms ease-out)
+- [x] **ANIM-02**: New user message entrance animation (same pattern, 150ms)
+- [x] **ANIM-03**: All animations wrapped in `prefers-reduced-motion: no-preference` media query
+- [x] **ANIM-04**: No animation during SSE streaming — only on message mount
+- [x] **ANIM-05**: Sidebar collapse/expand width transition (200-250ms ease-in-out, pure CSS)
+- [x] **ANIM-06**: Feedback button scale micro-interaction on click (100ms)
 
 ## Future Requirements
 
@@ -125,12 +125,12 @@ Deferred to later milestones.
 | EXPT-02 | Phase 24 | Complete |
 | EXPT-03 | Phase 24 | Complete |
 | EXPT-04 | Phase 24 | Complete |
-| ANIM-01 | Phase 25 | Pending |
-| ANIM-02 | Phase 25 | Pending |
-| ANIM-03 | Phase 25 | Pending |
-| ANIM-04 | Phase 25 | Pending |
-| ANIM-05 | Phase 25 | Pending |
-| ANIM-06 | Phase 25 | Pending |
+| ANIM-01 | Phase 25 | Complete |
+| ANIM-02 | Phase 25 | Complete |
+| ANIM-03 | Phase 25 | Complete |
+| ANIM-04 | Phase 25 | Complete |
+| ANIM-05 | Phase 25 | Complete |
+| ANIM-06 | Phase 25 | Complete |
 
 **Coverage:**
 - v1.3 requirements: 25 total

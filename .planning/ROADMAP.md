@@ -5,7 +5,7 @@
 - ✅ **v1.0 MVP** - Phases 1-9 (shipped 2026-03-22)
 - ✅ **v1.1 Colleague Lookup** - Phases 10-12 (shipped 2026-03-25)
 - ✅ **v1.2 UI/UX Redesign** - Phases 13-20 (shipped 2026-03-30)
-- 🚧 **v1.3 Access Control, Feedback, Search, Export, Animations** - Phases 21-25 (in progress)
+- ✅ **v1.3 Access Control, Feedback, Search, Export, Animations** - Phases 21-25 (shipped 2026-04-02)
 
 ## Phases
 
@@ -38,7 +38,7 @@ Delivered full frontend rewrite to React 19 + Fluent UI v9 + Tailwind v4 with Mi
 
 ---
 
-### 🚧 v1.3 Access Control, Feedback, Search, Export, Animations (In Progress)
+### ✅ v1.3 Access Control, Feedback, Search, Export, Animations (Shipped 2026-04-02)
 
 **Milestone Goal:** Gate access to authorized IT engineers via Azure AD App Roles, add per-message thumbs up/down feedback, thread search in the sidebar, Markdown export for tickets, and motion entrance animations consistent with the Copilot aesthetic established in v1.2.
 
@@ -136,8 +136,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 25-01-PLAN.md — motion package install, LazyMotion + MotionConfig providers, CSS cleanup (remove old keyframe, tune sidebar, add feedback scale)
-- [ ] 25-02-PLAN.md — m.div entrance animations on messages with streaming guard, historical message gate, feedback button scale class wiring
+- [x] 25-01-PLAN.md — motion package install, LazyMotion + MotionConfig providers, CSS cleanup (remove old keyframe, tune sidebar, add feedback scale)
+- [x] 25-02-PLAN.md — m.div entrance animations on messages with streaming guard, historical message gate, feedback button scale class wiring
 
 ---
 
@@ -152,4 +152,4 @@ Plans:
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 23. Thread Search | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 24. Conversation Export | v1.3 | 1/1 | Complete | 2026-04-02 |
-| 25. Motion Animations | v1.3 | 0/2 | Not started | - |
+| 25. Motion Animations | v1.3 | 2/2 | Complete | 2026-04-02 |
