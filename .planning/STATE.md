@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 21 of 25 (App Role Access Control)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-04-02 — Completed 21-01-PLAN.md (role_required decorator + route migration)
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-04-02 — Completed 21-02-PLAN.md (frontend auth discrimination + AccessDenied component)
 
-Progress: [█░░░░░░░░░░░░░░░░░░] 5% (v1.3 — 1/~20 plans)
+Progress: [██░░░░░░░░░░░░░░░░░] 10% (v1.3 — 2/~20 plans)
 
 ## Performance Metrics
 
@@ -39,6 +39,10 @@ Progress: [█░░░░░░░░░░░░░░░░░░] 5% (v1.3 �
 - role_required is the canonical route decorator (login_required retained but unused on routes) — 21-01
 - 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
 - /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
+- AuthStatus discriminated union replaces loading boolean — compiler enforces all branches are handled — 21-02
+- error status on /api/me redirects to /login (network failure indistinguishable from session expiry) — 21-02
+- AccessDenied renders before ThreadProvider/ChatProvider to prevent cascading 403s — 21-02
+- SSE 401/403 triggers window.location.reload() so AuthGuard re-evaluates rather than surfacing error toast — 21-02
 
 ### Pending Todos
 
@@ -53,5 +57,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Completed 21-01-PLAN.md — role_required decorator and route migration complete
+Stopped at: Completed 21-02-PLAN.md — frontend auth discrimination and AccessDenied component complete
 Resume file: None
