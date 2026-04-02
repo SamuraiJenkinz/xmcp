@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 21 of 25 (App Role Access Control)
-Plan: — (ready to plan)
-Status: Ready to plan
-Last activity: 2026-04-01 — Roadmap created for v1.3, phases 21-25 defined
+Plan: 1 of 2 complete
+Status: In progress
+Last activity: 2026-04-02 — Completed 21-01-PLAN.md (role_required decorator + route migration)
 
-Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.3)
+Progress: [█░░░░░░░░░░░░░░░░░░] 5% (v1.3 — 1/~20 plans)
 
 ## Performance Metrics
 
@@ -36,6 +36,9 @@ Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.3)
 - Export: Markdown client-side Blob, JSON server-side Response (hybrid per research resolution)
 - FTS5 tokenizer: unicode61 only — porter over-stems Exchange technical terms (DAGHealth, etc.)
 - Animation: LazyMotion + domAnimation from the start; no framer-motion package; MotionConfig reducedMotion="user" required before any animation ships
+- role_required is the canonical route decorator (login_required retained but unused on routes) — 21-01
+- 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
+- /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
 
 ### Pending Todos
 
@@ -49,6 +52,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-01
-Stopped at: Roadmap created — phases 21-25 defined, ready to plan Phase 21
+Last session: 2026-04-02
+Stopped at: Completed 21-01-PLAN.md — role_required decorator and route migration complete
 Resume file: None
