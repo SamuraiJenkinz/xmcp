@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Access Control, Feedback, Search, Export, Animations
+**Current focus:** v1.3 — Phase 21: App Role Access Control
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-04-01 — Milestone v1.3 started
+Phase: 21 of 25 (App Role Access Control)
+Plan: — (ready to plan)
+Status: Ready to plan
+Last activity: 2026-04-01 — Roadmap created for v1.3, phases 21-25 defined
 
-Progress: [░░░░░░░░░░░░░░░░░░░] 0%
+Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.3)
 
 ## Performance Metrics
 
@@ -31,6 +31,11 @@ Progress: [░░░░░░░░░░░░░░░░░░░] 0%
 (Full decision log in PROJECT.md Key Decisions table)
 
 - App Roles chosen over groupMembershipClaims for access gating (no overage, no raw GUIDs)
+- Feedback key: (thread_id, message_idx) — append-only assumption, document in code
+- Feedback vote field: TEXT ('up'/'down'/null) over INTEGER — more readable in analytics queries
+- Export: Markdown client-side Blob, JSON server-side Response (hybrid per research resolution)
+- FTS5 tokenizer: unicode61 only — porter over-stems Exchange technical terms (DAGHealth, etc.)
+- Animation: LazyMotion + domAnimation from the start; no framer-motion package; MotionConfig reducedMotion="user" required before any animation ships
 
 ### Pending Todos
 
@@ -38,10 +43,12 @@ None.
 
 ### Blockers/Concerns
 
-- CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var)
+- Phase 21 has an admin-dependency blocker: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned before end-to-end testing is possible
+- Phase 25 (animations): motion + React 19 compat is MEDIUM confidence — spike npm install motion and a basic m.div render before committing to full animation scope
+- CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried from v1.2
 
 ## Session Continuity
 
 Last session: 2026-04-01
-Stopped at: Defining requirements for v1.3
+Stopped at: Roadmap created — phases 21-25 defined, ready to plan Phase 21
 Resume file: None

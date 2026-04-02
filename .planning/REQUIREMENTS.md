@@ -99,44 +99,44 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Pending | Pending |
-| AUTH-02 | Pending | Pending |
-| AUTH-03 | Pending | Pending |
-| AUTH-04 | Pending | Pending |
-| AUTH-05 | Pending | Pending |
-| AUTH-06 | Pending | Pending |
-| AUTH-07 | Pending | Pending |
-| FEED-01 | Pending | Pending |
-| FEED-02 | Pending | Pending |
-| FEED-03 | Pending | Pending |
-| FEED-04 | Pending | Pending |
-| FEED-05 | Pending | Pending |
-| FEED-06 | Pending | Pending |
-| FEED-07 | Pending | Pending |
-| SRCH-01 | Pending | Pending |
-| SRCH-02 | Pending | Pending |
-| SRCH-03 | Pending | Pending |
-| SRCH-04 | Pending | Pending |
-| SRCH-05 | Pending | Pending |
-| SRCH-06 | Pending | Pending |
-| SRCH-07 | Pending | Pending |
-| SRCH-08 | Pending | Pending |
-| EXPT-01 | Pending | Pending |
-| EXPT-02 | Pending | Pending |
-| EXPT-03 | Pending | Pending |
-| EXPT-04 | Pending | Pending |
-| ANIM-01 | Pending | Pending |
-| ANIM-02 | Pending | Pending |
-| ANIM-03 | Pending | Pending |
-| ANIM-04 | Pending | Pending |
-| ANIM-05 | Pending | Pending |
-| ANIM-06 | Pending | Pending |
+| AUTH-01 | Phase 21 | Pending |
+| AUTH-02 | Phase 21 | Pending |
+| AUTH-03 | Phase 21 | Pending |
+| AUTH-04 | Phase 21 | Pending |
+| AUTH-05 | Phase 21 | Pending |
+| AUTH-06 | Phase 21 | Pending |
+| AUTH-07 | Phase 21 | Pending |
+| FEED-01 | Phase 22 | Pending |
+| FEED-02 | Phase 22 | Pending |
+| FEED-03 | Phase 22 | Pending |
+| FEED-04 | Phase 22 | Pending |
+| FEED-05 | Phase 22 | Pending |
+| FEED-06 | Phase 22 | Pending |
+| FEED-07 | Phase 22 | Pending |
+| SRCH-01 | Phase 23 | Pending |
+| SRCH-02 | Phase 23 | Pending |
+| SRCH-03 | Phase 23 | Pending |
+| SRCH-04 | Phase 23 | Pending |
+| SRCH-05 | Phase 23 | Pending |
+| SRCH-06 | Phase 23 | Pending |
+| SRCH-07 | Phase 23 | Pending |
+| SRCH-08 | Phase 23 | Pending |
+| EXPT-01 | Phase 24 | Pending |
+| EXPT-02 | Phase 24 | Pending |
+| EXPT-03 | Phase 24 | Pending |
+| EXPT-04 | Phase 24 | Pending |
+| ANIM-01 | Phase 25 | Pending |
+| ANIM-02 | Phase 25 | Pending |
+| ANIM-03 | Phase 25 | Pending |
+| ANIM-04 | Phase 25 | Pending |
+| ANIM-05 | Phase 25 | Pending |
+| ANIM-06 | Phase 25 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 25 total
-- Mapped to phases: 0
-- Unmapped: 25 ⚠️
+- Mapped to phases: 25
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-04-01*
-*Last updated: 2026-04-01 after initial definition*
+*Last updated: 2026-04-01 after roadmap creation — all 25 requirements mapped*
