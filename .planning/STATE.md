@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 23 complete and verified, ready to plan Phase 24
+**Current focus:** v1.3 — Phase 24 Plan 01 complete, export feature live in dist
 
 ## Current Position
 
-Phase: 23 of 25 complete (Thread Search)
-Plan: 23-02 of 2 complete — Phase 23 done
-Status: Phase complete
-Last activity: 2026-04-02 — Phase 23 executed (2 plans, 2 waves), verified 5/5, passed
+Phase: 24 of 25 in progress (Conversation Export)
+Plan: 24-01 of 1 complete — Plan 01 done
+Status: Plan complete
+Last activity: 2026-04-02 — Phase 24-01 executed (3 tasks), export feature shipped
 
-Progress: [█████░░░░░░░░░░░░░░] 25% (v1.3 — 7/~10 plans)
+Progress: [██████░░░░░░░░░░░░░] 30% (v1.3 — 8/~10 plans)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [█████░░░░░░░░░░░░░░] 25% (v1.3 
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- v1.3: 7 plans in 1 day (2026-04-02, Phases 21-23 complete)
-- Total shipped: 73 plans, 23 complete phases, 3 milestones
+- v1.3: 8 plans in 1 day (2026-04-02, Phases 21-24 partial)
+- Total shipped: 74 plans, 23 complete phases + Phase 24 in progress, 3 milestones
 
 ## Accumulated Context
 
@@ -57,6 +57,10 @@ Progress: [█████░░░░░░░░░░░░░░] 25% (v1.3 
 - Client-side filter feeds groupThreadsByRecency (active thread not pinned, disappears if no match) — 23-02
 - Ctrl+K uses setTimeout(0) deferred focus when expanding sidebar — ensures DOM update before focus — 23-02
 - Cancelled flag for FTS fetch cleanup (not AbortController) — simpler for single non-streaming GET — 23-02
+- Tool panels appear before assistant content in Markdown export to mirror UI order — 24-01
+- Export button disabled on isStreaming || messages.length === 0 — covers streaming and empty thread — 24-01
+- slugify falls back to 'conversation' when result is empty string — prevents bare-date filenames — 24-01
+- No new npm dependencies for export — all Fluent UI imports already in dependency tree — 24-01
 
 ### Pending Todos
 
@@ -71,5 +75,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Phase 23 complete — ready to plan Phase 24 (Conversation Export)
+Stopped at: Phase 24-01 complete — Conversation Export feature shipped in frontend dist
 Resume file: None
