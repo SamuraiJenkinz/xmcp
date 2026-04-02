@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 22: Per-Message Feedback
+**Current focus:** v1.3 — Phase 22 complete, ready for Phase 23
 
 ## Current Position
 
-Phase: 22 of 25 in progress (Per-Message Feedback)
-Plan: 22-01 of 2 complete
-Status: In progress
-Last activity: 2026-04-02 — Completed 22-01-PLAN.md (feedback backend: schema + migration + Blueprint)
+Phase: 22 of 25 complete (Per-Message Feedback)
+Plan: 22-02 of 2 complete
+Status: Phase complete
+Last activity: 2026-04-02 — Completed 22-02-PLAN.md (feedback frontend: FeedbackButtons, ChatContext, integration wiring)
 
-Progress: [███░░░░░░░░░░░░░░░░] 15% (v1.3 — 3/~10 plans)
+Progress: [████░░░░░░░░░░░░░░░] 20% (v1.3 — 5/~10 plans)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [███░░░░░░░░░░░░░░░░] 15% (v1.3 
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- v1.3: 2 plans in 1 day (2026-04-02, Phase 21)
-- Total shipped: 68 plans, 21 phases, 3 milestones
+- v1.3: 4 plans in 1 day (2026-04-02, Phases 21-22)
+- Total shipped: 70 plans, 22 phases, 3 milestones
 
 ## Accumulated Context
 
@@ -44,6 +44,8 @@ Progress: [███░░░░░░░░░░░░░░░░] 15% (v1.3 
 - migrate_db() runs on every startup in app context — idempotent DDL, existing DBs gain feedback table on next restart — 22-01
 - POST vote=null retracts (same DELETE path) — one POST endpoint for both set and clear — 22-01
 - Comment truncated 500 chars at API layer, None if empty — DB column unconstrained — 22-01
+- ThumbLike16* icons not available from main @fluentui/react-icons entry; bundleIcon uses standard-sized Filled/Regular variants — 22-02
+- handleCommentDismiss persists thumbs-down without comment on Popover close — avoids silent vote loss — 22-02
 - error status on /api/me redirects to /login (network failure indistinguishable from session expiry) — 21-02
 - AccessDenied renders before ThreadProvider/ChatProvider to prevent cascading 403s — 21-02
 - SSE 401/403 triggers window.location.reload() so AuthGuard re-evaluates rather than surfacing error toast — 21-02
@@ -61,5 +63,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Completed 22-01-PLAN.md — feedback backend (schema + migration + Blueprint)
+Stopped at: Completed 22-02-PLAN.md — feedback frontend (FeedbackButtons, ChatContext, integration wiring)
 Resume file: None
