@@ -1,4 +1,5 @@
 import { useRef, useEffect } from 'react';
+import * as m from 'motion/react-m';
 import type { ToolPanelData } from '../../types/index.ts';
 import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 import { CopyButton } from '../shared/CopyButton.tsx';
@@ -12,6 +13,7 @@ interface Props {
   content: string;
   toolPanels?: ToolPanelData[];
   isStreaming?: boolean;
+  isNew?: boolean; // only animate entrance for newly added messages
   timestamp?: string;
   threadId?: number;
   messageIndex?: number; // assistant-message ordinal
@@ -29,15 +31,22 @@ function renderToolPanel(panel: ToolPanelData, idx: number) {
   return <ToolPanel key={idx} {...panel} />;
 }
 
-export function AssistantMessage({ content, toolPanels, isStreaming, timestamp, threadId, messageIndex }: Props) {
+export function AssistantMessage({ content, toolPanels, isStreaming, isNew, timestamp, threadId, messageIndex }: Props) {
   // Track latest content in a ref so CopyButton's getText() always reads current value
   const contentRef = useRef(content);
   useEffect(() => {
     contentRef.current = content;
   }, [content]);
 
+  const Wrapper = !isStreaming && isNew ? m.div : 'div';
+  const motionProps = !isStreaming && isNew ? {
+    initial: { opacity: 0, y: 8 },
+    animate: { opacity: 1, y: 0 },
+    transition: { duration: 0.2, ease: 'easeOut' as const },
+  } : {};
+
   return (
-    <div className="message assistant-message">
+    <Wrapper className="message assistant-message" {...motionProps}>
       {toolPanels && toolPanels.length > 0 && (
         <div className="tool-panels">
           {toolPanels.map((panel, idx) => renderToolPanel(panel, idx))}
@@ -61,6 +70,6 @@ export function AssistantMessage({ content, toolPanels, isStreaming, timestamp, 
           {formatTimestamp(timestamp)}
         </div>
       )}
-    </div>
+    </Wrapper>
   );
 }
