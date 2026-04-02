@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import { ThreadProvider } from './contexts/ThreadContext.tsx';
 import { ChatProvider } from './contexts/ChatContext.tsx';
 import { AppLayout } from './components/AppLayout.tsx';
+import { AccessDenied } from './components/AccessDenied.tsx';
 
 // Set data-theme attribute immediately from localStorage so CSS variables
 // apply before React renders.
@@ -11,12 +12,19 @@ const storedTheme = (localStorage.getItem('atlas-theme') as 'light' | 'dark') ||
 document.documentElement.setAttribute('data-theme', storedTheme);
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
-  if (loading) return <div className="loading">Loading...</div>;
-  if (!user) {
+  const { status, upn } = useAuth();
+
+  if (status === 'loading') {
+    return <div className="loading">Loading...</div>;
+  }
+  if (status === 'unauthenticated' || status === 'error') {
     window.location.href = '/login';
     return null;
   }
+  if (status === 'forbidden') {
+    return <AccessDenied upn={upn} />;
+  }
+  // status === 'authenticated'
   return <>{children}</>;
 }
 

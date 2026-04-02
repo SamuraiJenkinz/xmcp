@@ -109,6 +109,12 @@ export function useStreamingMessage(options: UseStreamingMessageOptions): {
         });
 
         if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            // Auth/role failure — reload to let AuthGuard handle it
+            window.location.reload();
+            setIsStreaming(false);
+            return;
+          }
           const text = await res.text().catch(() => `HTTP ${res.status}`);
           flushPendingText();
           optionsRef.current.onError(text || `HTTP ${res.status}`);
