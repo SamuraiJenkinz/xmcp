@@ -76,7 +76,7 @@ Plans:
 3. Clicking the same button a second time retracts the vote — the icon returns to the unfilled variant and the record is removed from the database
 4. A thumbs-down click opens a Fluent Popover with an optional freetext comment field — submitting the popover persists the comment alongside the vote
 5. Screen readers hear "Feedback submitted" announced via an ARIA live region after any vote action
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
 - [x] 22-01-PLAN.md — feedback SQLite table schema, feedback Blueprint (POST/DELETE endpoints)
@@ -133,11 +133,11 @@ Plans:
 2. The sidebar collapse/expand transition is a smooth CSS width change over 200-250ms ease-in-out rather than an instant snap
 3. Clicking a feedback thumb button has a brief 100ms scale micro-interaction that communicates interactivity
 4. All motion animations are absent for users with prefers-reduced-motion or OS-level "Reduce animations" enabled — the MotionConfig reducedMotion="user" wrapper handles this globally
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 25-01: motion package install, LazyMotion + domAnimation setup, MotionConfig reducedMotion wrapper
-- [ ] 25-02: message entrance animations, sidebar collapse transition, feedback button micro-interaction
+- [ ] 25-01-PLAN.md — motion package install, LazyMotion + MotionConfig providers, CSS cleanup (remove old keyframe, tune sidebar, add feedback scale)
+- [ ] 25-02-PLAN.md — m.div entrance animations on messages with streaming guard, historical message gate, feedback button scale class wiring
 
 ---
 
@@ -152,4 +152,4 @@ Plans:
 | 22. Per-Message Feedback | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 23. Thread Search | v1.3 | 2/2 | Complete | 2026-04-02 |
 | 24. Conversation Export | v1.3 | 1/1 | Complete | 2026-04-02 |
-| 25. Motion Animations | v1.3 | 0/TBD | Not started | - |
+| 25. Motion Animations | v1.3 | 0/2 | Not started | - |
