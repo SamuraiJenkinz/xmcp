@@ -1,5 +1,18 @@
 import type { Thread, RawMessage } from '../types/index.ts';
 
+export interface SearchResult {
+  id: number;
+  name: string;
+  updated_at: string;
+  snippet: string;
+}
+
+export async function searchThreads(q: string): Promise<SearchResult[]> {
+  const res = await fetch(`/api/threads/search?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error(`searchThreads failed: ${res.status}`);
+  return res.json() as Promise<SearchResult[]>;
+}
+
 export async function listThreads(): Promise<Thread[]> {
   const res = await fetch('/api/threads');
   if (!res.ok) throw new Error(`listThreads failed: ${res.status}`);
