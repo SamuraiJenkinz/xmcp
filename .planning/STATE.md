@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-04-01)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 — Phase 22 complete and verified, ready to plan Phase 23
+**Current focus:** v1.3 — Phase 23 Plan 01 complete, FTS5 backend ready, frontend search next
 
 ## Current Position
 
-Phase: 22 of 25 complete (Per-Message Feedback)
-Plan: 22-02 of 2 complete
-Status: Phase complete
-Last activity: 2026-04-02 — Phase 22 executed (2 plans, 2 waves), verified 5/5, passed
+Phase: 23 of 25 in progress (Thread Search)
+Plan: 23-01 of 2 complete
+Status: In progress
+Last activity: 2026-04-02 — Completed 23-01-PLAN.md (FTS5 backend: table, triggers, backfill, search endpoint)
 
-Progress: [████░░░░░░░░░░░░░░░] 20% (v1.3 — 5/~10 plans)
+Progress: [████░░░░░░░░░░░░░░░] 22% (v1.3 — 6/~10 plans)
 
 ## Performance Metrics
 
@@ -22,8 +22,8 @@ Progress: [████░░░░░░░░░░░░░░░] 20% (v1.3 
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- v1.3: 4 plans in 1 day (2026-04-02, Phases 21-22)
-- Total shipped: 70 plans, 22 phases, 3 milestones
+- v1.3: 5 plans in 1 day (2026-04-02, Phases 21-23 partial)
+- Total shipped: 71 plans, 22 complete phases + 1 in progress, 3 milestones
 
 ## Accumulated Context
 
@@ -49,6 +49,10 @@ Progress: [████░░░░░░░░░░░░░░░] 20% (v1.3 
 - error status on /api/me redirects to /login (network failure indistinguishable from session expiry) — 21-02
 - AccessDenied renders before ThreadProvider/ChatProvider to prevent cascading 403s — 21-02
 - SSE 401/403 triggers window.location.reload() so AuthGuard re-evaluates rather than surfacing error toast — 21-02
+- INSERT OR IGNORE backfill (not DELETE+INSERT) for FTS idempotency — prevents clearing existing rows on restart — 23-01
+- DELETE+INSERT in sync triggers (not FTS content table) — simpler with group_concat, correct for single-row-per-thread — 23-01
+- try/except on FTS MATCH execute — malformed input returns [] not 500, consistent UX — 23-01
+- _build_fts5_query quotes each token individually — neutralises bare AND/OR/NOT operators — 23-01
 
 ### Pending Todos
 
@@ -63,5 +67,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: Phase 22 complete — ready to plan Phase 23 (Thread Search)
+Stopped at: Completed 23-01-PLAN.md — FTS5 backend done, frontend search (23-02) is next
 Resume file: None
