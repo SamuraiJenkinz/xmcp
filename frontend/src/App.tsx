@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LazyMotion, MotionConfig, domAnimation } from 'motion/react';
 import { FluentProvider, webDarkTheme, webLightTheme } from '@fluentui/react-components';
 import { AuthProvider, useAuth } from './contexts/AuthContext.tsx';
 import { ThreadProvider } from './contexts/ThreadContext.tsx';
@@ -39,16 +40,20 @@ export default function App() {
   }
 
   return (
-    <FluentProvider theme={theme === 'dark' ? webDarkTheme : webLightTheme}>
-      <AuthProvider>
-        <AuthGuard>
-          <ThreadProvider>
-            <ChatProvider>
-              <AppLayout theme={theme} onToggleTheme={handleToggleTheme} />
-            </ChatProvider>
-          </ThreadProvider>
-        </AuthGuard>
-      </AuthProvider>
-    </FluentProvider>
+    <MotionConfig reducedMotion="user">
+      <LazyMotion features={domAnimation}>
+        <FluentProvider theme={theme === 'dark' ? webDarkTheme : webLightTheme}>
+          <AuthProvider>
+            <AuthGuard>
+              <ThreadProvider>
+                <ChatProvider>
+                  <AppLayout theme={theme} onToggleTheme={handleToggleTheme} />
+                </ChatProvider>
+              </ThreadProvider>
+            </AuthGuard>
+          </AuthProvider>
+        </FluentProvider>
+      </LazyMotion>
+    </MotionConfig>
   );
 }
