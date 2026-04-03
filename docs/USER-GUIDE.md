@@ -198,7 +198,7 @@ Atlas has access to 17 tools, organized by category:
 |------|-------------|-----------------|
 | **get_dkim_config** | DKIM signing configuration and DNS CNAME validation | "Is DKIM enabled for mmc.com?" |
 | **get_dmarc_status** | DMARC policy and SPF record via live DNS lookup | "Check DMARC and SPF for contoso.com" |
-| **check_mobile_devices** | ActiveSync device partnerships and sync status | "What phones does alice@mmc.com have connected?" |
+| **check_mobile_devices** | Exchange ActiveSync device partnerships and sync status | "What phones does alice@mmc.com have connected via ActiveSync?" |
 
 ### Hybrid Tools
 
@@ -241,6 +241,7 @@ Atlas has access to 17 tools, organized by category:
 | "Sign in with Microsoft" loops back to login page | Session expired or cookies blocked | Clear browser cookies for the Atlas URL and try again |
 | Tool call takes more than 10 seconds | Exchange server under load or network issue | Wait for it to complete; Atlas has a 60-second timeout |
 | "Exchange error: not found" | Mailbox or DAG name does not exist | Double-check the email address or DAG name spelling |
+| "No mobile devices" but device exists in Entra ID | Atlas checks **Exchange ActiveSync** partnerships, not Entra ID registered devices. If you use Outlook or Gmail with modern auth (not the built-in Email app with ActiveSync), no ActiveSync record is created. | This is expected. Entra ID device registration and Exchange ActiveSync are separate systems. A future update may add Entra device lookup. |
 | "This tool requires an on-premises Exchange connection" | You used a DAG/queue/SMTP connector tool against Exchange Online | These tools only work with on-prem Exchange; use EXO equivalents |
 | Colleague search returns "Graph API not configured" | Microsoft Graph credentials are missing or invalid | Contact your admin to verify Azure AD app permissions (User.Read.All, ProfilePhoto.Read.All) |
 | Profile card shows initials instead of photo | The colleague has no photo in Azure AD | This is expected — initials are shown as a fallback |
