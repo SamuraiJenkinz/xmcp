@@ -1,5 +1,32 @@
 # Project Milestones: Exchange Infrastructure MCP Server
 
+## v1.3 Access Control, Feedback, Search, Export, Animations (Shipped: 2026-04-02)
+
+**Delivered:** Azure AD App Role access gating, per-message thumbs up/down feedback with SQLite persistence, two-tier thread search (client-side title filter + FTS5 full-text), Markdown conversation export, and motion entrance animations with prefers-reduced-motion compliance.
+
+**Phases completed:** 21-25 (9 plans total)
+
+**Key accomplishments:**
+
+- Azure AD App Role access gating — `role_required` decorator on all 9 protected routes with structured 401/403 JSON, AccessDenied Fluent 2 component with UPN copy and mailto link
+- Per-message feedback — thumbs up/down on assistant messages with SQLite persistence, toggle retraction, optional comment Popover, ARIA live region, optimistic UI
+- Thread search — instant client-side title filter + SQLite FTS5 full-text content search with debounce, snippets, CounterBadge, and Ctrl+K shortcut
+- Conversation export — client-side Markdown export with tool panel data, slug-dated filenames, Fluent MenuButton in ChatPane header
+- Motion animations — m.div entrance animations on messages (200ms/150ms ease-out), historical message gate, sidebar CSS transition, feedback button scale micro-interaction, prefers-reduced-motion via MotionConfig
+
+**Stats:**
+
+- 69 files created/modified (+7,679 / -221 lines)
+- ~75.7K LOC (Python + TypeScript/CSS/SQL)
+- 5 phases, 9 plans, ~19 tasks
+- 1 day from milestone start to ship (2026-04-02)
+
+**Git range:** `5aad140` (phase 21 context) → `bbb5394` (phase 25 complete)
+
+**What's next:** v1.4 — TBD (feedback analytics, search enhancements, additional export formats, or identity pass-through)
+
+---
+
 ## v1.2 UI/UX Redesign (Shipped: 2026-03-30)
 
 **Delivered:** Full frontend rewrite from vanilla JS to React 19 + Fluent UI v9 + Tailwind v4, delivering a Microsoft Copilot aesthetic with enterprise-grade dark mode, accessibility, and polished chat interactions — all without changing the Flask backend.

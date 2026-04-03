@@ -296,12 +296,22 @@ The tool-calling loop is **blocking** — all tool calls complete before the SSE
 
 ### Schema
 
-SQLite database with WAL mode and foreign keys enabled. Two tables:
+SQLite database with WAL mode and foreign keys enabled. Main tables:
 
 - **threads** — one row per conversation thread (user_id, name, timestamps)
 - **messages** — one row per thread containing the full message history as a JSON array
+- **feedback** — per-message thumbs up/down votes with optional comment (added v1.3)
+- **threads_fts** — FTS5 virtual table for full-text search across message content (added v1.3)
 
 The `messages_json` field includes tool events (tool name, arguments, result, status, timestamps) so that historical messages retain their tool panels.
+
+The `feedback` table has a UNIQUE constraint on `(thread_id, assistant_message_idx, user_id)`, CHECK on vote values ('up'/'down'), and ON DELETE CASCADE from threads. Two analytics indexes (`idx_feedback_user_vote`, `idx_feedback_thread`) support future reporting queries.
+
+The `threads_fts` FTS5 virtual table is kept in sync via 3 triggers (AFTER INSERT, AFTER UPDATE, AFTER DELETE on messages). An idempotent backfill runs on every startup via `migrate_db()`.
+
+### Schema Migrations
+
+Starting with v1.3, `migrate_db()` runs inside the app context on every startup. It executes idempotent DDL (`CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `CREATE TRIGGER IF NOT EXISTS`) so existing databases gain new tables automatically. No manual migration steps are required.
 
 ### Database Location
 
@@ -446,11 +456,33 @@ The 2 colleague lookup tools use Microsoft Graph API `GET` requests only (read-o
 
 The AI model cannot execute arbitrary PowerShell. All Exchange queries go through the MCP tool dispatch table, which maps tool names to specific handler functions. There is no mechanism for the AI to construct or inject PowerShell commands.
 
+### Access Control (v1.3)
+
+Atlas uses Azure AD **App Roles** for access gating. The `role_required` decorator on all 9 protected routes checks:
+
+1. **Authentication** (401) — user has a valid session with `id_token_claims`
+2. **Authorization** (403) — user's roles claim includes `Atlas.User`
+
+Users who authenticate but lack the App Role see a Fluent 2 "Access Denied" page showing their UPN and a mailto link to the admin.
+
+**Setup:** Create the `Atlas.User` App Role in Azure AD:
+1. Go to **App registrations** > your Atlas app > **App roles**
+2. Click **Create app role**:
+   - Display name: `Atlas User`
+   - Value: `Atlas.User`
+   - Allowed member types: Users/Groups
+   - Description: `Access to Atlas Exchange Infrastructure tool`
+3. Go to **Enterprise applications** > your Atlas app > **Users and groups**
+4. Click **Add user/group** and assign the IT engineers security group to the `Atlas.User` role
+
+The `roles` claim is extracted from `id_token_claims` at login and stored in the session. `/api/me` returns the user's roles array for frontend introspection.
+
 ### Authentication Layers
 
 | Layer | Mechanism | What it protects |
 |-------|-----------|-----------------|
 | User -> Chat App | Azure AD SSO (MSAL auth code flow) | Only authenticated MMC colleagues can access the chat |
+| Chat App -> App Role | `role_required` decorator (Atlas.User) | Only authorized IT engineers can use Atlas features |
 | Chat App -> User Data | `session["user"]["oid"]` ownership check | Users can only see their own threads |
 | Chat App -> Exchange | Service account RBAC | Tool calls limited to assigned Exchange roles |
 | Chat App -> Graph API | MSAL client credentials (application permissions) | Directory reads scoped to User.Read.All, ProfilePhoto.Read.All |
@@ -565,6 +597,41 @@ Remove-Item Env:\ATLAS_UI
 
 Both modes use the same Flask backend, database, and MCP server. Only the frontend rendering differs.
 
+### Feedback Data (v1.3)
+
+The `feedback` table stores per-message thumbs up/down votes. Useful queries for analytics:
+
+```sql
+-- Vote summary
+SELECT vote, COUNT(*) FROM feedback GROUP BY vote;
+
+-- Recent feedback with comments
+SELECT f.vote, f.comment, f.created_at, t.name as thread_name
+FROM feedback f JOIN threads t ON f.thread_id = t.id
+WHERE f.comment IS NOT NULL
+ORDER BY f.created_at DESC LIMIT 20;
+
+-- Feedback per user
+SELECT user_id, COUNT(*) as votes, SUM(CASE WHEN vote='up' THEN 1 ELSE 0 END) as up,
+       SUM(CASE WHEN vote='down' THEN 1 ELSE 0 END) as down
+FROM feedback GROUP BY user_id;
+```
+
+### Full-Text Search (v1.3)
+
+The FTS5 search index is maintained automatically by triggers. If the index becomes corrupted:
+
+```bash
+# Rebuild FTS index
+uv run python -c "
+import sqlite3
+db = sqlite3.connect('chat.db')
+db.execute('INSERT INTO threads_fts(threads_fts) VALUES(\"rebuild\")')
+db.commit()
+print('FTS index rebuilt')
+"
+```
+
 ## Known Limitations
 
 | Limitation | Impact | Workaround |
@@ -576,4 +643,5 @@ Both modes use the same Flask backend, database, and MCP server. Only the fronte
 | 128K context window | Very long conversations get pruned | Start new threads for separate topics |
 | SQLite single-writer | Limited concurrent write throughput | Sufficient for <100 concurrent users |
 | No "Running" badge on tool panels | Blocking SSE architecture | Tools complete before stream resumes; elapsed time shown after |
-| login_required returns 302 not 401 | API routes get redirect instead of JSON error | fetchMe catches non-JSON response and returns null |
+| login_required returns 302 not 401 | Mitigated by role_required in v1.3 | role_required is now the canonical decorator on all routes |
+| Sidebar transition lacks reduced-motion override | Users with OS reduce-motion still see 225ms sidebar animation | Low severity — CSS polish item for future fix |

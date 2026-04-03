@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-01)
+See: .planning/PROJECT.md (updated 2026-04-02)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** v1.3 shipped — all 25 phases complete, ready for milestone audit
+**Current focus:** Planning next milestone
 
 ## Current Position
 
-Phase: 25 of 25 complete (Motion Animations)
-Plan: 25-02 of 2 complete — animation component wiring + historical gate
-Status: Milestone v1.3 complete — all 5 phases (21-25) shipped
-Last activity: 2026-04-02 — Phase 25 executed (2 plans, 2 waves), verified 4/4, human approved
+Phase: 25 of 25 complete (all milestones through v1.3 shipped)
+Plan: N/A — between milestones
+Status: Ready to plan next milestone
+Last activity: 2026-04-02 — v1.3 milestone archived
 
-Progress: [████████████████████] 100% (v1.3 — 10/~10 plans)
+Progress: [████████████████████] 100% (v1.3 complete — 76 plans across 25 phases)
 
 ## Performance Metrics
 
@@ -22,7 +22,7 @@ Progress: [████████████████████] 100% (v
 - v1.0: 35 plans in 4 days (2026-03-19 → 2026-03-22)
 - v1.1: 9 plans in 3 days (2026-03-23 → 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 → 2026-03-30)
-- v1.3: 10 plans in 1 day (2026-04-02, Phases 21-25 complete)
+- v1.3: 9 plans in 1 day (2026-04-02, Phases 21-25 complete)
 - Total shipped: 76 plans, 25 complete phases, 4 milestones
 
 ## Accumulated Context
@@ -31,42 +31,6 @@ Progress: [████████████████████] 100% (v
 
 (Full decision log in PROJECT.md Key Decisions table)
 
-- App Roles chosen over groupMembershipClaims for access gating (no overage, no raw GUIDs)
-- Feedback key: (thread_id, message_idx) — append-only assumption, document in code
-- Feedback vote field: TEXT ('up'/'down'/null) over INTEGER — more readable in analytics queries
-- Export: Markdown client-side Blob, JSON server-side Response (hybrid per research resolution)
-- FTS5 tokenizer: unicode61 only — porter over-stems Exchange technical terms (DAGHealth, etc.)
-- Animation: LazyMotion + domAnimation from the start; no framer-motion package; MotionConfig reducedMotion="user" required before any animation ships
-- motion@12.38.0 confirmed React 19 compatible (25-01 spike resolved MEDIUM confidence blocker)
-- Provider order: MotionConfig > LazyMotion > FluentProvider (outermost to innermost)
-- Wrapper pattern for conditional m.div: const Wrapper = condition ? m.div : 'div' with spread motionProps — single return path — 25-02
-- loadedCountRef gate: snapshot messages.length in useEffect([activeThreadId]) so idx >= ref.current = isNew for animation — 25-02
-- feedback-scale-btn span wraps Button inside PopoverTrigger(disableButtonEnhancement) — span receives anchor ref, CSS :active fires on press — 25-02
-- role_required is the canonical route decorator (login_required retained but unused on routes) — 21-01
-- 403 JSON includes upn field so frontend can display the blocked user identity — 21-01
-- /api/me returns roles array for authorized users, enabling frontend role introspection — 21-01
-- AuthStatus discriminated union replaces loading boolean — compiler enforces all branches are handled — 21-02
-- migrate_db() runs on every startup in app context — idempotent DDL, existing DBs gain feedback table on next restart — 22-01
-- POST vote=null retracts (same DELETE path) — one POST endpoint for both set and clear — 22-01
-- Comment truncated 500 chars at API layer, None if empty — DB column unconstrained — 22-01
-- ThumbLike16* icons not available from main @fluentui/react-icons entry; bundleIcon uses standard-sized Filled/Regular variants — 22-02
-- handleCommentDismiss persists thumbs-down without comment on Popover close — avoids silent vote loss — 22-02
-- error status on /api/me redirects to /login (network failure indistinguishable from session expiry) — 21-02
-- AccessDenied renders before ThreadProvider/ChatProvider to prevent cascading 403s — 21-02
-- SSE 401/403 triggers window.location.reload() so AuthGuard re-evaluates rather than surfacing error toast — 21-02
-- INSERT OR IGNORE backfill (not DELETE+INSERT) for FTS idempotency — prevents clearing existing rows on restart — 23-01
-- DELETE+INSERT in sync triggers (not FTS content table) — simpler with group_concat, correct for single-row-per-thread — 23-01
-- try/except on FTS MATCH execute — malformed input returns [] not 500, consistent UX — 23-01
-- _build_fts5_query quotes each token individually — neutralises bare AND/OR/NOT operators — 23-01
-- SearchBox ref forwarded to underlying input directly — confirmed ForwardRefComponent<SearchBoxProps> — 23-02
-- Client-side filter feeds groupThreadsByRecency (active thread not pinned, disappears if no match) — 23-02
-- Ctrl+K uses setTimeout(0) deferred focus when expanding sidebar — ensures DOM update before focus — 23-02
-- Cancelled flag for FTS fetch cleanup (not AbortController) — simpler for single non-streaming GET — 23-02
-- Tool panels appear before assistant content in Markdown export to mirror UI order — 24-01
-- Export button disabled on isStreaming || messages.length === 0 — covers streaming and empty thread — 24-01
-- slugify falls back to 'conversation' when result is empty string — prevents bare-date filenames — 24-01
-- No new npm dependencies for export — all Fluent UI imports already in dependency tree — 24-01
-
 ### Pending Todos
 
 None.
@@ -74,11 +38,10 @@ None.
 ### Blockers/Concerns
 
 - Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned
-- Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center (unchanged)
-- CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried from v1.2
+- CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried forward
 
 ## Session Continuity
 
 Last session: 2026-04-02
-Stopped at: v1.3 milestone complete — ready for /gsd:audit-milestone or /gsd:complete-milestone
+Stopped at: v1.3 milestone complete — ready for /gsd:new-milestone
 Resume file: None

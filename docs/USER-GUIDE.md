@@ -13,6 +13,8 @@ Atlas is an internal chat application that lets you query Exchange infrastructur
 
 Your identity is verified server-side using Azure AD. All conversations are scoped to your account — no one else can see your threads.
 
+> **Access Required:** Atlas requires the **Atlas.User** App Role assigned to your account. If you see an "Access Denied" page after signing in, your account does not have the required role. The page will show your identity (UPN) and a link to request access from your admin.
+
 ### Your First Question
 
 Once signed in, you will see a welcome screen with prompt suggestion chips — click any of them to get started, or type your own question in the text area at the bottom.
@@ -64,6 +66,29 @@ Every response that involved an Exchange query includes a collapsible panel show
 
 Panels are collapsed by default to keep the chat clean. Expand them when you need to verify the data or copy it for a ticket.
 
+### Message Feedback
+
+You can rate any assistant message to help improve Atlas:
+
+- **Thumbs up/down** — hover over any completed assistant message to reveal thumbs up and thumbs down buttons alongside the copy button
+- **Vote** — click a thumb to submit your vote. The icon fills to confirm your selection.
+- **Change your mind** — click the same button again to retract your vote, or click the other button to switch
+- **Add a comment** — clicking thumbs down opens a popover where you can optionally type a comment explaining what went wrong (up to 500 characters)
+- Feedback is saved to the server and persists across sessions
+
+> **Note:** Feedback buttons only appear after a response has finished streaming.
+
+### Conversation Export
+
+You can download any conversation as a Markdown file for pasting into Jira tickets, incident reports, or documentation:
+
+- Click the **Export** button (download icon) in the chat header
+- Select **Markdown** from the menu
+- A `.md` file downloads immediately with the thread name and date in the filename (e.g., `dag-health-check-2026-04-02.md`)
+- The export includes all user and assistant messages, plus tool panel data (tool name, parameters, and Exchange results) in fenced code blocks
+
+> **Note:** Export is disabled while a response is streaming or when the conversation is empty.
+
 ### Copy to Clipboard
 
 - **Copy a response** — hover over any assistant message to reveal the **Copy** button and timestamp in the top-right corner. Click to copy the AI's text answer.
@@ -83,12 +108,23 @@ Atlas supports multiple conversation threads:
 
 Your conversations persist across browser sessions. Close the browser, come back later, and all your threads will still be there.
 
+### Thread Search
+
+You can search your conversation threads from the sidebar:
+
+- **Title filter** — type in the search box at the top of the sidebar to instantly filter threads by name. No network request — filtering happens as you type.
+- **Full-text search** — type 2 or more characters and pause briefly to search across all message content. Results appear below the search box with a snippet showing where your term was found and a count badge.
+- **Navigate** — click any search result to open that thread
+- **Keyboard shortcut** — press **Ctrl+K** from anywhere in the app to focus the search box (the sidebar will expand if collapsed)
+- **Clear** — click the X in the search box or delete your text to return to the full thread list
+
 ### Sidebar
 
 The sidebar can be collapsed to icon-only mode for more chat space:
 
 - Click the **collapse** icon in the sidebar header to shrink it
 - Click the **expand** icon to restore the full sidebar
+- The sidebar animates smoothly when collapsing and expanding
 - Your collapse preference is saved and persists across sessions
 
 ### Keyboard Shortcuts
@@ -98,6 +134,7 @@ The sidebar can be collapsed to icon-only mode for more chat space:
 | **Enter** | Send message |
 | **Shift+Enter** | New line in the text area |
 | **Escape** | Cancel an active streaming response |
+| **Ctrl+K** | Focus the sidebar search box |
 | **Tab** | Navigate between interactive elements |
 
 If you press Escape while a response is streaming, the partial text will remain visible with a "[response cancelled]" marker.
@@ -200,6 +237,7 @@ Atlas has access to 17 tools, organized by category:
 
 | Symptom | Likely cause | Action |
 |---------|-------------|--------|
+| "Access Denied" page after signing in | Your account lacks the Atlas.User App Role | Contact your admin using the link on the Access Denied page; your UPN is shown for reference |
 | "Sign in with Microsoft" loops back to login page | Session expired or cookies blocked | Clear browser cookies for the Atlas URL and try again |
 | Tool call takes more than 10 seconds | Exchange server under load or network issue | Wait for it to complete; Atlas has a 60-second timeout |
 | "Exchange error: not found" | Mailbox or DAG name does not exist | Double-check the email address or DAG name spelling |

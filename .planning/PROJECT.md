@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a modern React 19 chat application built on Fluent UI v9 and Tailwind v4. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history with recency grouping, collapsible tool panels with status badges and elapsed time, syntax-highlighted JSON, copy-to-clipboard, keyboard shortcuts, WCAG AA accessible focus management, and dark/light mode with Fluent 2 design tokens. No direct PowerShell access or cmdlet knowledge required.
+A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a modern React 19 chat application built on Fluent UI v9 and Tailwind v4. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD App Role access gating, per-message feedback (thumbs up/down with SQLite persistence), thread search (client-side title filter + FTS5 full-text), Markdown conversation export, motion entrance animations, Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history with recency grouping, collapsible tool panels with status badges and elapsed time, syntax-highlighted JSON, copy-to-clipboard, keyboard shortcuts (Ctrl+K search), WCAG AA accessible focus management, and dark/light mode with Fluent 2 design tokens. No direct PowerShell access or cmdlet knowledge required.
 
 ## Core Value
 
@@ -41,14 +41,17 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 - Fix: Tool events persisted to SQLite (historical messages retain tool panels) — v1.2
 - Fix: Copy-to-clipboard on historical messages — v1.2
 - Fix: 3 test regressions, dead code removal, schema description correction — v1.2
+- Azure AD App Role access gating with role_required decorator, structured 401/403 JSON, AccessDenied Fluent 2 component — v1.3
+- Per-message thumbs up/down feedback with SQLite persistence, toggle retraction, optional comment Popover, ARIA live region — v1.3
+- Thread search — instant client-side title filter + SQLite FTS5 full-text search with debounce, snippets, Ctrl+K shortcut — v1.3
+- Conversation export — client-side Markdown with tool panel data, slug-dated filenames, Fluent MenuButton — v1.3
+- Motion entrance animations — m.div fade+slide on messages, sidebar CSS transition, feedback scale micro-interaction, MotionConfig reducedMotion — v1.3
 
 ### Active
 
-- Azure AD App Role access gating with roles claim extraction, 403 handling, and access denied UI
-- Per-message thumbs up/down feedback buttons with SQLite persistence
-- Thread search — sidebar title filter (client-side) + full-text message search (SQLite FTS5 backend)
-- Conversation export in Markdown and JSON formats
-- Motion entrance animations and transitions across chat UI components
+(No active requirements — next milestone not yet defined)
+
+### Out of Scope
 
 ### Out of Scope
 
@@ -65,9 +68,9 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
-- **Current milestone:** v1.3 — Access Control, Feedback, Search, Export, Animations
-- **Current state:** v1.2 shipped 2026-03-30. ~75K LOC (Python + TypeScript/CSS/HTML/SQL). 20 phases, 66 plans complete across 3 milestones.
-- **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 (frontend), PowerShell 5.1+ (Exchange cmdlets)
+- **Current milestone:** v1.3 shipped 2026-04-02. Next milestone not yet defined.
+- **Current state:** ~75.7K LOC (Python + TypeScript/CSS/SQL). 25 phases, 76 plans complete across 4 milestones.
+- **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 + motion@12.38.0 (frontend), PowerShell 5.1+ (Exchange cmdlets)
 - **Design reference:** `designux.md` in project root — comprehensive design brief with component inventory, design tokens, and user flows
 - **Environment:** Hybrid Exchange (Exchange 2019 on-prem + Exchange Online), 80,000+ mailboxes, multiple DAGs, AWS-hosted mailbox servers
 - **Organization:** Marsh McLennan Companies (MMC) — Colleague Tech Services (CTS) team
@@ -75,7 +78,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 - **Existing pain point:** Shared mailbox governance (31,246 rows in ExoNotes.xlsx) currently requires batch exports — this enables on-demand live queries
 - **AI backend:** MMC-approved Azure OpenAI deployment at Dallas non-prod ingress (stg1), gpt-4o-mini-128k model, API version 2023-05-15
 - **Architecture doc:** `exchange-mcp-architecture.md` in project root — comprehensive reference for all tool schemas, data flows, and security model
-- **Known tech debt:** login_required returns 302 instead of 401 for API routes; historical tool panels always show "Done" badge (error status not persisted); historical tool panels lose elapsed time; AuthContext.error field unused; CHATGPT_ENDPOINT not in secrets pipeline
+- **Known tech debt:** Sidebar CSS transition lacks prefers-reduced-motion override (low severity); login_required returns 302 instead of 401 for API routes (mitigated by role_required); historical tool panels always show "Done" badge (error status not persisted); historical tool panels lose elapsed time; AuthContext.error field unused; CHATGPT_ENDPOINT not in secrets pipeline
 
 ## Constraints
 
@@ -113,7 +116,13 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | SSE via fetch + ReadableStream | Not EventSource; AbortController in useRef for cancel support | Good — full streaming control |
 | Migration order: scaffold → port → visual | Visual work before functional parity is the primary failure mode | Good — proven approach |
 
-| App Roles over groupMembershipClaims for access gating | No overage problem at 80K+ users; decouples app from raw group GUIDs; manages access via group-to-role assignment in Entra ID | — Pending |
+| App Roles over groupMembershipClaims for access gating | No overage problem at 80K+ users; decouples app from raw group GUIDs; manages access via group-to-role assignment in Entra ID | Good — role_required decorator on all routes |
+| AuthStatus discriminated union over boolean flags | Exhaustive — compiler enforces all branches; extensible without adding new booleans | Good — clean 5-state discrimination |
+| migrate_db() idempotent startup migration | Additive-only DDL on every startup; existing databases gain new tables automatically | Good — zero-ops deployment |
+| FTS5 unicode61 tokenizer (not porter) | Porter over-stems Exchange technical terms (DAGHealth, etc.) | Good — accurate matching |
+| motion@12.38.0 (not framer-motion) | Official successor; React 19 compatible; tree-shakeable with LazyMotion | Good — confirmed compat |
+| Client-side Markdown export (not server-side) | Zero server round-trip; tool panel data available in client state | Good — instant download |
+| loadedCountRef for historical message gate | Snapshot messages.length on thread switch; idx >= ref = isNew | Good — prevents disorienting animations |
 
 ---
-*Last updated: 2026-04-01 after v1.3 milestone started*
+*Last updated: 2026-04-02 after v1.3 milestone complete*

@@ -47,13 +47,15 @@ This guide covers deploying the Exchange Infrastructure MCP Server and Atlas cha
                               +--------------------------------------+
 ```
 
-### Frontend Architecture (v1.2)
+### Frontend Architecture (v1.3)
 
 Atlas uses a **hybrid SPA pattern**:
 - Flask serves the React SPA from `frontend_dist/` via a catch-all route
 - The React app (built with Vite) handles all client-side routing
 - API requests (`/api/*`, `/auth/*`, `/chat/*`) are served directly by Flask
 - **ATLAS_UI=react** environment variable activates the React frontend; default is "classic" (Jinja2 templates)
+
+**v1.3 additions:** App Role access gating (role_required decorator), feedback endpoints (feedback_bp Blueprint), FTS5 search endpoint, motion@12.38.0 animation library.
 
 ## Prerequisites
 
@@ -127,7 +129,21 @@ Atlas requires an Azure AD (Entra ID) app registration for SSO authentication.
 4. Add **Microsoft Graph > ProfilePhoto.Read.All** (Application) — for colleague photos
 5. Click **Grant admin consent for [organization]**
 
-### Step 5: Record Values
+### Step 5: Create App Role (v1.3)
+
+1. Go to **App roles** in the app registration
+2. Click **Create app role**:
+   - **Display name:** `Atlas User`
+   - **Value:** `Atlas.User`
+   - **Allowed member types:** Users/Groups
+   - **Description:** `Access to Atlas Exchange Infrastructure tool`
+3. Click **Apply**
+4. Go to **Enterprise applications** > your Atlas app > **Users and groups**
+5. Click **Add user/group** and assign the IT engineers security group to the `Atlas.User` role
+
+> **Important:** Users who authenticate but lack the Atlas.User role will see an "Access Denied" page. All API endpoints return 403 (not data) for users without the role.
+
+### Step 6: Record Values
 
 You will need these values for configuration:
 
@@ -479,6 +495,15 @@ nssm restart AtlasExchangeMCP  # If running as Windows service
 ```
 
 The pre-built frontend assets update automatically with `git pull`. No npm or Node.js needed on the server.
+
+### v1.3 Upgrade Notes
+
+When upgrading from v1.2 to v1.3:
+
+1. **Database migration is automatic** — `migrate_db()` runs on startup and adds the `feedback` table, `threads_fts` FTS5 index, and sync triggers to existing databases. No manual SQL required.
+2. **App Role must be configured** — create the `Atlas.User` App Role in Azure AD (see Step 5 above) and assign your IT engineers group. Without this, all users will see "Access Denied" after login.
+3. **No new environment variables required** — all v1.3 features use existing configuration. Optionally set `VITE_ADMIN_EMAIL` in the frontend build to customize the admin contact on the Access Denied page (defaults to `it-admin@mercer.com`).
+4. **Frontend bundle updated** — the pre-built `frontend_dist/` includes all v1.3 features. Pulled automatically with `git pull`.
 
 ## Backup
 
