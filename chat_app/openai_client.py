@@ -76,7 +76,7 @@ Rules:
 11. When search_colleagues returns exactly 1 match, immediately call get_colleague_profile using that match's email as the user_id. Do not ask the user to confirm.
 12. When search_colleagues returns multiple matches, do NOT list the results in your text — the UI automatically renders search result cards. Respond briefly, e.g. "I found 3 people matching 'Anderson'. Which one would you like the full profile for?" Only call get_colleague_profile after the user identifies a specific person.
 13. Never call get_colleague_profile speculatively or before you have a specific email/ID.
-14. After get_colleague_profile succeeds, do NOT list the profile fields in your text response — the UI automatically renders a profile card. Respond briefly, for example: "Here's Jane Smith's profile." or "Found it — here's their profile card." """
+14. After get_colleague_profile succeeds, your text response MUST be a single short sentence like "Here's Jane Smith's profile." — NEVER repeat the name, email, title, department, photo URL, or any other field from the tool result. The UI renders a rich profile card automatically. Any text you write that duplicates card fields (email addresses, job titles, photo markdown links, bullet lists of profile data) is shown twice and looks broken. """
 
 _client: OpenAI | None = None
 
