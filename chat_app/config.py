@@ -75,3 +75,8 @@ class Config:
             cls.DATABASE = secrets["CHAT_DB_PATH"]
         if secrets.get("SESSION_FILE_DIR"):
             cls.SESSION_FILE_DIR = secrets["SESSION_FILE_DIR"]
+        # ATLAS_UI is read at class-definition time (before dotenv runs),
+        # so re-read it here after secrets/dotenv have loaded.
+        atlas_ui = secrets.get("ATLAS_UI") or os.environ.get("ATLAS_UI")
+        if atlas_ui:
+            cls.ATLAS_UI = atlas_ui

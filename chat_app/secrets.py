@@ -58,5 +58,6 @@ def load_secrets() -> dict[str, str]:
         "CHAT_PORT",
         "CHAT_DB_PATH",
         "SESSION_FILE_DIR",
+        "ATLAS_UI",
     ]
     return {k: os.environ.get(k, "") for k in keys}
