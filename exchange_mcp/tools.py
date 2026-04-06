@@ -1,7 +1,7 @@
 """Tool definitions and dispatch table for the Exchange MCP server.
 
 Provides:
-    TOOL_DEFINITIONS  -- list of all 20 mcp.types.Tool objects (15 Exchange + ping + 2 Graph + 2 feedback analytics)
+    TOOL_DEFINITIONS  -- list of all 21 mcp.types.Tool objects (15 Exchange + ping + 2 Graph + 3 feedback analytics)
     TOOL_DISPATCH     -- dict mapping tool name to async handler callable
 
 The dispatch table is the single point of truth for routing:
@@ -23,6 +23,7 @@ import mcp.types as types
 
 from exchange_mcp import dns_utils
 from exchange_mcp.feedback_analytics import (
+    _get_feedback_by_tool_handler,
     _get_feedback_summary_handler,
     _get_low_rated_responses_handler,
 )
@@ -502,6 +503,43 @@ TOOL_DEFINITIONS: list[types.Tool] = [
                 "limit": {
                     "type": "integer",
                     "description": "Maximum entries to return (1-100). Default: 20.",
+                },
+            },
+            "required": [],
+        },
+    ),
+    types.Tool(
+        name="get_feedback_by_tool",
+        description=(
+            "Return a per-tool satisfaction breakdown for Exchange MCP tools, or "
+            "drill down into low-rated examples for a specific tool. "
+            "Without tool_name: fetches all feedback in the date range, fans votes out "
+            "to each correlated tool call (multi-tool messages attribute to all tools), "
+            "and returns a sorted breakdown with up_votes, down_votes, satisfaction_pct, "
+            "and a low_confidence flag for tools with fewer than 5 votes. "
+            "Results sorted worst satisfaction first; low-confidence tools sorted last. "
+            "With tool_name: returns thumbs-down examples (timestamp, comment, thread_name) "
+            "for that specific tool. Messages with no identifiable tool call are omitted. "
+            "Default date range: last 7 days."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start of date range (ISO 8601, e.g. 2026-03-30T00:00:00Z). Default: 7 days ago.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End of date range (ISO 8601). Default: now.",
+                },
+                "tool_name": {
+                    "type": "string",
+                    "description": "Optional. When provided, returns low-rated examples for this specific tool instead of the full breakdown.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum low-rated examples to return when tool_name is set (1-50). Default: 10.",
                 },
             },
             "required": [],
@@ -2244,4 +2282,5 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_colleague_profile": _get_colleague_profile_handler,
     "get_feedback_summary": _get_feedback_summary_handler,
     "get_low_rated_responses": _get_low_rated_responses_handler,
+    "get_feedback_by_tool": _get_feedback_by_tool_handler,
 }
