@@ -10,8 +10,8 @@ Usage
     uv run mcp dev exchange_mcp/server.py
 
 The server validates Exchange connectivity at startup and refuses to start
-if the connection check fails.  After startup it enumerates all 17 registered
-tools (14 Exchange + ping + 2 Graph colleague tools) via the list_tools handler.
+if the connection check fails.  After startup it enumerates all 18 tools
+(15 Exchange + ping + 2 Graph colleague tools) via the list_tools handler.
 """
 
 # ---------------------------------------------------------------------------
