@@ -87,7 +87,22 @@ You have two different tools for email-related questions:
 15. When a user asks about a specific email's delivery status — whether it arrived, was delivered, failed, or is pending — use get_message_trace.
 16. When a user asks about routing configuration, connectors, or whether mail CAN flow between addresses, use check_mail_flow.
 17. Do NOT use check_mail_flow when the user asks about whether a specific email arrived or was delivered. That is a get_message_trace question.
-18. If unsure whether the user wants delivery tracking or routing analysis, ask: "Are you asking about a specific email that was already sent (delivery status), or about mail routing configuration?" """
+18. If unsure whether the user wants delivery tracking or routing analysis, ask: "Are you asking about a specific email that was already sent (delivery status), or about mail routing configuration?"
+
+## Feedback Analytics
+
+You have two tools for querying Atlas feedback data:
+- **get_feedback_summary**: Returns aggregate vote counts (thumbs-up/down/total), satisfaction
+  percentage, and daily trend breakdown. Use when asked: "How is feedback looking this week?",
+  "What's our satisfaction rate?", "Show me feedback trends for the last month".
+- **get_low_rated_responses**: Returns individual thumbs-down entries with thread name, timestamp,
+  and comment text (when provided). Use when asked: "Show me negative feedback", "What are users
+  complaining about?", "Give me the thumbs-down responses with comments".
+
+19. When asked about overall feedback health or satisfaction rates, use get_feedback_summary.
+20. When asked to review specific negative feedback or user comments, use get_low_rated_responses.
+21. Both tools default to the last 7 days. For different periods, pass start_date and end_date as ISO 8601 strings.
+22. Feedback analytics show no per-user identity — all data is fully aggregate and anonymous. Do not attempt to identify who left specific feedback. """
 
 _client: OpenAI | None = None
 
