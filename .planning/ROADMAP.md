@@ -51,7 +51,7 @@ Delivered Azure AD App Role access gating, per-message thumbs up/down feedback w
 **Milestone Goal:** Add a message trace MCP tool for email delivery tracking (Get-MessageTraceV2) and three feedback analytics MCP tools that query the existing SQLite feedback table directly from the MCP server — bringing the total tool count from 17 to 21. Backend-only milestone with zero frontend changes.
 
 - [x] **Phase 26: Message Trace Tool** - Exchange Online message trace via Get-MessageTraceV2 with RBAC verification, PII-safe subject handling, and system prompt disambiguation
-- [ ] **Phase 27: Feedback Analytics Foundation** - Read-only SQLite access from MCP server for feedback summary and low-rated response queries
+- [x] **Phase 27: Feedback Analytics Foundation** - Read-only SQLite access from MCP server for feedback summary and low-rated response queries
 - [ ] **Phase 28: Tool Correlation & Analytics Completion** - Feedback-to-tool correlation logic and system prompt guidance for all analytics tools
 
 ## Phase Details
@@ -84,8 +84,8 @@ Plans:
 **Plans**: TBD
 
 Plans:
-- [ ] 27-01: ATLAS_DB_PATH plumbing and read-only SQLite connection pattern
-- [ ] 27-02: get_feedback_summary and get_low_rated_responses tool handlers
+- [x] 27-01: ATLAS_DB_PATH plumbing and read-only SQLite connection pattern
+- [x] 27-02: get_feedback_summary and get_low_rated_responses tool handlers
 
 ### Phase 28: Tool Correlation & Analytics Completion
 **Goal**: Users can identify which Exchange tools produce the worst user experience and the AI presents all analytics results conversationally
@@ -110,5 +110,5 @@ Plans:
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
 | 21-25. Access Control, Feedback, Search, Export, Animations | v1.3 | 9/9 | Complete | 2026-04-02 |
 | 26. Message Trace Tool | v1.4 | 2/2 | Complete | 2026-04-06 |
-| 27. Feedback Analytics Foundation | v1.4 | 0/2 | Not started | - |
+| 27. Feedback Analytics Foundation | v1.4 | 2/2 | Complete | 2026-04-06 |
 | 28. Tool Correlation & Analytics Completion | v1.4 | 0/2 | Not started | - |

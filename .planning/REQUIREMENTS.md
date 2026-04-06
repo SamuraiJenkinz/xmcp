@@ -22,22 +22,22 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Feedback Analytics
 
-- [ ] **FBAN-01**: New MCP tool `get_feedback_summary` returns vote counts (up/down/total) with date range filter (default last 7 days)
-- [ ] **FBAN-02**: `get_feedback_summary` includes daily trend breakdown within the date range
-- [ ] **FBAN-03**: New MCP tool `get_low_rated_responses` returns thumbs-down entries with comment text, thread name, and timestamp
-- [ ] **FBAN-04**: `get_low_rated_responses` supports limit parameter (default 20) and date range filter
+- [x] **FBAN-01**: New MCP tool `get_feedback_summary` returns vote counts (up/down/total) with date range filter (default last 7 days)
+- [x] **FBAN-02**: `get_feedback_summary` includes daily trend breakdown within the date range
+- [x] **FBAN-03**: New MCP tool `get_low_rated_responses` returns thumbs-down entries with comment text, thread name, and timestamp
+- [x] **FBAN-04**: `get_low_rated_responses` supports limit parameter (default 20) and date range filter
 - [ ] **FBAN-05**: New MCP tool `get_feedback_by_tool` correlates feedback votes with which Exchange tool was invoked for that message
 - [ ] **FBAN-06**: `get_feedback_by_tool` includes top-N worst-rated tool queries
-- [ ] **FBAN-07**: MCP server reads SQLite database in read-only mode (WAL concurrent reader safety)
-- [ ] **FBAN-08**: New module `exchange_mcp/feedback_analytics.py` isolates analytics handlers from Exchange tool handlers
+- [x] **FBAN-07**: MCP server reads SQLite database in read-only mode (WAL concurrent reader safety)
+- [x] **FBAN-08**: New module `exchange_mcp/feedback_analytics.py` isolates analytics handlers from Exchange tool handlers
 - [ ] **FBAN-09**: Tool correlation parses `messages_json` to match `assistant_message_idx` with tool names from tool_calls
-- [ ] **FBAN-10**: No per-user voting patterns exposed — all analytics are aggregate only
+- [x] **FBAN-10**: No per-user voting patterns exposed — all analytics are aggregate only
 - [ ] **FBAN-11**: System prompt guidance for presenting analytics results conversationally
 
 ### Infrastructure
 
 - [x] **INFRA-01**: Message Tracking RBAC role verified on Atlas service principal before implementation
-- [ ] **INFRA-02**: `ATLAS_DB_PATH` environment variable provides database path to MCP server for feedback analytics
+- [x] **INFRA-02**: `ATLAS_DB_PATH` environment variable provides database path to MCP server for feedback analytics
 
 ## Future Requirements
 
@@ -69,29 +69,29 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TRACE-01 | Phase 26 | Pending |
-| TRACE-02 | Phase 26 | Pending |
-| TRACE-03 | Phase 26 | Pending |
-| TRACE-04 | Phase 26 | Pending |
-| TRACE-05 | Phase 26 | Pending |
-| TRACE-06 | Phase 26 | Pending |
-| TRACE-07 | Phase 26 | Pending |
-| TRACE-08 | Phase 26 | Pending |
-| TRACE-09 | Phase 26 | Pending |
-| TRACE-10 | Phase 26 | Pending |
-| FBAN-01 | Phase 27 | Pending |
-| FBAN-02 | Phase 27 | Pending |
-| FBAN-03 | Phase 27 | Pending |
-| FBAN-04 | Phase 27 | Pending |
+| TRACE-01 | Phase 26 | Complete |
+| TRACE-02 | Phase 26 | Complete |
+| TRACE-03 | Phase 26 | Complete |
+| TRACE-04 | Phase 26 | Complete |
+| TRACE-05 | Phase 26 | Complete |
+| TRACE-06 | Phase 26 | Complete |
+| TRACE-07 | Phase 26 | Complete |
+| TRACE-08 | Phase 26 | Complete |
+| TRACE-09 | Phase 26 | Complete |
+| TRACE-10 | Phase 26 | Complete |
+| FBAN-01 | Phase 27 | Complete |
+| FBAN-02 | Phase 27 | Complete |
+| FBAN-03 | Phase 27 | Complete |
+| FBAN-04 | Phase 27 | Complete |
 | FBAN-05 | Phase 28 | Pending |
 | FBAN-06 | Phase 28 | Pending |
-| FBAN-07 | Phase 27 | Pending |
-| FBAN-08 | Phase 27 | Pending |
+| FBAN-07 | Phase 27 | Complete |
+| FBAN-08 | Phase 27 | Complete |
 | FBAN-09 | Phase 28 | Pending |
-| FBAN-10 | Phase 27 | Pending |
+| FBAN-10 | Phase 27 | Complete |
 | FBAN-11 | Phase 28 | Pending |
-| INFRA-01 | Phase 26 | Pending |
-| INFRA-02 | Phase 27 | Pending |
+| INFRA-01 | Phase 26 | Complete |
+| INFRA-02 | Phase 27 | Complete |
 
 **Coverage:**
 - v1.4 requirements: 23 total
@@ -100,4 +100,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-02 after roadmap creation*
+*Last updated: 2026-04-06 after Phase 27 completion*
