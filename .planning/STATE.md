@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 28 of 28 (Tool Correlation Analytics Completion) — In progress
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-04-06 — Completed 28-01-PLAN.md (get_feedback_by_tool, tool 21)
+Phase: 28 of 28 (Tool Correlation Analytics Completion) — COMPLETE
+Plan: 2 of 2 in current phase
+Status: Phase complete — all v1.4 plans shipped
+Last activity: 2026-04-06 — Completed 28-02-PLAN.md (system prompt rules 23-26, FBAN-11)
 
-Progress: [████░░░░░░░░░░░░░░░] ~43% (v1.4: 5/6 plans)
+Progress: [████████████████████] ~100% (v1.4: 6/6 plans — all phases complete)
 
 ## Performance Metrics
 
@@ -25,8 +25,8 @@ Progress: [████░░░░░░░░░░░░░░░] ~43% (v1.4
 - v1.3: 9 plans in 1 day (2026-04-02, Phases 21-25 complete)
 - v1.4 Phase 26: 2 plans in 1 session (2026-04-06)
 - v1.4 Phase 27: 2/2 plans complete (2026-04-06)
-- v1.4 Phase 28: 1/2 plans complete (2026-04-06)
-- Total shipped: 81 plans, 27 complete phases, 4 milestones
+- v1.4 Phase 28: 2/2 plans complete (2026-04-06)
+- Total shipped: 82 plans, 28 complete phases, 4 milestones
 
 ## Accumulated Context
 
@@ -46,6 +46,7 @@ Progress: [████░░░░░░░░░░░░░░░] ~43% (v1.4
 | Fan-out vote attribution for multi-tool messages | Preserves per-tool accuracy — each tool in a turn contributed to the response | 28-01 |
 | Low-confidence flag at < 5 votes, sorted last not excluded | Still surfaced but clearly marked; avoids drawing conclusions from thin data | 28-01 |
 | Two-mode handler (breakdown vs drill-down) via tool_name param | Reduces tool count; tool_name acts as mode switch | 28-01 |
+| Rules 25 lettered sub-points (a-d) for presentation concerns | Groups four presentation rules without inflating rule count | 28-02 |
 
 (Full decision log in PROJECT.md Key Decisions table)
 
@@ -60,6 +61,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-06T23:52:19Z
-Stopped at: Completed 28-01-PLAN.md (get_feedback_by_tool handler, tool 21)
+Last session: 2026-04-06T23:55:35Z
+Stopped at: Completed 28-02-PLAN.md (system prompt rules 23-26) — Phase 28 COMPLETE
 Resume file: None
