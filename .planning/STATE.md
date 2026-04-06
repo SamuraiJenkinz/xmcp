@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 26 of 28 (Message Trace Tool) — COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase verified and complete
-Last activity: 2026-04-06 — Phase 26 verified (5/5 must-haves passed)
+Phase: 27 of 28 (Feedback Analytics Foundation) — In progress
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-04-06 — Completed 27-01-PLAN.md (feedback_analytics module + tool registration)
 
-Progress: [██░░░░░░░░░░░░░░░░░] ~33% (v1.4: 2/6 plans)
+Progress: [██░░░░░░░░░░░░░░░░░] ~35% (v1.4: 3/6 plans)
 
 ## Performance Metrics
 
@@ -24,7 +24,8 @@ Progress: [██░░░░░░░░░░░░░░░░░] ~33% (v1.4
 - v1.2: 22 plans in 4 days (2026-03-27 to 2026-03-30)
 - v1.3: 9 plans in 1 day (2026-04-02, Phases 21-25 complete)
 - v1.4 Phase 26: 2 plans in 1 session (2026-04-06)
-- Total shipped: 78 plans, 26 complete phases, 4 milestones
+- v1.4 Phase 27: 1/2 plans complete (2026-04-06)
+- Total shipped: 79 plans, 26 complete phases, 4 milestones
 
 ## Accumulated Context
 
@@ -38,6 +39,9 @@ Progress: [██░░░░░░░░░░░░░░░░░] ~33% (v1.4
 | Size output as size_kb float not raw bytes | Numeric field for filtering/sorting | 26-01 |
 | Explicit negative rule for check_mail_flow misrouting | Surface-level similarity means positive rules alone insufficient | 26-02 |
 | Clarification prompt over default fallback for ambiguous delivery/routing queries | Avoids silent misrouting; user intent is deterministic once asked | 26-02 |
+| No PRAGMAs in _open_ro for feedback SQLite | Database already has WAL; read-only connections cannot write PRAGMAs | 27-01 |
+| asyncio.to_thread wraps all sqlite3 I/O | Prevents blocking MCP event loop during database queries | 27-01 |
+| ATLAS_DB_PATH separate from CHAT_DB_PATH | Allows independent configuration even if same file | 27-01 |
 
 (Full decision log in PROJECT.md Key Decisions table)
 
@@ -53,5 +57,5 @@ None.
 ## Session Continuity
 
 Last session: 2026-04-06
-Stopped at: Phase 26 complete and verified — ready to plan Phase 27
+Stopped at: Completed 27-01-PLAN.md — feedback_analytics module created, tools registered (20 total), all tests pass
 Resume file: None
