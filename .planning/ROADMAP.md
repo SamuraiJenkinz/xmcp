@@ -81,11 +81,11 @@ Plans:
   2. User asks "show me the negative feedback with comments" and receives timestamped thumbs-down entries with comment text and thread names — no per-user identity exposed
   3. Daily trend data is included when querying feedback summaries, showing satisfaction movement over the requested date range
   4. The MCP server reads the SQLite database in read-only mode — no write operations possible from the analytics module
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [x] 27-01: ATLAS_DB_PATH plumbing and read-only SQLite connection pattern
-- [x] 27-02: get_feedback_summary and get_low_rated_responses tool handlers
+- [x] 27-01-PLAN.md — ATLAS_DB_PATH plumbing and read-only SQLite connection pattern
+- [x] 27-02-PLAN.md — get_feedback_summary and get_low_rated_responses tool handlers
 
 ### Phase 28: Tool Correlation & Analytics Completion
 **Goal**: Users can identify which Exchange tools produce the worst user experience and the AI presents all analytics results conversationally
@@ -95,11 +95,11 @@ Plans:
   1. User asks "which Exchange tools get the most negative feedback?" and receives a per-tool satisfaction breakdown with vote counts
   2. User asks for the worst-rated tool queries and receives specific examples of low-rated interactions with the tool name and context
   3. The AI presents analytics results in natural conversational language (not raw JSON or table dumps) guided by system prompt rules
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 28-01: get_feedback_by_tool handler with message-to-tool correlation logic
-- [ ] 28-02: System prompt analytics guidance and tool registration
+- [ ] 28-01-PLAN.md — get_feedback_by_tool handler with message-to-tool correlation logic
+- [ ] 28-02-PLAN.md — System prompt analytics guidance and presentation rules
 
 ## Progress
 
