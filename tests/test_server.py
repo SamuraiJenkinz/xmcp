@@ -143,16 +143,16 @@ def test_server_instance_exists() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 8. test_list_tools_returns_all_17
+# 8. test_list_tools_returns_all_20
 # ---------------------------------------------------------------------------
 
 
 @pytest.mark.asyncio(loop_scope="function")
-async def test_list_tools_returns_all_17() -> None:
-    """handle_list_tools() must return exactly 17 tools (14 Exchange + ping + 2 Graph)."""
+async def test_list_tools_returns_all_20() -> None:
+    """handle_list_tools() must return exactly 20 tools (15 Exchange + ping + 2 Graph + 2 feedback analytics)."""
     tools = await handle_list_tools()
 
-    assert len(tools) == 17
+    assert len(tools) == 20
 
 
 # ---------------------------------------------------------------------------

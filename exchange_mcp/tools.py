@@ -1,7 +1,7 @@
 """Tool definitions and dispatch table for the Exchange MCP server.
 
 Provides:
-    TOOL_DEFINITIONS  -- list of all 18 mcp.types.Tool objects (15 Exchange + ping + 2 Graph)
+    TOOL_DEFINITIONS  -- list of all 20 mcp.types.Tool objects (15 Exchange + ping + 2 Graph + 2 feedback analytics)
     TOOL_DISPATCH     -- dict mapping tool name to async handler callable
 
 The dispatch table is the single point of truth for routing:
@@ -22,6 +22,10 @@ from typing import TYPE_CHECKING, Any
 import mcp.types as types
 
 from exchange_mcp import dns_utils
+from exchange_mcp.feedback_analytics import (
+    _get_feedback_summary_handler,
+    _get_low_rated_responses_handler,
+)
 
 if TYPE_CHECKING:
     from exchange_mcp.exchange_client import ExchangeClient
@@ -461,6 +465,46 @@ TOOL_DEFINITIONS: list[types.Tool] = [
                 },
             },
             "required": ["user_id"],
+        },
+    ),
+    types.Tool(
+        name="get_feedback_summary",
+        description="Return aggregate feedback statistics (vote counts, satisfaction rate, daily trend) for Atlas over a date range. Default: last 7 days.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start of date range (ISO 8601, e.g. 2026-03-30T00:00:00Z). Default: 7 days ago.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End of date range (ISO 8601). Default: now.",
+                },
+            },
+            "required": [],
+        },
+    ),
+    types.Tool(
+        name="get_low_rated_responses",
+        description="Return individual thumbs-down feedback entries with thread name, timestamp, and comment text. Default: 20 most recent in last 7 days.",
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "start_date": {
+                    "type": "string",
+                    "description": "Start of date range (ISO 8601). Default: 7 days ago.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End of date range (ISO 8601). Default: now.",
+                },
+                "limit": {
+                    "type": "integer",
+                    "description": "Maximum entries to return (1-100). Default: 20.",
+                },
+            },
+            "required": [],
         },
     ),
 ]
@@ -2198,4 +2242,6 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_connector_status": _get_connector_status_handler,
     "search_colleagues": _search_colleagues_handler,
     "get_colleague_profile": _get_colleague_profile_handler,
+    "get_feedback_summary": _get_feedback_summary_handler,
+    "get_low_rated_responses": _get_low_rated_responses_handler,
 }
