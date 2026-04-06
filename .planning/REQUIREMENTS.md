@@ -69,35 +69,35 @@ Deferred to later milestones.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| TRACE-01 | — | Pending |
-| TRACE-02 | — | Pending |
-| TRACE-03 | — | Pending |
-| TRACE-04 | — | Pending |
-| TRACE-05 | — | Pending |
-| TRACE-06 | — | Pending |
-| TRACE-07 | — | Pending |
-| TRACE-08 | — | Pending |
-| TRACE-09 | — | Pending |
-| TRACE-10 | — | Pending |
-| FBAN-01 | — | Pending |
-| FBAN-02 | — | Pending |
-| FBAN-03 | — | Pending |
-| FBAN-04 | — | Pending |
-| FBAN-05 | — | Pending |
-| FBAN-06 | — | Pending |
-| FBAN-07 | — | Pending |
-| FBAN-08 | — | Pending |
-| FBAN-09 | — | Pending |
-| FBAN-10 | — | Pending |
-| FBAN-11 | — | Pending |
-| INFRA-01 | — | Pending |
-| INFRA-02 | — | Pending |
+| TRACE-01 | Phase 26 | Pending |
+| TRACE-02 | Phase 26 | Pending |
+| TRACE-03 | Phase 26 | Pending |
+| TRACE-04 | Phase 26 | Pending |
+| TRACE-05 | Phase 26 | Pending |
+| TRACE-06 | Phase 26 | Pending |
+| TRACE-07 | Phase 26 | Pending |
+| TRACE-08 | Phase 26 | Pending |
+| TRACE-09 | Phase 26 | Pending |
+| TRACE-10 | Phase 26 | Pending |
+| FBAN-01 | Phase 27 | Pending |
+| FBAN-02 | Phase 27 | Pending |
+| FBAN-03 | Phase 27 | Pending |
+| FBAN-04 | Phase 27 | Pending |
+| FBAN-05 | Phase 28 | Pending |
+| FBAN-06 | Phase 28 | Pending |
+| FBAN-07 | Phase 27 | Pending |
+| FBAN-08 | Phase 27 | Pending |
+| FBAN-09 | Phase 28 | Pending |
+| FBAN-10 | Phase 27 | Pending |
+| FBAN-11 | Phase 28 | Pending |
+| INFRA-01 | Phase 26 | Pending |
+| INFRA-02 | Phase 27 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 23 total
-- Mapped to phases: 0
-- Unmapped: 23 (awaiting roadmap)
+- Mapped to phases: 23
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after initial definition*
+*Last updated: 2026-04-02 after roadmap creation*
