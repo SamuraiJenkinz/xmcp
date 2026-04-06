@@ -9,16 +9,16 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Message Trace
 
-- [ ] **TRACE-01**: New MCP tool `get_message_trace` searches Exchange Online message trace by sender, recipient, and date range (default last 24h, max 10 days per query)
-- [ ] **TRACE-02**: Uses `Get-MessageTraceV2` cmdlet (not deprecated `Get-MessageTrace`)
-- [ ] **TRACE-03**: Results include subject line, delivery status, received timestamp, sender, recipient, message ID
-- [ ] **TRACE-04**: All 7 delivery status values handled and presented clearly (Delivered, Failed, Pending, Quarantined, FilteredAsSpam, Expanded, GettingStatus)
-- [ ] **TRACE-05**: Result count capped (default 100, max 1000) to prevent hangs on broad queries
-- [ ] **TRACE-06**: Subject line filter parameter for narrowing results before returning
-- [ ] **TRACE-07**: Routing detail included (FromIP, ToIP, connector name) when available
-- [ ] **TRACE-08**: Subject lines stripped/truncated to mitigate PII exposure in tool results
-- [ ] **TRACE-09**: System prompt contrastive description differentiating `get_message_trace` (actual delivery tracking) from `check_mail_flow` (routing topology)
-- [ ] **TRACE-10**: Tool protected by `role_required` decorator consistent with all other protected routes
+- [x] **TRACE-01**: New MCP tool `get_message_trace` searches Exchange Online message trace by sender, recipient, and date range (default last 24h, max 10 days per query)
+- [x] **TRACE-02**: Uses `Get-MessageTraceV2` cmdlet (not deprecated `Get-MessageTrace`)
+- [x] **TRACE-03**: Results include subject line, delivery status, received timestamp, sender, recipient, message ID
+- [x] **TRACE-04**: All 7 delivery status values handled and presented clearly (Delivered, Failed, Pending, Quarantined, FilteredAsSpam, Expanded, GettingStatus)
+- [x] **TRACE-05**: Result count capped (default 100, max 1000) to prevent hangs on broad queries
+- [x] **TRACE-06**: Subject line filter parameter for narrowing results before returning
+- [x] **TRACE-07**: Routing detail included (FromIP, ToIP, connector name) when available
+- [x] **TRACE-08**: Subject lines stripped/truncated to mitigate PII exposure in tool results
+- [x] **TRACE-09**: System prompt contrastive description differentiating `get_message_trace` (actual delivery tracking) from `check_mail_flow` (routing topology)
+- [x] **TRACE-10**: Tool protected by `role_required` decorator consistent with all other protected routes
 
 ### Feedback Analytics
 
@@ -36,7 +36,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Infrastructure
 
-- [ ] **INFRA-01**: Message Tracking RBAC role verified on Atlas service principal before implementation
+- [x] **INFRA-01**: Message Tracking RBAC role verified on Atlas service principal before implementation
 - [ ] **INFRA-02**: `ATLAS_DB_PATH` environment variable provides database path to MCP server for feedback analytics
 
 ## Future Requirements
