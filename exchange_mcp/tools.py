@@ -1,7 +1,7 @@
 """Tool definitions and dispatch table for the Exchange MCP server.
 
 Provides:
-    TOOL_DEFINITIONS  -- list of all 17 mcp.types.Tool objects (14 Exchange + ping + 2 Graph)
+    TOOL_DEFINITIONS  -- list of all 18 mcp.types.Tool objects (15 Exchange + ping + 2 Graph)
     TOOL_DISPATCH     -- dict mapping tool name to async handler callable
 
 The dispatch table is the single point of truth for routing:
@@ -215,6 +215,50 @@ TOOL_DEFINITIONS: list[types.Tool] = [
                 },
             },
             "required": ["sender", "recipient"],
+        },
+    ),
+    # ------------------------------------------------------------------
+    # Message trace tools (Phase 26)
+    # ------------------------------------------------------------------
+    types.Tool(
+        name="get_message_trace",
+        description=(
+            "Tracks actual email delivery status for specific messages in Exchange Online "
+            "using Get-MessageTraceV2. Use when asked whether an email arrived or was "
+            "delivered: 'Did my email to bob@contoso.com arrive?', 'Show me emails from "
+            "alice@contoso.com in the last 24 hours', 'Was the invoice email delivered?'. "
+            "Do NOT use for mail routing questions — use check_mail_flow for that. "
+            "Requires at least sender_address or recipient_address. Results are in UTC."
+        ),
+        inputSchema={
+            "type": "object",
+            "properties": {
+                "sender_address": {
+                    "type": "string",
+                    "description": "Full sender email address (e.g. user@domain.com). At least sender or recipient required.",
+                },
+                "recipient_address": {
+                    "type": "string",
+                    "description": "Full recipient email address (e.g. user@domain.com). At least sender or recipient required.",
+                },
+                "start_date": {
+                    "type": "string",
+                    "description": "Start of date range in ISO 8601 format (e.g. 2026-04-01T00:00:00Z). Defaults to 24 hours ago. Max range: 10 days.",
+                },
+                "end_date": {
+                    "type": "string",
+                    "description": "End of date range in ISO 8601 format. Defaults to now.",
+                },
+                "subject_filter": {
+                    "type": "string",
+                    "description": "Filter results by subject line keyword (contains match).",
+                },
+                "result_size": {
+                    "type": "integer",
+                    "description": "Maximum number of results to return (default 100, max 1000).",
+                },
+            },
+            "required": [],
         },
     ),
     types.Tool(
@@ -441,6 +485,15 @@ def _validate_upn(email: str) -> None:
 def _escape_ps_single_quote(value: str) -> str:
     """Escape single quotes for PowerShell string literals by doubling them."""
     return value.replace("'", "''")
+
+
+def _truncate_subject(subject: str | None, max_len: int = 30) -> str | None:
+    """Truncate subject line to max_len characters, appending '...' if truncated."""
+    if subject is None:
+        return None
+    if len(subject) <= max_len:
+        return subject
+    return subject[:max_len] + "..."
 
 
 def _format_size(byte_count: int | None) -> str | None:
@@ -1954,6 +2007,168 @@ async def _get_colleague_profile_handler(arguments: dict[str, Any], client: Exch
     return profile
 
 
+async def _get_message_trace_handler(
+    arguments: dict[str, Any], client: ExchangeClient | None
+) -> dict[str, Any]:
+    """Track email delivery status via Get-MessageTraceV2 in Exchange Online."""
+    from datetime import datetime, timezone, timedelta
+
+    if client is None:
+        raise RuntimeError("Exchange client is not available.")
+
+    sender_address = (arguments.get("sender_address") or "").strip()
+    recipient_address = (arguments.get("recipient_address") or "").strip()
+
+    # Require at least one of sender or recipient
+    if not sender_address and not recipient_address:
+        raise RuntimeError(
+            "At least one of sender_address or recipient_address is required. "
+            "Provide a full email address (e.g. user@domain.com)."
+        )
+
+    # Reject bare names without @ symbol
+    if sender_address and "@" not in sender_address:
+        raise RuntimeError(
+            f"'{sender_address}' does not look like an email address. "
+            "Provide a full address with @ (e.g. user@domain.com)."
+        )
+    if recipient_address and "@" not in recipient_address:
+        raise RuntimeError(
+            f"'{recipient_address}' does not look like an email address. "
+            "Provide a full address with @ (e.g. user@domain.com)."
+        )
+
+    # Validate full email format for non-empty addresses
+    if sender_address and sender_address.count("@") == 1 and not sender_address.startswith("@"):
+        _validate_upn(sender_address)
+    if recipient_address and recipient_address.count("@") == 1 and not recipient_address.startswith("@"):
+        _validate_upn(recipient_address)
+
+    # Date handling — default to last 24 hours
+    now = datetime.now(timezone.utc)
+    if arguments.get("end_date"):
+        end_dt = datetime.fromisoformat(arguments["end_date"].replace("Z", "+00:00"))
+        if end_dt.tzinfo is None:
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+    else:
+        end_dt = now
+
+    if arguments.get("start_date"):
+        start_dt = datetime.fromisoformat(arguments["start_date"].replace("Z", "+00:00"))
+        if start_dt.tzinfo is None:
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+    else:
+        start_dt = end_dt - timedelta(hours=24)
+
+    # Enforce 10-day maximum range
+    range_days = (end_dt - start_dt).total_seconds() / 86400
+    if range_days > 10:
+        raise RuntimeError(
+            f"Date range of {range_days:.1f} days exceeds the 10-day maximum. "
+            "Narrow the start_date or end_date range."
+        )
+    if start_dt >= end_dt:
+        raise RuntimeError(
+            "start_date must be before end_date."
+        )
+
+    # Result size — default 100, cap at 1000
+    result_size = int(arguments.get("result_size") or 100)
+    result_size = max(1, min(result_size, 1000))
+
+    # Request one extra to detect truncation; cap at 5000 (API limit)
+    ps_page_size = min(result_size + 1, 5000)
+
+    # Format dates for PowerShell
+    start_str = start_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    end_str = end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Build cmdlet parts
+    cmdlet_parts = ["Get-MessageTraceV2"]
+    if sender_address:
+        cmdlet_parts.append(f"-SenderAddress '{_escape_ps_single_quote(sender_address)}'")
+    if recipient_address:
+        cmdlet_parts.append(f"-RecipientAddress '{_escape_ps_single_quote(recipient_address)}'")
+    cmdlet_parts.append(f"-StartDate '{start_str}'")
+    cmdlet_parts.append(f"-EndDate '{end_str}'")
+    cmdlet_parts.append(f"-ResultSize {ps_page_size}")
+
+    subject_filter = (arguments.get("subject_filter") or "").strip()
+    if subject_filter:
+        cmdlet_parts.append(f"-Subject '{_escape_ps_single_quote(subject_filter)}'")
+        cmdlet_parts.append("-SubjectFilterType 'Contains'")
+
+    select_fields = (
+        "SenderAddress, RecipientAddress, Received, Status, Subject, "
+        "MessageTraceId, Size, FromIP, ToIP, ConnectorId"
+    )
+    cmdlet = " ".join(cmdlet_parts) + f" | Select-Object {select_fields}"
+
+    try:
+        raw = await client.run_cmdlet_with_retry(cmdlet)
+    except RuntimeError as exc:
+        msg = str(exc).lower()
+        if "not found" in msg or "no results" in msg or "couldn't find" in msg:
+            return {
+                "results": [],
+                "count": 0,
+                "truncated": False,
+                "query_summary": {
+                    "sender": sender_address or None,
+                    "recipient": recipient_address or None,
+                    "start_date": start_dt.isoformat(),
+                    "end_date": end_dt.isoformat(),
+                },
+            }
+        raise
+
+    # Normalize single result dict vs list vs empty
+    if isinstance(raw, dict):
+        results_raw: list = [raw]
+    elif raw:
+        results_raw = list(raw)
+    else:
+        results_raw = []
+
+    # Detect truncation and slice
+    truncated = len(results_raw) > result_size
+    results_raw = results_raw[:result_size]
+
+    # Map each result to normalized output
+    def _map_result(r: dict) -> dict:
+        size_bytes = r.get("Size")
+        try:
+            size_kb = round(int(size_bytes) / 1024, 1) if size_bytes is not None else None
+        except (TypeError, ValueError):
+            size_kb = None
+        return {
+            "sender": r.get("SenderAddress"),
+            "recipient": r.get("RecipientAddress"),
+            "received": r.get("Received"),
+            "status": r.get("Status"),
+            "subject_snippet": _truncate_subject(r.get("Subject")),
+            "message_trace_id": r.get("MessageTraceId"),
+            "size_kb": size_kb,
+            "from_ip": r.get("FromIP"),
+            "to_ip": r.get("ToIP"),
+            "connector": r.get("ConnectorId"),
+        }
+
+    results = [_map_result(r) for r in results_raw]
+
+    return {
+        "results": results,
+        "count": len(results),
+        "truncated": truncated,
+        "query_summary": {
+            "sender": sender_address or None,
+            "recipient": recipient_address or None,
+            "start_date": start_dt.isoformat(),
+            "end_date": end_dt.isoformat(),
+        },
+    }
+
+
 def _make_stub(tool_name: str):
     """Return an async stub function that raises NotImplementedError for tool_name."""
 
@@ -1973,6 +2188,7 @@ TOOL_DISPATCH: dict[str, Any] = {
     "get_dag_health": _get_dag_health_handler,
     "get_database_copies": _get_database_copies_handler,
     "check_mail_flow": _check_mail_flow_handler,
+    "get_message_trace": _get_message_trace_handler,
     "get_transport_queues": _get_transport_queues_handler,
     "get_smtp_connectors": _get_smtp_connectors_handler,
     "get_dkim_config": _get_dkim_config_handler,
