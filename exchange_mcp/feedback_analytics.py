@@ -10,6 +10,7 @@ No Flask or Exchange Online dependencies — this module reads SQLite directly.
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sqlite3
 from datetime import datetime, timezone, timedelta, date as date_type
@@ -57,6 +58,21 @@ LOW_RATED_SQL = """
       AND f.created_at >= ? AND f.created_at <= ?
     ORDER BY f.created_at DESC
     LIMIT ?
+"""
+
+TOOL_FEEDBACK_SQL = """
+    SELECT
+        f.thread_id,
+        f.assistant_message_idx,
+        f.vote,
+        f.created_at,
+        f.comment,
+        m.messages_json,
+        t.name AS thread_name
+    FROM feedback f
+    JOIN messages m ON m.thread_id = f.thread_id
+    JOIN threads t ON t.id = f.thread_id
+    WHERE f.created_at >= ? AND f.created_at <= ?
 """
 
 
@@ -118,6 +134,72 @@ def _zero_fill_trend(
             )
         current += timedelta(days=1)
     return result
+
+
+def _find_tool_names(messages: list, assistant_message_idx: int) -> list[str]:
+    """Return the tool names correlated with the given content-bearing assistant message.
+
+    Walks the messages list to locate the content-bearing assistant message at
+    ordinal position *assistant_message_idx* (0-based, counting only assistant
+    messages that have non-empty content).  Then walks backward from that
+    position to find the closest preceding assistant message that contains a
+    tool call, stopping immediately when a user-role message is encountered.
+
+    Supports both the modern ``tool_calls`` format and the legacy
+    ``function_call`` format.
+
+    Args:
+        messages: Parsed list of message dicts from the conversation.
+        assistant_message_idx: 0-based ordinal index counting only assistant
+            messages with truthy ``content`` fields.
+
+    Returns:
+        List of tool name strings.  Empty list if no correlated tool call is
+        found.
+    """
+    # --- Step 1: locate the content-bearing assistant message ---
+    content_idx_counter = 0
+    target_list_pos: int | None = None
+    for i, msg in enumerate(messages):
+        if msg.get("role") == "assistant" and msg.get("content"):
+            if content_idx_counter == assistant_message_idx:
+                target_list_pos = i
+                break
+            content_idx_counter += 1
+
+    if target_list_pos is None:
+        return []
+
+    # --- Step 2: walk backward to find the nearest preceding tool call ---
+    for i in range(target_list_pos - 1, -1, -1):
+        msg = messages[i]
+        role = msg.get("role")
+
+        if role == "user":
+            # Crossed a user turn — no tool call for this response
+            break
+
+        if role == "assistant":
+            tool_calls = msg.get("tool_calls")
+            if tool_calls and isinstance(tool_calls, list):
+                names = []
+                for tc in tool_calls:
+                    try:
+                        name = tc["function"]["name"]
+                        if name:
+                            names.append(name)
+                    except (KeyError, TypeError):
+                        pass
+                if names:
+                    return names
+
+            function_call = msg.get("function_call")
+            if function_call and isinstance(function_call, dict):
+                name = function_call.get("name")
+                if name:
+                    return [name]
+
+    return []
 
 
 def _parse_date_range(
@@ -291,6 +373,159 @@ async def _get_low_rated_responses_handler(
                 "count": len(entries),
                 "date_range": {"start": start_str, "end": end_str},
             }
+        finally:
+            if conn is not None:
+                conn.close()
+
+    return await asyncio.to_thread(_query)
+
+
+async def _get_feedback_by_tool_handler(
+    arguments: dict[str, Any],
+    client: Any,  # client is unused — feedback analytics reads SQLite directly, not Exchange Online
+) -> dict[str, Any]:
+    """Return a per-tool satisfaction breakdown or drill-down examples for a specific tool.
+
+    Without ``tool_name``: fetches all feedback in the date range and fans the
+    vote out to each correlated tool call.  Returns a sorted breakdown with
+    satisfaction percentages and low-confidence flags (< 5 total votes).
+
+    With ``tool_name``: returns the thumbs-down examples attributed to that
+    specific tool, up to ``limit`` entries (default 10, max 50).
+
+    Messages with no identifiable tool call are omitted.  ``messages_json`` is
+    cached per thread to avoid redundant JSON parsing.
+    """
+    db_path = os.environ.get("ATLAS_DB_PATH", "").strip()
+    if not db_path:
+        return {
+            "error": (
+                "ATLAS_DB_PATH is not configured. "
+                "Set this environment variable to the Atlas database path."
+            )
+        }
+
+    try:
+        _start_dt, _end_dt, start_str, end_str = _parse_date_range(arguments)
+    except RuntimeError as exc:
+        return {"error": str(exc)}
+
+    tool_name_filter: str | None = arguments.get("tool_name")
+    raw_limit = arguments.get("limit")
+    limit = int(raw_limit) if raw_limit is not None else 10
+    limit = max(1, min(50, limit))
+
+    def _query() -> dict:
+        conn: sqlite3.Connection | None = None
+        try:
+            try:
+                conn = _open_ro(db_path)
+            except Exception as exc:
+                return {"error": f"Cannot open database: {exc}"}
+
+            rows = conn.execute(TOOL_FEEDBACK_SQL, (start_str, end_str)).fetchall()
+
+            # Cache parsed messages_json per thread_id to avoid redundant parsing
+            messages_cache: dict[str, list] = {}
+
+            if tool_name_filter is None:
+                # --- Breakdown mode ---
+                # per-tool aggregates: {tool_name: {up_votes, down_votes}}
+                aggregates: dict[str, dict[str, int]] = {}
+
+                for row in rows:
+                    thread_id = row["thread_id"]
+                    if thread_id not in messages_cache:
+                        try:
+                            messages_cache[thread_id] = json.loads(row["messages_json"])
+                        except (json.JSONDecodeError, TypeError):
+                            messages_cache[thread_id] = []
+
+                    messages = messages_cache[thread_id]
+                    tool_names = _find_tool_names(messages, row["assistant_message_idx"])
+                    if not tool_names:
+                        continue
+
+                    vote = row["vote"]
+                    for tname in tool_names:
+                        if tname not in aggregates:
+                            aggregates[tname] = {"up_votes": 0, "down_votes": 0}
+                        if vote == "up":
+                            aggregates[tname]["up_votes"] += 1
+                        elif vote == "down":
+                            aggregates[tname]["down_votes"] += 1
+
+                # Build result list
+                tools_list = []
+                for tname, counts in aggregates.items():
+                    up = counts["up_votes"]
+                    down = counts["down_votes"]
+                    total = up + down
+                    satisfaction = round(100 * up / total, 1) if total > 0 else None
+                    low_confidence = total < 5
+                    tools_list.append(
+                        {
+                            "tool_name": tname,
+                            "up_votes": up,
+                            "down_votes": down,
+                            "total_votes": total,
+                            "satisfaction_pct": satisfaction,
+                            "low_confidence": low_confidence,
+                        }
+                    )
+
+                # Sort: low_confidence tools last, then by satisfaction_pct ASC (worst first).
+                # None satisfaction_pct (total==0) treated as -1 for sorting purposes.
+                def _sort_key(item: dict) -> tuple:
+                    sat = item["satisfaction_pct"]
+                    sat_sort = sat if sat is not None else -1.0
+                    return (int(item["low_confidence"]), sat_sort)
+
+                tools_list.sort(key=_sort_key)
+
+                return {
+                    "tools": tools_list,
+                    "date_range": {"start": start_str, "end": end_str},
+                }
+
+            else:
+                # --- Drill-down mode ---
+                examples = []
+
+                for row in rows:
+                    if row["vote"] != "down":
+                        continue
+
+                    thread_id = row["thread_id"]
+                    if thread_id not in messages_cache:
+                        try:
+                            messages_cache[thread_id] = json.loads(row["messages_json"])
+                        except (json.JSONDecodeError, TypeError):
+                            messages_cache[thread_id] = []
+
+                    messages = messages_cache[thread_id]
+                    tool_names = _find_tool_names(messages, row["assistant_message_idx"])
+                    if tool_name_filter not in tool_names:
+                        continue
+
+                    examples.append(
+                        {
+                            "timestamp": row["created_at"],
+                            "comment": row["comment"] if row["comment"] else None,
+                            "thread_name": row["thread_name"],
+                        }
+                    )
+
+                    if len(examples) >= limit:
+                        break
+
+                return {
+                    "tool_name": tool_name_filter,
+                    "examples": examples,
+                    "count": len(examples),
+                    "date_range": {"start": start_str, "end": end_str},
+                }
+
         finally:
             if conn is not None:
                 conn.close()
