@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 
 ## Current Position
 
-Phase: 27 of 28 (Feedback Analytics Foundation) — COMPLETE
-Plan: 2 of 2 in current phase
-Status: Phase verified and complete
-Last activity: 2026-04-06 — Phase 27 verified (4/4 must-haves passed)
+Phase: 28 of 28 (Tool Correlation Analytics Completion) — In progress
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-04-06 — Completed 28-01-PLAN.md (get_feedback_by_tool, tool 21)
 
-Progress: [███░░░░░░░░░░░░░░░░] ~40% (v1.4: 4/6 plans)
+Progress: [████░░░░░░░░░░░░░░░] ~43% (v1.4: 5/6 plans)
 
 ## Performance Metrics
 
@@ -25,7 +25,8 @@ Progress: [███░░░░░░░░░░░░░░░░] ~40% (v1.4
 - v1.3: 9 plans in 1 day (2026-04-02, Phases 21-25 complete)
 - v1.4 Phase 26: 2 plans in 1 session (2026-04-06)
 - v1.4 Phase 27: 2/2 plans complete (2026-04-06)
-- Total shipped: 80 plans, 27 complete phases, 4 milestones
+- v1.4 Phase 28: 1/2 plans complete (2026-04-06)
+- Total shipped: 81 plans, 27 complete phases, 4 milestones
 
 ## Accumulated Context
 
@@ -42,6 +43,9 @@ Progress: [███░░░░░░░░░░░░░░░░] ~40% (v1.4
 | No PRAGMAs in _open_ro for feedback SQLite | Database already has WAL; read-only connections cannot write PRAGMAs | 27-01 |
 | asyncio.to_thread wraps all sqlite3 I/O | Prevents blocking MCP event loop during database queries | 27-01 |
 | ATLAS_DB_PATH separate from CHAT_DB_PATH | Allows independent configuration even if same file | 27-01 |
+| Fan-out vote attribution for multi-tool messages | Preserves per-tool accuracy — each tool in a turn contributed to the response | 28-01 |
+| Low-confidence flag at < 5 votes, sorted last not excluded | Still surfaced but clearly marked; avoids drawing conclusions from thin data | 28-01 |
+| Two-mode handler (breakdown vs drill-down) via tool_name param | Reduces tool count; tool_name acts as mode switch | 28-01 |
 
 (Full decision log in PROJECT.md Key Decisions table)
 
@@ -56,6 +60,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-06
-Stopped at: Phase 27 complete and verified — ready to plan Phase 28
+Last session: 2026-04-06T23:52:19Z
+Stopped at: Completed 28-01-PLAN.md (get_feedback_by_tool handler, tool 21)
 Resume file: None
