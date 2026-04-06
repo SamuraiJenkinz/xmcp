@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 26 of 28 (Message Trace Tool)
-Plan: 0 of 2 in current phase
-Status: Ready to plan
-Last activity: 2026-04-02 — Roadmap created for v1.4
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-04-06 — Completed 26-01-PLAN.md (message trace handler)
 
-Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.4: 0/6 plans)
+Progress: [█░░░░░░░░░░░░░░░░░░] ~17% (v1.4: 1/6 plans)
 
 ## Performance Metrics
 
@@ -23,11 +23,18 @@ Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.4: 
 - v1.1: 9 plans in 3 days (2026-03-23 to 2026-03-25)
 - v1.2: 22 plans in 4 days (2026-03-27 to 2026-03-30)
 - v1.3: 9 plans in 1 day (2026-04-02, Phases 21-25 complete)
-- Total shipped: 76 plans, 25 complete phases, 4 milestones
+- Total shipped: 77 plans, 25 complete phases, 4 milestones
 
 ## Accumulated Context
 
 ### Decisions
+
+| Decision | Rationale | Phase |
+|----------|-----------|-------|
+| Use Get-MessageTraceV2 not Get-MessageTrace | V1 deprecated Sep 2025; V2 has no -Page param | 26-01 |
+| Do not append ConvertTo-Json to cmdlet | run_cmdlet_with_retry already appends it internally | 26-01 |
+| Subject truncated to 30 chars as subject_snippet | PII reduction in output | 26-01 |
+| Size output as size_kb float not raw bytes | Numeric field for filtering/sorting | 26-01 |
 
 (Full decision log in PROJECT.md Key Decisions table)
 
@@ -38,10 +45,10 @@ None.
 ### Blockers/Concerns
 
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried forward
-- INFRA-01: Message Tracking RBAC role must be verified on Atlas service principal before Phase 26 implementation begins
+- INFRA-01: RESOLVED — Atlas is in Organization Management (includes Message Tracking)
 
 ## Session Continuity
 
-Last session: 2026-04-02
-Stopped at: v1.4 roadmap created — ready to plan Phase 26
+Last session: 2026-04-06
+Stopped at: Completed 26-01-PLAN.md — get_message_trace handler implemented and committed
 Resume file: None
