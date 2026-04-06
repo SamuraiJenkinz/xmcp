@@ -49,7 +49,8 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ### Active
 
-(No active requirements — next milestone not yet defined)
+- Message trace tool — search by sender/recipient/date range, return subject, delivery status, timestamps, routing path (Get-MessageTrace, Exchange Online, 10-day window)
+- Feedback analytics MCP tools — query feedback data through conversation (volume, thumbs-down with comments, tool correlation)
 
 ### Out of Scope
 
@@ -68,7 +69,7 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
-- **Current milestone:** v1.3 shipped 2026-04-02. Next milestone not yet defined.
+- **Current milestone:** v1.4 — Message Trace & Feedback Analytics
 - **Current state:** ~75.7K LOC (Python + TypeScript/CSS/SQL). 25 phases, 76 plans complete across 4 milestones.
 - **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 + motion@12.38.0 (frontend), PowerShell 5.1+ (Exchange cmdlets)
 - **Design reference:** `designux.md` in project root — comprehensive design brief with component inventory, design tokens, and user flows
@@ -125,4 +126,4 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | loadedCountRef for historical message gate | Snapshot messages.length on thread switch; idx >= ref = isNew | Good — prevents disorienting animations |
 
 ---
-*Last updated: 2026-04-02 after v1.3 milestone complete*
+*Last updated: 2026-04-06 after v1.4 milestone started*

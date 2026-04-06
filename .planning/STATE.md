@@ -2,19 +2,19 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-02)
+See: .planning/PROJECT.md (updated 2026-04-06)
 
 **Core value:** Any colleague with appropriate access can interrogate Exchange infrastructure through conversational queries against live environment data
-**Current focus:** Planning next milestone
+**Current focus:** v1.4 — Message Trace & Feedback Analytics
 
 ## Current Position
 
-Phase: 25 of 25 complete (all milestones through v1.3 shipped)
-Plan: N/A — between milestones
-Status: Ready to plan next milestone
-Last activity: 2026-04-02 — v1.3 milestone archived
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-04-06 — Milestone v1.4 started
 
-Progress: [████████████████████] 100% (v1.3 complete — 76 plans across 25 phases)
+Progress: [░░░░░░░░░░░░░░░░░░░] 0% (v1.4)
 
 ## Performance Metrics
 
@@ -37,11 +37,10 @@ None.
 
 ### Blockers/Concerns
 
-- Phase 21 human testing blocked on admin: Atlas.User App Role must be created in Entra admin center and IT engineers group assigned
 - CHATGPT_ENDPOINT not in AWS Secrets Manager pipeline (manually set as env var) — carried forward
 
 ## Session Continuity
 
-Last session: 2026-04-02
-Stopped at: v1.3 milestone complete — ready for /gsd:new-milestone
+Last session: 2026-04-06
+Stopped at: v1.4 milestone started — defining requirements
 Resume file: None
