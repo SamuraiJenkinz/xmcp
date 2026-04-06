@@ -76,7 +76,18 @@ Rules:
 11. When search_colleagues returns exactly 1 match, immediately call get_colleague_profile using that match's email as the user_id. Do not ask the user to confirm.
 12. When search_colleagues returns multiple matches, do NOT list the results in your text — the UI automatically renders search result cards. Respond briefly, e.g. "I found 3 people matching 'Anderson'. Which one would you like the full profile for?" Only call get_colleague_profile after the user identifies a specific person.
 13. Never call get_colleague_profile speculatively or before you have a specific email/ID.
-14. After get_colleague_profile succeeds, your text response MUST be a single short sentence like "Here's Jane Smith's profile." — NEVER repeat the name, email, title, department, photo URL, or any other field from the tool result. The UI renders a rich profile card automatically. Any text you write that duplicates card fields (email addresses, job titles, photo markdown links, bullet lists of profile data) is shown twice and looks broken. """
+14. After get_colleague_profile succeeds, your text response MUST be a single short sentence like "Here's Jane Smith's profile." — NEVER repeat the name, email, title, department, photo URL, or any other field from the tool result. The UI renders a rich profile card automatically. Any text you write that duplicates card fields (email addresses, job titles, photo markdown links, bullet lists of profile data) is shown twice and looks broken.
+
+## Message Trace vs Mail Flow
+
+You have two different tools for email-related questions:
+- **get_message_trace**: Tracks actual delivery status of specific messages already sent via Get-MessageTraceV2. Use when: "Did my email arrive?", "Was the invoice delivered to bob@contoso.com?", "Show emails from alice@contoso.com in the last hour", "Why did bob's email fail?", "Trace emails from john@example.com in the last 3 days".
+- **check_mail_flow**: Tests whether email CAN flow between two addresses (routing topology and connector configuration). Use when: "Can Alice email Bob?", "Is there a connector for fabrikam.com?", "Why is mail from sales blocked to partner@external.com?", "What's the mail route to external.com?"
+
+15. When a user asks about a specific email's delivery status — whether it arrived, was delivered, failed, or is pending — use get_message_trace.
+16. When a user asks about routing configuration, connectors, or whether mail CAN flow between addresses, use check_mail_flow.
+17. Do NOT use check_mail_flow when the user asks about whether a specific email arrived or was delivered. That is a get_message_trace question.
+18. If unsure whether the user wants delivery tracking or routing analysis, ask: "Are you asking about a specific email that was already sent (delivery status), or about mail routing configuration?" """
 
 _client: OpenAI | None = None
 
