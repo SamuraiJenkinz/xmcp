@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-04-06)
 ## Current Position
 
 Phase: 26 of 28 (Message Trace Tool)
-Plan: 1 of 2 in current phase
-Status: In progress
-Last activity: 2026-04-06 — Completed 26-01-PLAN.md (message trace handler)
+Plan: 2 of 2 in current phase
+Status: Phase complete
+Last activity: 2026-04-06 — Completed 26-02-PLAN.md (system prompt disambiguation + tool count)
 
-Progress: [█░░░░░░░░░░░░░░░░░░] ~17% (v1.4: 1/6 plans)
+Progress: [██░░░░░░░░░░░░░░░░░] ~33% (v1.4: 2/6 plans)
 
 ## Performance Metrics
 
@@ -35,6 +35,8 @@ Progress: [█░░░░░░░░░░░░░░░░░░] ~17% (v1.4
 | Do not append ConvertTo-Json to cmdlet | run_cmdlet_with_retry already appends it internally | 26-01 |
 | Subject truncated to 30 chars as subject_snippet | PII reduction in output | 26-01 |
 | Size output as size_kb float not raw bytes | Numeric field for filtering/sorting | 26-01 |
+| Explicit negative rule for check_mail_flow misrouting | Surface-level similarity means positive rules alone insufficient | 26-02 |
+| Clarification prompt over default fallback for ambiguous delivery/routing queries | Avoids silent misrouting; user intent is deterministic once asked | 26-02 |
 
 (Full decision log in PROJECT.md Key Decisions table)
 
@@ -49,6 +51,6 @@ None.
 
 ## Session Continuity
 
-Last session: 2026-04-06
-Stopped at: Completed 26-01-PLAN.md — get_message_trace handler implemented and committed
+Last session: 2026-04-06T17:35Z
+Stopped at: Completed 26-02-PLAN.md — system prompt disambiguation and tool count updated
 Resume file: None
