@@ -66,11 +66,11 @@ Delivered Azure AD App Role access gating, per-message thumbs up/down feedback w
   3. The AI correctly chooses `get_message_trace` for delivery tracking questions and `check_mail_flow` for routing topology questions — no tool confusion
   4. Broad queries (no sender/recipient, wide date range) return a capped result set with a summary instead of hanging or timing out
   5. Subject lines in trace results are stripped or truncated — no full PII-bearing subjects exposed in tool output
-**Plans**: TBD
+**Plans**: 2 plans
 
 Plans:
-- [ ] 26-01: RBAC verification and Get-MessageTraceV2 tool handler implementation
-- [ ] 26-02: PII safety, system prompt updates, and tool registration
+- [ ] 26-01-PLAN.md — RBAC verification and Get-MessageTraceV2 tool handler implementation
+- [ ] 26-02-PLAN.md — System prompt disambiguation and tool registration finalization
 
 ### Phase 27: Feedback Analytics Foundation
 **Goal**: Users can query aggregate feedback data through conversation — vote counts, satisfaction trends, and detailed negative feedback review
