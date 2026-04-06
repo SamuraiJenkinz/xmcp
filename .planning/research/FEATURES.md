@@ -1,288 +1,327 @@
-# Feature Landscape: v1.3 Access Control, Feedback, Search, Export, Animations
+# Feature Landscape: v1.4 Message Trace & Feedback Analytics
 
 **Domain:** Enterprise AI chat tool — IT engineer audience, Exchange infrastructure context
-**Researched:** 2026-04-01
-**Milestone scope:** Five discrete feature additions to the existing Atlas v1.2 application
+**Researched:** 2026-04-02
+**Milestone scope:** Two feature clusters added to existing Atlas v1.3 application
+**Overall confidence:** HIGH (official Microsoft docs verified, existing codebase analyzed)
 
 ---
 
-## Feature 1: Azure AD App Role Access Gating
+## Feature Cluster 1: Message Trace (Get-MessageTraceV2)
+
+### Context: How This Differs from Existing check_mail_flow
+
+The existing `check_mail_flow` tool answers: "CAN mail flow from Alice to Bob?" It inspects connector configuration, accepted domains, and routing topology. It never touches actual messages.
+
+Message Trace answers: "DID Alice's email to Bob arrive?" It queries actual delivery records: timestamps, statuses, subjects, message IDs. This is the #1 IT helpdesk question for Exchange admins: "Where is my email?"
+
+These are complementary tools. The AI should learn when to use each:
+- "Can sales@ email partner@fabrikam.com?" -> check_mail_flow (routing/config)
+- "Did Alice's email to Bob arrive yesterday?" -> message_trace (delivery tracking)
+- "Alice says Bob never got her email" -> message_trace first, then check_mail_flow if trace shows failure
+
+---
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependency | Notes |
 |---------|--------------|------------|------------|-------|
-| Graceful access denied page | Users who fail role check must not see a broken React shell or raw 401 JSON | Low | AuthContext, /api/me endpoint | Must explain the situation, not just show an error code |
-| Contact instructions on denied page | Enterprise users need a path to request access — without it they file helpdesk tickets | Low | None | Link or email for IT admin contact |
-| Role check at /api/me | Server-side role extraction from `roles` claim in MSAL id_token_claims; deny before any Exchange data is served | Low | auth.py, MSAL session | The roles claim is present when App Role assignment is configured in Entra ID |
-| Session preserved on denied page | User should not be logged out — they are authenticated, just not authorized | Low | Flask session | 403 is not logout |
-| Default deny | Any authenticated user without the Atlas.User role gets the access denied experience | Low | auth.py login_required decorator | This is the whole point of the feature |
+| Search by sender address | The most common search pattern. "Trace emails from alice@mmc.com" | Low | ExchangeClient, Get-MessageTraceV2 | SenderAddress parameter, multi-valued |
+| Search by recipient address | Second most common. "Did bob get Alice's email?" | Low | ExchangeClient, Get-MessageTraceV2 | RecipientAddress parameter, multi-valued |
+| Search by date range | All traces need a time window. Default to last 48h if unspecified | Low | Get-MessageTraceV2 | StartDate/EndDate, max 10 days per query, 90 days total history |
+| Display delivery status | The whole point: Delivered, Failed, Pending, Quarantined, FilteredAsSpam, Expanded, GettingStatus | Low | Result parsing | Status is the first thing admins look for |
+| Display message subject | Admins need to identify WHICH message. "The one about the budget report" | Low | Result parsing | First 256 chars returned by API |
+| Display timestamps (received time) | When did Exchange process it? Critical for "it was sent 2 hours ago" complaints | Low | Result parsing | UTC format from API, present in user-friendly format |
+| No-results handling | "No messages found matching your criteria" with helpful suggestions (check spelling, widen date range, check sender/recipient) | Low | Tool response formatting | Very common scenario — typos in email addresses, wrong date range |
+| Too-many-results handling | Default 1000 results max, need to summarize not dump. "Found 847 messages from alice@ in the last 2 days. Here are the most recent 10..." | Med | ResultSize parameter, response formatting | AI must summarize, not paste 1000 rows |
+| Combined sender+recipient search | "Did Alice's email TO Bob arrive?" requires both parameters | Low | Get-MessageTraceV2 | Most natural user query pattern involves both |
+| Error handling for permission issues | Clear message if Exchange permissions are insufficient | Low | ExchangeClient error handling | Admins need to know if it's a permission gap vs no results |
+| 10-day query window enforcement | API returns max 10 days per query. If user asks for 30 days, either split into queries or explain the limitation | Med | Tool parameter validation | Get-MessageTraceV2 enforces this server-side, but a good tool explains it proactively |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependency | Notes |
 |---------|-------------------|------------|------------|-------|
-| Admin email as mailto: link | One click to request access — reduces friction to zero | Low | Config value or hardcoded contact | Better than "contact your administrator" with no target |
-| Copy-to-clipboard of own UPN on denied page | Users requesting access need to tell the admin who they are; show the authenticated identity | Low | Session user claims | Avoids fumbling for own UPN |
-| Role-aware branch in AuthGuard | Extend AuthGuard in App.tsx to detect 403 vs 401 and render AccessDenied component vs. login redirect | Low | AuthContext.tsx, App.tsx | Keeps the full React app mounted — Fluent 2 design applies consistently; better than a Jinja2 error page |
+| Search by subject | "Trace the email about Q4 budget" — not just by addresses | Low | Get-MessageTraceV2 Subject + SubjectFilterType params | SubjectFilterType: Contains, StartsWith, EndsWith. Prefer StartsWith/EndsWith per MS docs |
+| Search by message ID | IT admins troubleshooting specific NDRs have message IDs from bounce headers | Low | Get-MessageTraceV2 MessageId param | Niche but extremely valuable for escalation scenarios |
+| Filter by status | "Show me only failed deliveries from yesterday" | Low | Get-MessageTraceV2 Status param | Multi-valued: Failed, FilteredAsSpam, Quarantined |
+| Intelligent date defaulting | If user says "today" or "this morning", compute appropriate StartDate/EndDate. If no date specified, default to last 48 hours | Med | AI prompt engineering + tool parameter logic | 5-10 min delay before messages appear in trace data — note this for "just sent" queries |
+| Conversational result presentation | Not a raw table. "Alice sent 3 emails to Bob yesterday. 2 were delivered successfully. 1 was filtered as spam. Here are the details..." | Med | AI system prompt guidance | The AI's natural language summary IS the feature. Tables for details, narrative for summary |
+| Trace detail drill-down (Get-MessageTraceDetailV2) | After finding a message, get routing hops, agent actions (transport rules, DLP, malware scan) | High | Second MCP tool (message_trace_detail), MessageTraceId from initial trace | Requires two-step tool calling: trace first, then detail. Very valuable for troubleshooting |
+| Smart retry suggestion for Pending status | If status is Pending or GettingStatus, suggest checking again in a few minutes | Low | Status parsing in tool response | "This message is still being processed. Check back in 5-10 minutes for a final status." |
+| Cross-reference with check_mail_flow | When trace shows Failed, AI could proactively suggest running check_mail_flow to diagnose routing | Med | AI prompt engineering | Tool chaining: "The delivery failed. Let me check if there's a routing issue between these domains..." |
+| IP-based filtering | Search by source IP (FromIP) or destination IP (ToIP) for advanced troubleshooting | Low | Get-MessageTraceV2 FromIP/ToIP params | Power user feature for tracking specific mail servers |
+| Pagination for large result sets | Handle >1000 results via StartingRecipientAddress cursor-based pagination | High | Get-MessageTraceV2 pagination mechanism | No native pagination — must use StartingRecipientAddress + EndDate from last record. Complex but needed for busy mailboxes |
 
 ### Anti-Features
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Group-membership-claim-based gating | Risks token overage with 80K+ users; group GUIDs in token are fragile | Use App Roles — already decided in PROJECT.md |
-| Showing role name ("Atlas.User") in the UI | Exposes internal security model naming to end users | Show "you don't have access to Atlas" — no role jargon |
-| Humor or apology-heavy copy | Enterprise tool — IT admins read errors professionally | Factual: "Your account does not have access. Contact [name/email] to request access." |
-| Multiple role tiers in v1.3 | Adds admin vs. read-only complexity; all current operations are read-only anyway | Single Atlas.User role is sufficient; admin console is out of scope |
-| Polling or auto-retry after access denied | Users do not suddenly gain roles mid-session | Static denied page with clear instructions is correct |
-
-### Implementation Notes
-
-- The `roles` claim is a list in `id_token_claims`. Check `"Atlas.User" in user.get("roles", [])` server-side.
-- Existing `login_required` decorator in `auth.py` needs a companion role check — or extend `login_required` to include role verification after auth succeeds.
-- Frontend: `AuthContext` currently tracks `user | null | loading`. Extend to include `accessDenied: boolean`, populated when `/api/me` returns 403. `AuthGuard` in `App.tsx` branches on this to render `<AccessDenied />` instead of redirecting to `/login`.
-- The access denied component lives inside the React app (not a separate Jinja2 page) so the Fluent 2 design system applies.
-- **Confidence: HIGH** — App Roles pattern is authoritative in Microsoft Learn; roles claim extraction is standard MSAL usage.
+| Historical search (>90 days) | Get-MessageTraceV2 only covers 90 days. Start-HistoricalSearch is async and returns CSV — completely different UX pattern | Clearly state the 90-day limit. If user needs older data, explain the EAC historical search option |
+| Real-time delivery tracking | Message trace data has 5-10 minute lag. Do not promise "real-time" | Set expectations: "Trace data is typically available 5-10 minutes after sending" |
+| Message content/body retrieval | Message trace does NOT return email body content. Only metadata (subject, sender, recipient, status, timestamps) | Be explicit: "Message trace shows delivery information, not message content" |
+| Attachment information | Not available in trace results | Don't mention attachments in tool description |
+| Building a dashboard/chart view | Atlas is conversational, not a dashboard. Message trace results should be presented as text/tables in chat, not as a separate page | Keep everything in the chat flow. Tool panels show raw JSON, AI presents the narrative |
+| Automatic re-query loops | Don't automatically re-query for Pending messages on a timer | Let the user ask again when they want an update |
+| Bypassing the 100 requests/5min throttle | API rate limit is firm | Implement rate awareness and inform user if throttled |
 
 ---
 
-## Feature 2: Per-Message Thumbs Up / Down Feedback
+### Edge Cases and Error Scenarios
+
+| Scenario | Expected Behavior | Notes |
+|----------|-------------------|-------|
+| No results found | "No messages found from alice@mmc.com to bob@mmc.com in the last 48 hours. Try widening your date range or checking the email addresses." | Most common edge case. Typos in addresses are the #1 cause |
+| Distribution list expansion | Status "Expanded" means message went to a DL. Individual recipients have their own trace entries | Explain what Expanded means — admins often misread this as a problem |
+| Multiple deliveries of same message | Same subject, same sender, different MessageTraceIds. Present as separate entries with timestamps | Common with retries, forwarding rules, or DL expansion |
+| Message sent to 1000+ recipients | MessageTraceId required for these. Standard sender/recipient search won't work | Guide user to provide MessageTraceId if available |
+| Date range >10 days requested | Split into multiple queries or explain the 10-day-per-query limit | "I can search up to 10 days at a time. Let me check the most recent 10 days first." |
+| User asks about very recent message (<10 min) | May not appear yet | "Messages typically appear in trace data 5-10 minutes after sending. This one may not be available yet." |
+| Quarantined message found | Status is Quarantined — admin may want to release it | Note: releasing quarantined messages is a separate action not in v1.4 scope |
+| Hybrid environment (on-prem + cloud) | Get-MessageTraceV2 only covers Exchange Online leg | Note the limitation for MMC's hybrid setup |
+| FilteredAsSpam status | Admin needs to know WHY — transport rules? EOP? | This is where trace detail (differentiator) becomes valuable |
+| User provides partial email address | "trace emails from alice" without domain | Tool should require full email. AI should ask for clarification |
+| Rate limit hit (100 req/5min) | Return friendly error, suggest waiting | "Exchange Online rate limit reached. Please wait a few minutes before running another trace." |
+
+---
+
+## Feature Cluster 2: Feedback Analytics (MCP Tools)
+
+### Context: What Already Exists
+
+The feedback table stores per-message thumbs up/down with optional comment (max 500 chars), linked to thread_id and assistant_message_idx. Created/updated timestamps. Indexed by (thread_id, assistant_message_idx) and (user_id, vote, created_at DESC).
+
+Messages are stored as OpenAI-format JSON in messages.messages_json, which includes `tool_calls` in assistant messages. This means correlating feedback with tools requires parsing the JSON to find which tools were called near the voted-on assistant message.
+
+Current feedback is per-user, per-thread. There is NO cross-user aggregation yet. The new analytics tools will query across all users' feedback (admin-level visibility).
+
+### Important Design Decision: Who Can See Analytics?
+
+Feedback analytics must be admin-level. Individual users should only see their own feedback (already works). The new analytics MCP tools should aggregate across ALL users, so they need elevated access or a separate permission model. Given Atlas already has role-based access (Azure AD App Roles), this could be gated behind an admin role.
+
+---
 
 ### Table Stakes
 
 | Feature | Why Expected | Complexity | Dependency | Notes |
 |---------|--------------|------------|------------|-------|
-| Thumbs up / thumbs down on each assistant message | Industry standard since ChatGPT and GitHub Copilot; Copilot Studio ships it by default; absence is conspicuous | Low | AssistantMessage.tsx | |
-| Buttons visible on message hover | Not permanently visible — clutter increases with long threads; hover reveal matches ChatGPT and Copilot pattern | Low | `.message-hover-actions` zone already exists in AssistantMessage | CopyButton already uses this zone |
-| Persist vote to SQLite | Without persistence the signal is useless | Low | db.py, schema.sql (new feedback table or column) | One vote per message per user; second click on same button = toggle off |
-| Visual toggle state | Button must indicate selected state — filled vs. outline icon, or accent color | Low | Fluent UI ThumbLike / ThumbDislike icon variants | Use `ThumbLikeFilled` / `ThumbDislikeFilled` for selected states |
-| Streaming messages excluded | Do not show feedback buttons while response is still streaming | Low | `isStreaming` prop already on AssistantMessage | Show only after `done` SSE event |
+| Total vote counts (up/down) | "How is Atlas doing?" — the most basic metric | Low | SQLite COUNT + GROUP BY on feedback table | SELECT vote, COUNT(*) FROM feedback GROUP BY vote |
+| Vote counts by date range | "How was feedback this week?" | Low | feedback.created_at filtering | Allow today, this week, this month, last 30 days, custom range |
+| Thumbs-down with comments | "What are people complaining about?" — the actionable data | Low | SELECT from feedback WHERE vote='down' AND comment IS NOT NULL | Comments are the gold. Show most recent N, not just counts |
+| Satisfaction rate (% thumbs up) | Single number: "82% positive feedback" | Low | Simple math on counts | Present as percentage. "Atlas has an 82% satisfaction rate this week (45 thumbs up, 10 thumbs down)" |
+| Time-filtered queries | "Show feedback from the last 7 days" vs "all time" | Low | WHERE created_at >= datetime(...) | Every analytics query needs a time dimension |
+| Feedback count (total interactions rated) | "How many messages have been rated?" vs "how many messages total" | Low | COUNT on feedback table | Context matters: 55 ratings out of 2000 messages = 2.75% feedback rate |
 
 ### Differentiators
 
 | Feature | Value Proposition | Complexity | Dependency | Notes |
 |---------|-------------------|------------|------------|-------|
-| Optional freetext comment on thumbs-down | Thumbs-down without context is a weak signal; comment reveals why | Medium | Fluent UI Popover component | Optional, not required; submit immediately on thumbs-down, comment is secondary action |
-| ARIA live region announcement | "Feedback submitted" spoken to screen readers after vote | Low | `aria-live` region in AssistantMessage | Complements WCAG AA already in place |
-| Data schema designed for future admin analytics | Per-message feedback in SQLite is the foundation for a future admin view; schema decisions made now shape what is queryable later | Low | schema.sql design | Admin UI is out of scope for v1.3 |
+| Feedback correlated with Exchange tools | "Which tools get the best/worst feedback?" | High | Parsing messages_json to extract tool_calls near the assistant_message_idx, then joining with feedback | This is the killer feature. Requires: (1) for each feedback row, load messages_json from the thread, (2) find the assistant message at that index, (3) look backwards to find which tool_calls the AI invoked to produce that response, (4) aggregate. See detailed design below. |
+| Trend analysis (satisfaction over time) | "Is Atlas getting better or worse?" | Med | GROUP BY date bucketing (daily/weekly) | Show trend direction: "Satisfaction improved from 75% to 88% over the last month" |
+| Per-tool satisfaction ranking | "get_dag_health gets 95% thumbs up, check_mail_flow gets 60%" | High | Same tool correlation as above, then per-tool aggregation | Requires significant sample size per tool to be meaningful. Flag if N < 5 |
+| Recent negative feedback list | "Show me the last 10 thumbs-down with their comments" | Low | Simple query, ordered by created_at DESC | Most immediately actionable analytics view |
+| Feedback rate (% of messages that get rated) | "Only 3% of messages get feedback — should we prompt more?" | Med | Requires counting total assistant messages across all threads (parsing messages_json) | Useful meta-metric about the feedback system itself |
+| Daily/weekly summary | "Give me this week's feedback summary" — single command for a digest | Med | Combination of counts, rate, recent complaints | The AI should compose a narrative: "This week: 23 ratings (18 up, 5 down). 78% positive. The 5 negative ratings mentioned: slow response (2), incorrect DAG info (1), confusing output (2)." |
+| User engagement metrics | "How many unique users gave feedback this month?" | Low | COUNT(DISTINCT user_id) | Helps assess if feedback represents broad opinion or one vocal user |
+| Most-rated threads/topics | "Which conversations get the most feedback?" | Med | GROUP BY thread_id with join to threads table | Identifies which types of questions generate the most reaction |
 
 ### Anti-Features
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| Mandatory comment before thumbs-down submits | Friction eliminates most feedback; users close the dialog | Make comment optional; submit immediately on click |
-| Stars or multi-level rating | Overkill for a read-only infrastructure tool; binary signal is sufficient | Binary thumbs only |
-| Feedback on user messages | Users rate AI responses, not their own messages | Assistant messages only |
-| Toast notification for each vote | Disruptive in a tool that may have long threads; repeated toasts are annoying | Inline state change (button fills in) is sufficient confirmation |
-
-### Implementation Notes
-
-- The `messages` table currently stores `messages_json TEXT` per thread — a JSON blob, not per-message rows. A new `feedback` table needs a message-level identifier. The simplest key is `(thread_id, message_index)` as a composite, where message_index is the 0-based position in the messages array.
-- The hover-action zone already exists in `AssistantMessage.tsx` next to `CopyButton`. Add `ThumbLikeRegular` / `ThumbLikeFilled` and `ThumbDislikeRegular` / `ThumbDislikeFilled` from `@fluentui/react-icons`.
-- API shape: `POST /api/threads/:id/feedback` with body `{ message_index: number, vote: "up" | "down" | null, comment?: string }`. `null` = retract.
-- Optional comment: Fluent UI v9 `Popover` on thumbs-down, small `Textarea`, "Submit" and "Skip" buttons. Submitted via same endpoint with optional `comment` field.
-- **Confidence: HIGH** — pattern is well-established; the main complexity is the message identity schema decision.
+| Individual user identification in analytics | Privacy concern — don't show "User john.smith gave 15 thumbs down" | Aggregate only. Show counts, not who voted what. user_id is for ownership, not surveillance |
+| Real-time analytics dashboard | Atlas is conversational, not a BI tool | Analytics are queried on-demand via chat: "Show me this week's feedback" |
+| Sentiment analysis on comments | Over-engineering for 500-char comments. The vote IS the sentiment | Just show the comments. Let the human admin interpret |
+| Automated alerting on negative feedback | Outside scope — Atlas is a query tool, not a monitoring system | Admin asks when they want to check. No push notifications |
+| Feedback editing by admins | Admins should not modify user feedback | Read-only analytics. Feedback is user-generated truth |
+| Export to CSV/Excel from analytics | v1.3 already has conversation export. Don't add a separate analytics export path | If needed later, it's a separate feature. Chat-based analytics is sufficient for now |
+| Predictive analytics ("feedback will decline next week") | ML on small datasets is noise, not signal | Descriptive analytics only. Show what happened, not what might happen |
+| Comparing feedback across different Atlas instances | Only one instance exists at MMC | Single-instance design |
 
 ---
 
-## Feature 3: Thread Search
+### Feedback-to-Tool Correlation: Design Considerations
 
-The requirement names two search modes: sidebar title filter (client-side) and full-text message search (SQLite FTS5 backend). These are distinct UX patterns with different affordances and different implementation complexity.
+This is the most complex feature and deserves detailed analysis.
 
-### Table Stakes — Title Filter (Sidebar, Client-Side)
+**The Problem:**
+- Feedback row says: thread_id=42, assistant_message_idx=3, vote=down
+- We need to know: which MCP tools did the AI call to generate assistant message #3?
 
-| Feature | Why Expected | Complexity | Dependency | Notes |
-|---------|--------------|------------|------------|-------|
-| Search input at top of sidebar thread list | ChatGPT, Copilot, Claude all place conversation search at the top of the sidebar | Low | ThreadList.tsx | Above the thread groups |
-| Instant client-side filter as user types | No round-trip needed; thread names are already loaded in ThreadContext | Low | `groupThreadsByRecency` util | Filter before grouping, or filter within groups |
-| Clear button inside the input | Standard for search inputs; users should be able to reset quickly | Low | Controlled input | Fluent UI `SearchBox` or custom input with clear affordance |
-| Empty state when no matches | "No conversations match" — prevents silent empty list confusion | Low | ThreadList.tsx | Short copy |
-| Filter does not affect active thread | The active thread can be visually hidden by filter but session state must not change | Low | ThreadContext | Filter is display-only |
+**The Data Path:**
+1. Load `messages_json` from `messages` table for thread_id=42
+2. Parse the JSON array of OpenAI-format messages
+3. Find the assistant message at index 3 (counting only content-bearing assistant messages, per the schema comment)
+4. Look at the preceding messages in the array — the assistant message with `tool_calls` and subsequent `tool` role messages
+5. Extract tool names from the `tool_calls[].function.name` fields
 
-### Table Stakes — Full-Text Message Search (Backend, SQLite FTS5)
+**Complexity Factors:**
+- The assistant_message_idx is 0-based counting only "content-bearing assistant messages" — not all messages in the array. The indexing logic must match exactly what the frontend uses.
+- A single assistant response may involve multiple tool calls (e.g., AI calls get_mailbox_details AND check_mail_flow in one turn).
+- Some assistant messages may have NO tool calls (pure conversational responses).
+- The messages_json can be large for long conversations.
 
-| Feature | Why Expected | Complexity | Dependency | Notes |
-|---------|--------------|------------|------------|-------|
-| Search across message content, not just titles | Power users need to find "which thread did I ask about mailbox quotas?" | Medium | SQLite FTS5 virtual table on messages | Requires schema migration |
-| Results show thread name + message snippet | Without context, a list of thread names is useless; snippet confirms relevance | Medium | Backend FTS5 `snippet()` function | FTS5 snippet() is built-in; returns marked-up context |
-| Click result navigates to thread | Search is navigation — clicking a result should open that thread | Low | ThreadList handleSelectThread | Same flow as clicking a thread item |
-| Debounced search input (300ms) | FTS5 is fast but debounce avoids per-keystroke round trips | Low | Frontend useEffect or custom hook | Standard practice |
+**Recommended Approach:**
+- Build the correlation at query time, not at write time. The feedback table stays simple.
+- Create a Python utility function that, given a thread's messages_json and an assistant_message_idx, returns the list of tool names invoked for that response.
+- For aggregate analytics, iterate over all feedback rows, resolve tool names for each, then aggregate. This is O(N * M) where N = feedback rows and M = average messages per thread. Acceptable for the expected data volume (hundreds, not millions).
+- Cache results if performance becomes an issue later.
 
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Dependency | Notes |
-|---------|-------------------|------------|------------|-------|
-| Result count badge ("3 threads") | Tells the user whether to narrow or broaden the query | Low | Computed from results array length | |
-| Highlight matched term in snippet | Helps user confirm relevance before clicking | Medium | FTS5 `highlight()` function; sanitize output before render | |
-| Keyboard shortcut to open search (Ctrl+K) | ChatGPT uses Ctrl+K for history search; power users expect it | Low | keydown listener in ThreadList or App level | Atlas already has keyboard shortcut infrastructure |
-| Search-as-toggle (icon reveals input) | Avoids permanently occupying sidebar real estate; matches ChatGPT's magnifying glass approach | Low | Toggle state in ThreadList | Relevant when sidebar is collapsed |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Search hitting the backend on every keystroke | Hammers SQLite with rapid FTS5 queries | Debounce 300ms minimum; 2-character minimum before triggering |
-| Queries shorter than 2 characters | FTS5 prefix queries on 1-char terms match almost everything; meaningless results | Enforce minimum 2 chars |
-| Fuzzy or semantic search | Requires embeddings or external search index; out of scope | Exact and prefix FTS5 match is the right v1 approach |
-| Replacing the sidebar thread list with search results | Users need both simultaneously | Search results are an overlay or expansion of the sidebar, not a replacement |
-| Showing full message content in results | Security and noise concern | 50-80 character snippet around match is the pattern |
-
-### Implementation Notes
-
-- Schema: create `messages_fts` FTS5 virtual table. Note that the existing `messages` table stores `messages_json TEXT` (a JSON blob per thread, not per-message rows). FTS5 will tokenize the raw JSON text. Consider whether to index the extracted text content or the raw JSON. Indexing extracted plain text is preferable but requires a trigger or a population script to extract text from the JSON during migration.
-- In v1.3, the messages table has no per-message row to link a search hit to a scroll position within a thread. Navigating to the thread is sufficient for v1.3 — scroll-to-message can be v1.4.
-- Two-phase search UI: (1) immediate client-side title filter while typing; (2) on-demand full-text search posted to `GET /api/search?q=<term>` when input exceeds 2 chars and 300ms has passed.
-- **Confidence: HIGH for title filter** (pure client-side, no risk). **MEDIUM for FTS5 backend** — the messages_json blob schema complicates clean indexing; phase-specific research needed during implementation.
+**Alternative (rejected): Denormalize tool names into feedback table.**
+- Would require schema migration and changing the feedback write path.
+- Adds coupling between feedback and message format.
+- Premature optimization for the expected data volume.
 
 ---
 
-## Feature 4: Conversation Export
+### Edge Cases and Error Scenarios
 
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Dependency | Notes |
-|---------|--------------|------------|------------|-------|
-| Markdown export of current thread | IT engineers writing incident reports, runbooks, or Jira tickets want formatted output they can paste | Low | Messages in ChatContext | Render messages as `## User` / `## Assistant` with code blocks for tool results |
-| JSON export of current thread | Power users and automation consumers want structured data | Low | Existing `GET /api/threads/:id/messages` endpoint | Server-side preferred for fidelity (includes system and tool messages not surfaced in frontend) |
-| Single-thread export scope | Export the currently active thread | Low | activeThreadId from ThreadContext | Exporting all threads at once is a different use case not requested |
-| Filename includes thread name and date | `atlas-exchange-dag-health-2026-04-01.md` is useful; `export.md` is not | Low | Thread name + Date.now() | Slugify thread name |
-| Download via browser (client-side for Markdown) | Markdown can be assembled from loaded messages with no server round-trip | Low | Messages already in React state | Use `Blob` + `URL.createObjectURL` pattern |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Dependency | Notes |
-|---------|-------------------|------------|------------|-------|
-| Tool call data included in Markdown export | IT engineers want to see which Exchange tool was called and what it returned — often the key deliverable | Low | ToolPanelData already on DisplayMessage | Format as fenced code block labeled with tool name |
-| Copy full thread to clipboard (no file) | Engineers working in Confluence or Jira often paste directly — faster than download-then-open | Low | navigator.clipboard API | Alongside download, not instead of it |
-| Timestamp on each message in export | Report context — "the query was run at 14:32" matters for incident timelines | Low | `timestamp` already on DisplayMessage | Include per-message in Markdown output |
-| Export button in ChatPane header | Discoverable — users should not hunt for export | Low | Header.tsx already exists | `ArrowDownloadRegular` icon with `Menu` for format selection |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| PDF export | Requires server-side renderer or heavy client library (html2canvas, jsPDF); fragile with Markdown formatting | Markdown is the right format; if PDF is needed, Markdown-to-PDF is a user-side step |
-| Multi-thread batch export | The use case is "export this conversation for my ticket" — batch export is a different story | Single thread only |
-| HTML export | Heavy, non-portable; engineers do not paste HTML into tickets | Markdown covers the use case |
-| Export that strips tool panel data | Tool results are often the most valuable part of an Atlas response | Always include tool data |
-| Server-side Markdown generation | Markdown assembly from messages is trivial client-side; server round-trip adds latency for no benefit | Client-side generation |
-
-### Implementation Notes
-
-- Markdown assembly: iterate `DisplayMessage[]` from ChatContext. Each message: `## User` or `## Assistant` heading, message body, timestamp line. For assistant messages, prepend tool panels as fenced JSON blocks with `json` language tag and a comment showing the tool name.
-- JSON export: call `GET /api/threads/:id/messages` and trigger download of the response. This returns the raw messages_json which includes all message types (system, tool call, tool result) that the frontend does not display — better fidelity than serializing the DisplayMessage array.
-- Export trigger: `ArrowDownloadRegular` icon in `Header.tsx`. Fluent UI v9 `Menu` with items "Download as Markdown" and "Download as JSON". Optionally a "Copy to clipboard" item. Only enabled when `messages.length > 0`.
-- **Confidence: HIGH** — straightforward browser Blob download pattern; no novel technology.
+| Scenario | Expected Behavior | Notes |
+|----------|-------------------|-------|
+| No feedback data yet | "No feedback has been submitted yet." | New deployment or fresh database |
+| Very few ratings (N < 10) | Show data but caveat: "Based on only 7 ratings — this may not be representative" | Small sample warning |
+| All feedback is positive | "100% satisfaction rate (23 thumbs up, 0 thumbs down). No negative feedback to review." | Good news is still news |
+| Tool correlation with no tool calls | Some assistant messages are pure text (greetings, clarifications). Report as "No tool invoked" or "General conversation" | Don't skip these — they tell a story about non-tool interactions |
+| Deleted threads with orphan feedback | Feedback has ON DELETE CASCADE from threads. If thread is deleted, feedback goes too | Historical analytics may lose data if threads are deleted. This is acceptable — don't add soft-delete complexity |
+| Multiple tools in one response | "The assistant called get_mailbox_details AND get_dag_health for this response" | Count feedback for EACH tool involved, or track as a "multi-tool" response. Recommend counting for each tool. |
+| Feedback on very old threads | messages_json format may have evolved. Tool correlation must handle format variations gracefully | Defensive parsing. If format is unrecognizable, skip tool correlation for that entry |
+| Time zone handling | feedback.created_at is UTC. Analytics should present in a user-friendly way | "This week" should be computed server-side in UTC. Don't try to localize — the data is UTC, present it consistently |
+| High volume of thumbs-down in short period | Could indicate a real issue (e.g., Exchange connection down). AI should note unusual patterns | "There were 12 thumbs-down in the last hour, compared to an average of 2 per day. This may indicate a service issue." |
 
 ---
 
-## Feature 5: Motion Entrance Animations and Transitions
-
-### Table Stakes
-
-| Feature | Why Expected | Complexity | Dependency | Notes |
-|---------|--------------|------------|------------|-------|
-| New assistant message entrance (fade-in + upward translate) | ChatGPT, Claude, and Copilot all animate new AI responses appearing; absence feels static and abrupt | Low | AssistantMessage.tsx | `opacity: 0→1`, `translateY: 8px→0`, 200ms ease-out |
-| New user message entrance | User bubble appearing instantly while AI thinks feels inconsistent | Low | UserMessage.tsx | Same pattern, 150ms — slightly faster |
-| `prefers-reduced-motion` respected everywhere | WCAG requirement; vestibular disorders affect a meaningful percentage of users | Low | CSS media query | Wrap all animation definitions in `@media (prefers-reduced-motion: no-preference)` |
-| No additional animation during streaming | The blinking cursor already signals "working"; layering animation on top is distracting | Low | Existing `streaming-cursor` | The streaming cursor is sufficient |
-
-### Differentiators
-
-| Feature | Value Proposition | Complexity | Dependency | Notes |
-|---------|-------------------|------------|------------|-------|
-| Sidebar collapse/expand width transition | Adds a 200-250ms ease-in-out to the sidebar width toggle; matches Copilot sidebar behavior | Low | AppLayout.tsx / index.css | Pure CSS `transition: width` on the sidebar element |
-| Tool panel expand/collapse easing | Currently uses `<details>` + `<summary>` which snaps open/closed; smooth height animation makes the UI feel polished | Medium | ToolPanel.tsx — `<details>` does not support CSS height transitions natively | Requires either a React-controlled expand state with `max-height` transition or accepting the snap behavior |
-| Feedback button micro-interaction (scale on click) | Tactile feedback on thumbs-up/down — scale 1 → 1.15 → 1 over 100ms | Low | FeedbackButtons component (new in this milestone) | Affirms the user's action was registered |
-| New thread item highlight | When the AI names a thread (`thread_named` SSE event), the sidebar item should briefly flash | Low | ThreadItem.tsx + CSS keyframe | Background flash accent → transparent over 600ms |
-
-### Anti-Features
-
-| Anti-Feature | Why Avoid | What to Do Instead |
-|--------------|-----------|-------------------|
-| Typewriter / per-character text animation | Explicitly Out of Scope in PROJECT.md — artificial latency, frustrates fast readers | SSE streaming already gives real progressiveness; the cursor handles the working signal |
-| Animate sidebar list reorder | Thread order changes when a thread is renamed (updated_at changes); animating list sort is complex and low value | Accept instant reorder |
-| Smooth scroll-to-bottom animation | Message list should snap to bottom, not slide — users lose context if the view slides away | `scrollIntoView({ behavior: 'instant' })` |
-| Loading skeleton animations for thread list | Thread list loads in ~50ms from SQLite; a skeleton would flash briefly and look broken | Existing loading state is sufficient |
-| Heavy animation library (Framer Motion / GSAP) | Adds 30-80KB to bundle for effects achievable with CSS transitions | CSS transitions and `@keyframes` are sufficient; `@fluentui/react-motion` is available if JS-driven animation is needed without adding dependencies |
-| Entrance animation on historical messages when thread loads | Animating 20 messages simultaneously when switching threads is disorienting and slow-looking | Only animate messages that arrive during the active session |
-
-### Implementation Notes
-
-- All entrance animations: CSS `@keyframes` or `transition` on `.assistant-message` and `.user-message`. Suggested token values to add: `--atlas-duration-fast: 150ms`, `--atlas-duration-normal: 200ms`, `--atlas-easing-decelerate: cubic-bezier(0, 0, 0.2, 1)`. These align with Fluent 2 motion principles (ease-out for entering elements).
-- `prefers-reduced-motion` approach: all motion CSS wrapped in `@media (prefers-reduced-motion: no-preference) { ... }`. This is simpler than a React hook and requires zero JS. Elements outside that block render their final (non-animated) state immediately.
-- Entrance animation on historical messages: use a CSS class like `.animate-entrance` added only to messages appended to the live chat, not to messages loaded from history. The message list can add this class only during active streaming sessions.
-- Tool panel height transition: the native `<details>` + `<summary>` approach does not support CSS height transitions (height goes from 0 to `auto`). Options: (a) switch ToolPanel to React-controlled expand state with `max-height` transition — pragmatic, no new dependencies; (b) use `@fluentui/react-motion` Web Animations API; (c) accept the snap behavior and skip this animation. Option (a) is recommended. If descoped, the snap behavior is acceptable.
-- **Confidence: HIGH for entrance animations and sidebar transition** (pure CSS). **MEDIUM for tool panel height animation** — requires ToolPanel to stop using native `<details>` toggle if smooth animation is required.
-
----
-
-## Feature Dependency Map
+## Feature Dependencies
 
 ```
-App Role access gating
-  Requires: /api/me backend role check, AuthContext extension, new AccessDenied component
-  Independent of: all other v1.3 features
+Message Trace:
+  ExchangeClient (exists) --> Get-MessageTraceV2 tool --> AI presentation
+  Get-MessageTraceV2 tool --> Get-MessageTraceDetailV2 tool (optional, for drill-down)
+  check_mail_flow (exists) <-- cross-reference on failure (AI prompt guidance)
 
-Thumbs up/down feedback
-  Requires: new feedback table (schema decision), new POST /api/threads/:id/feedback route
-  Soft-depends on: message identity model (schema work must precede implementation)
-  Reuses: AssistantMessage hover-actions zone, Fluent UI icon set
+Feedback Analytics:
+  feedback table (exists) --> analytics query tools (new)
+  messages table (exists) --> tool correlation logic (new)
+  analytics query tools --> AI presentation (system prompt guidance)
 
-Thread search — title filter
-  Requires: only ThreadList.tsx change
-  Independent of: all other v1.3 features
-
-Thread search — full-text backend
-  Requires: schema migration (FTS5 virtual table), new GET /api/search route
-  Independent of: feedback, export, animations
-
-Conversation export
-  Requires: messages loaded in ChatContext (already true), Header.tsx export button
-  JSON path reuses: existing GET /api/threads/:id/messages endpoint
-  Independent of: all other v1.3 features
-
-Motion animations
-  CSS entrance animations: no new dependencies
-  Sidebar transition: no new dependencies
-  Tool panel height animation: requires ToolPanel.tsx refactor away from native <details>
-  Feedback button micro-interaction: depends on feedback component being built first
+No dependencies between the two clusters -- they can be built in parallel.
 ```
 
 ---
 
-## MVP Prioritization for v1.3
+## MVP Recommendation
 
-**Implement first (foundational / risk-bearing):**
-1. App Role access gating — security feature; must be verified before other features are tested by users
-2. Thread title filter — zero backend work; immediate value; no risk
-3. Feedback thumbs up/down (vote only, no comment) — schema decision must be made early; optional comment can follow
+### Build First (Phase 1 of v1.4)
 
-**Implement second (medium complexity):**
-4. Conversation export (Markdown client-side first, JSON second)
-5. FTS5 full-text message search — after title filter ships and the messages_json indexing approach is designed
+**Message Trace:**
+1. `message_trace` MCP tool — Get-MessageTraceV2 with sender, recipient, date range, status filter
+2. No-results and too-many-results handling
+3. AI system prompt guidance for when to use message_trace vs check_mail_flow
+4. Subject search (low effort, high value)
 
-**Implement last (polish, no blockers):**
-6. CSS entrance animations for messages and sidebar
-7. Tool panel height animation (contingent on ToolPanel refactor decision)
-8. Feedback button micro-interaction (after feedback component exists)
+**Feedback Analytics:**
+1. `get_feedback_stats` MCP tool — vote counts, satisfaction rate, by date range
+2. `get_feedback_comments` MCP tool — recent thumbs-down with comments
+3. Basic time filtering (today, this week, this month, all time)
 
-**Defer from v1.3 if scope tightens:**
-- Optional comment on thumbs-down (adds Popover component and API field change)
-- Keyboard shortcut for search (nice-to-have, search must exist first)
-- Highlight matched search term in results (FTS5 highlight() adds markup-handling complexity)
+### Build Second (Phase 2 of v1.4)
+
+**Message Trace:**
+4. `message_trace_detail` MCP tool — Get-MessageTraceDetailV2 for routing hop drill-down
+5. Message ID search
+6. Status-only filtering
+7. Rate limit awareness
+
+**Feedback Analytics:**
+4. Tool correlation logic (the hard part)
+5. `get_feedback_by_tool` MCP tool — per-tool satisfaction ranking
+6. Trend analysis (satisfaction over time)
+7. Daily/weekly summary composition
+
+### Defer to Post-v1.4
+
+- IP-based trace filtering (FromIP/ToIP) — niche power-user feature
+- Pagination for >1000 trace results — wait until someone actually hits this
+- Feedback rate metric — requires counting all assistant messages, expensive
+- Most-rated threads/topics — interesting but not actionable yet
+
+---
+
+## Presentation Patterns for Conversational AI
+
+Since Atlas is conversational (not a dashboard), how the AI presents results matters enormously.
+
+### Message Trace Presentation
+
+**Single result:**
+> "Alice's email to Bob with subject 'Q4 Budget Report' was **delivered successfully** on April 1 at 2:34 PM UTC."
+
+**Multiple results — summary first, then details:**
+> "I found 5 emails from alice@mmc.com to bob@mmc.com in the last 48 hours:
+> - 4 delivered successfully
+> - 1 filtered as spam
+>
+> | Time (UTC) | Subject | Status |
+> |---|---|---|
+> | Apr 1 14:34 | Q4 Budget Report | Delivered |
+> | Apr 1 10:12 | Meeting Notes | Delivered |
+> | Mar 31 16:45 | FW: Vendor Quote | FilteredAsSpam |
+> | ... | ... | ... |"
+
+**No results:**
+> "No messages found from alice@mmc.com to bob@mmc.com in the last 48 hours. A few things to check:
+> - Verify the email addresses are correct
+> - Try a wider date range (I can search up to 90 days back)
+> - The message may still be processing if it was sent in the last few minutes"
+
+**Failed delivery:**
+> "Alice's email to bob@external.com **failed to deliver** on April 1 at 3:15 PM UTC. Subject: 'Partnership Proposal'. Would you like me to check the mail flow configuration between these domains to see if there's a routing issue?"
+
+### Feedback Analytics Presentation
+
+**Summary:**
+> "This week's feedback summary: **82% positive** (41 thumbs up, 9 thumbs down) from 14 unique users.
+>
+> The 9 negative ratings included these comments:
+> - 'Response was too slow' (3 mentions)
+> - 'DAG health info was wrong' (1)
+> - 'Didn't understand my question' (2)
+> - No comment provided (3)"
+
+**Per-tool (when available):**
+> "Tool satisfaction this month:
+> | Tool | Thumbs Up | Thumbs Down | Satisfaction |
+> |---|---|---|---|
+> | get_mailbox_details | 28 | 2 | 93% |
+> | get_dag_health | 15 | 4 | 79% |
+> | check_mail_flow | 8 | 5 | 62% |
+> | search_mailboxes | 12 | 1 | 92% |
+>
+> Note: check_mail_flow has the lowest satisfaction. The negative comments mention 'confusing output' and 'not enough detail'."
+
+---
+
+## IMPORTANT: Get-MessageTraceV2 Migration Note
+
+**Get-MessageTrace was deprecated September 1, 2025.** The replacement is Get-MessageTraceV2, which requires Exchange Online PowerShell V3 module version 3.7.0+.
+
+Key differences from the legacy cmdlet:
+- 90-day history (up from 10 days in old cmdlet)
+- 10-day max per query window (same)
+- 5000 max results (up from 1000 default, was configurable)
+- No PageSize — use StartingRecipientAddress/EndDate for cursor-based pagination
+- SubjectFilterType parameter (Contains/StartsWith/EndsWith) — new
+- 100 requests per 5-minute throttle window
+- Status values include new GettingStatus value
+
+**Build against Get-MessageTraceV2 from day one. Do not use the deprecated Get-MessageTrace.**
 
 ---
 
 ## Sources
 
-- [Microsoft Learn — Add App Roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps) — HIGH confidence
-- [Microsoft Learn — Collect thumbs up/down feedback in Copilot Studio (2025)](https://learn.microsoft.com/en-us/power-platform/release-plan/2025wave1/microsoft-copilot-studio/collect-thumbs-up-or-down-feedback-comments-agents) — HIGH confidence
-- [OpenAI Help Center — How to search ChatGPT chat history](https://help.openai.com/en/articles/10056348-how-do-i-search-my-chat-history-in-chatgpt) — HIGH confidence
-- [Fluent 2 Motion Design System](https://fluent2.microsoft.design/motion) — HIGH confidence
-- [NN/G — Animation Duration and Motion Characteristics](https://www.nngroup.com/articles/animation-duration/) — HIGH confidence
-- [Josh W. Comeau — Accessible Animations with prefers-reduced-motion](https://www.joshwcomeau.com/react/prefers-reduced-motion/) — HIGH confidence
-- [Motion.dev — React Accessibility (prefers-reduced-motion)](https://motion.dev/docs/react-accessibility) — HIGH confidence
-- [SQLite FTS5 Official Documentation](https://sqlite.org/fts5.html) — HIGH confidence
-- [NN/G — Animation for Attention and Comprehension](https://www.nngroup.com/articles/animation-usability/) — HIGH confidence
-- [LogRocket — Writing clear UX error messages](https://blog.logrocket.com/ux-design/writing-clear-error-messages-ux-guidelines-examples/) — MEDIUM confidence
+- [Get-MessageTraceV2 official documentation](https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/get-messagetracev2?view=exchange-ps) (HIGH confidence, updated Feb 2025)
+- [Message trace in Exchange Admin Center](https://learn.microsoft.com/en-us/exchange/monitoring/trace-an-email-message/message-trace-modern-eac) (HIGH confidence)
+- [Message Trace FAQ](https://learn.microsoft.com/en-us/exchange/monitoring/trace-an-email-message/message-trace-faq) (HIGH confidence)
+- [Get-MessageTraceV2 GA announcement](https://techcommunity.microsoft.com/blog/exchange/announcing-general-availability-ga-of-the-new-message-trace-in-exchange-online/4420243) (HIGH confidence)
+- [Chatbot Analytics metrics guide](https://hiverhq.com/blog/chatbot-analytics) (MEDIUM confidence — general patterns, not Atlas-specific)
+- Existing codebase: chat_app/feedback.py, chat_app/schema.sql, exchange_mcp/tools.py (HIGH confidence — direct code analysis)

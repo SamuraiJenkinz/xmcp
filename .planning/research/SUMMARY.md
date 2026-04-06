@@ -1,307 +1,175 @@
-# Research Summary — Atlas v1.3
+# Project Research Summary
 
-**Project:** Atlas — Exchange Infrastructure Chat App (Marsh McLennan)
-**Milestone:** v1.3 — App Role Access Control, Feedback, Search, Export, Animations
-**Researched:** 2026-04-01
-**Synthesized:** 2026-04-01
-**Overall Confidence:** HIGH (four critical findings verified against official Microsoft Entra docs and SQLite FTS5 docs; one medium-confidence finding on motion library React 19 compat)
-
----
+**Project:** Atlas v1.4 -- Message Trace & Feedback Analytics
+**Domain:** Enterprise Exchange infrastructure chat (MCP tool extension)
+**Researched:** 2026-04-02
+**Synthesized:** 2026-04-02
+**Confidence:** HIGH
+**Replaces:** SUMMARY.md for v1.3 (App Role Access Control, Feedback, Search, Export, Animations)
 
 ## Executive Summary
 
-Atlas v1.3 adds five discrete features to a production system that has been running since v1.0: Azure AD App Role access gating, per-message thumbs up/down feedback, thread search, conversation export, and motion entrance animations. The milestone is bounded in scope — the backend stack (Python 3.11, Flask 3.x, Waitress, SQLite WAL, MSAL) and the frontend stack (React 19, Vite, TypeScript, Fluent UI v9, Tailwind v4) are unchanged. Only one new npm package is required (`motion` v12.38.0). No new Python packages are needed.
+Atlas v1.4 adds two independent feature clusters to the existing Exchange MCP chat application: (1) a Message Trace tool backed by `Get-MessageTraceV2` for email delivery tracking, and (2) three feedback analytics tools that query the existing SQLite `feedback` table directly from the MCP server process. This is a low-risk milestone because both clusters build entirely on existing infrastructure -- zero new Python packages, zero new npm packages, zero schema changes. The message trace tool follows the exact pattern used by the 14 existing Exchange tools (PowerShell cmdlet via `ExchangeClient.run_cmdlet_with_retry()`), and the analytics tools introduce one controlled architectural change: read-only SQLite access from the MCP subprocess.
 
-The highest-risk feature is App Role access control, and it must be completed first. The risk is not technical complexity — the implementation is a single decorator in `auth.py` that reads a claim already present in the session. The risk is operational: a wrong implementation either leaves 80,000 Marsh McLennan tenant users with unblocked access (under-enforcement) or immediately locks out all IT engineers who have an open browser session when the feature ships (session-flush failure). Both failure modes are fully preventable with the specific measures documented in PITFALLS.md. The remaining four features are independent of each other and can be built in parallel after access control is verified.
+The recommended approach is a three-phase build: (Phase 0) verify RBAC permissions for `Get-MessageTraceV2`, (Phase 1) implement the message trace tool with system prompt disambiguation against `check_mail_flow`, (Phase 2) implement the feedback analytics foundation with `get_feedback_summary`, then layer on `get_feedback_by_tool` and `get_low_rated_responses`. Phase ordering is driven by risk: Phase 1 has zero architectural novelty, while Phase 2 validates the new cross-process SQLite read pattern before building the complex tool-correlation logic on top of it.
 
-The key architectural decision for v1.3 is how to identify individual messages for the feedback feature. Messages are currently stored as a JSON blob (`messages_json TEXT`) per thread — there is no per-message primary key. STACK.md recommends keying the `feedback` table on `(thread_id, message_idx)` where `message_idx` is the 0-based position in the append-only array. ARCHITECTURE.md recommends the same `message_idx` approach for v1.3 but flags the PITFALLS.md warning that this key becomes fragile if message deletion is ever added. Research is aligned: `message_idx` is correct for v1.3 given the append-only constraint, and the decision is documented as a known limitation.
+The critical risks are: using the deprecated `Get-MessageTrace` instead of V2 (the legacy cmdlet was deprecated September 2025 and the Reporting Webservice removal is scheduled April 8, 2026), unbounded result sets causing PowerShell timeout on broad queries, and accidental write access from the MCP process to SQLite. All three are preventable with straightforward implementation constraints documented in the research. A secondary risk is PII leakage from Subject lines in message trace results, which must be stripped or gated at the handler level.
 
 ---
 
 ## Key Findings
 
-### From STACK-v1.3.md
+### From STACK-v1.4.md
 
-v1.3 requires zero new Python packages and one new npm package. Every backend feature is achievable with capabilities already in the running system. The stack findings are high-confidence, grounded in direct codebase inspection of `auth.py`, `schema.sql`, `conversations.py`, and `frontend/package.json`.
+No new dependencies. Both features use existing infrastructure exclusively. The tool count goes from 17 to 21 (1 Exchange tool + 3 SQLite analytics tools).
 
-**New dependency:**
-- `motion` v12.38.0 (import from `motion/react`) — animation library; was planned in v1.2 research but not installed; confirmed absent from `package.json` as of research date
+**Core technologies (all existing):**
+- **Get-MessageTraceV2 via ExchangeClient** -- Exchange Online message trace cmdlet, replacing the deprecated Get-MessageTrace. Supports 90-day history (10 days per query), subject filtering via SubjectFilterType, and 5000-result cap.
+- **SQLite `json_each()` / `json_extract()`** -- JSON1 extension functions already proven in the project's FTS5 triggers. Used for correlating feedback with tool calls embedded in `messages_json`.
+- **`asyncio.to_thread()` for sync SQLite** -- existing pattern from `_search_colleagues_handler` (tools.py:1897). Wraps synchronous sqlite3 calls in the async MCP handler.
 
-**No new packages needed for:**
-- App Role gating — `id_token_claims` in `session["user"]` already contains the `roles` claim; existing MSAL auth code flow is sufficient
-- Feedback — SQLite schema addition + Flask endpoint; React `useState` for local optimistic state
-- Thread search — client-side filter on the existing thread list for v1.3; FTS5 is built into Python's `sqlite3` stdlib if server-side search is later needed
-- Export — browser `Blob` + `URL.createObjectURL`; no server round-trip needed for Markdown; server-side `Response` with `Content-Disposition` for JSON export
-
-**SQLite schema additions (two new structures):**
-1. `feedback` table — `(thread_id, message_idx, user_id, vote)` with `UNIQUE(thread_id, message_idx, user_id)` and `ON DELETE CASCADE`
-2. `threads_fts` FTS5 virtual table (optional for v1.3 if client-side filter is sufficient; include triggers if FTS is in scope)
-
-**Critical stack notes:**
-- The Azure AD tenant authority (`Config.AZURE_AUTHORITY`) is already tenant-specific, which is required for the `roles` claim to appear. `common` and `consumers` endpoints do not emit `roles`.
-- Do NOT decode the access token for roles. `roles` is in the **ID token** (`id_token_claims`), not the access token, for user sign-in flows.
-- Do NOT use `framer-motion` as a separate package. It is a thin re-export of `motion` internals; installing both duplicates code.
-- Use `LazyMotion` + `m` component + `domAnimation` feature pack to keep the motion bundle at ~19.6KB total (vs ~34KB for the full `motion` component).
+**Critical version/config requirements:**
+- Get-MessageTraceV2 requires Exchange Online PowerShell V3 module 3.7.0+
+- The Atlas service principal must have the "Message Tracking" RBAC role -- verify before implementation
+- SQLite opened with `?mode=ro` URI parameter to enforce read-only from MCP process
 
 ### From FEATURES.md
 
-**Must-have (table stakes) per feature:**
+**Must have (table stakes):**
+- Message trace by sender/recipient address with date range (the core "did my email arrive?" use case)
+- Delivery status display (Delivered, Failed, Pending, Quarantined, FilteredAsSpam)
+- Timestamps, no-results handling, too-many-results summarization
+- Feedback vote counts (up/down) with date filtering and satisfaction rate percentage
+- Thumbs-down entries with comments for admin review
 
-*App Role access control:*
-- Default-deny: any authenticated user without `Atlas.User` role hits the access denied experience
-- Graceful access-denied page inside the React app (not a Jinja2 error page) so Fluent UI design applies
-- Contact instructions on denied page — enterprise users need a path to request access without filing a helpdesk ticket
-- 403 from `/api/me` triggers `<AccessDenied />` render, not a loading spinner
+**Should have (differentiators):**
+- Subject line search via SubjectFilterType (Contains/StartsWith/EndsWith)
+- Tool-to-feedback correlation: "which Exchange tools get the most negative feedback?"
+- Contrastive system prompt guidance for trace vs check_mail_flow
+- Trend analysis (satisfaction over time) and per-tool satisfaction ranking
 
-*Feedback:*
-- Thumbs up/down on assistant messages only, visible on hover (not permanently, to avoid clutter in long threads)
-- Visual toggle state: `ThumbLikeFilled` / `ThumbDislikeFilled` for active state; regular variants for unvoted
-- Persist to SQLite; one vote per user per message; second click on same button toggles off
-- Do not show feedback buttons while message is streaming — only after `done` SSE event
-
-*Thread search:*
-- Search input at top of sidebar, instant client-side filter against thread names already loaded in memory
-- Clear button; empty state when no matches; filter does not change the active thread
-- Result count badge and keyboard shortcut (Ctrl+K) are differentiators, not blockers
-
-*Conversation export:*
-- Markdown export of active thread (IT engineers paste into Jira/incident reports)
-- JSON export for structured data consumers
-- Filename includes thread name and date
-- Tool call data included in Markdown export — often the key deliverable for Exchange diagnostics
-
-*Animations:*
-- Assistant and user message entrance animations (fade + slide up, 150-200ms ease-out)
-- `prefers-reduced-motion` respected everywhere — WCAG requirement, not optional
-- No animation during streaming; streaming cursor is sufficient
-
-**Defer from v1.3 if scope tightens:**
-- Optional freetext comment on thumbs-down (adds Popover + API field change; useful but not table stakes)
-- Keyboard shortcut for search (search must exist first)
-- FTS5 full-text message search (server-side; client-side title filter ships first)
-- Tool panel smooth height animation (requires ToolPanel refactor away from native `<details>`)
-- PDF export (requires server-side renderer or heavy client library)
-
-**Anti-features (explicitly do not build):**
-- Group-membership claim gating (token overage risk at 80K users; use App Roles)
-- Toast notifications for each feedback vote (disruptive in long threads; inline filled icon is sufficient)
-- Typewriter text animation (explicitly Out of Scope in PROJECT.md; artificial latency)
-- Loading skeleton for thread list (thread list loads in ~50ms; skeleton would flash)
+**Defer (post-v1.4):**
+- Get-MessageTraceDetailV2 drill-down (routing hops, transport rule actions)
+- Pagination for >1000 trace results (cursor-based, complex)
+- IP-based trace filtering (FromIP/ToIP)
+- Feedback rate metric (requires counting all assistant messages, expensive)
+- Most-rated threads/topics analysis
 
 ### From ARCHITECTURE.md
 
-v1.3 adds two new Flask Blueprints (`feedback.py`, `export.py`), extends `auth.py` with a `role_required` decorator, adds two SQLite schema structures, adds one new frontend component (`AccessDenied.tsx`), and modifies approximately nine existing files. The overall architecture — Flask blueprints, React 19 SPA contexts, SQLite WAL — is unchanged.
+The architecture introduces one controlled change: the MCP subprocess gains read-only SQLite access for feedback analytics, while message trace follows the identical pattern to all existing Exchange tools. All research files converge on Option A (direct SQLite read from MCP) as the correct approach, rejecting Flask API callbacks (circular dependency), Flask-only endpoints (breaks conversational model), and dispatch interception (fractures tool model). A new file `exchange_mcp/feedback_analytics.py` encapsulates analytics handlers, keeping `tools.py` focused on Exchange tools.
 
-**Access control flow (new):**
-```
-GET /api/me
-  → @role_required
-    → session["user"]["roles"] contains "Atlas.User" → 200
-    → roles missing "Atlas.User" → 403
-    → no session → 401
-
-React AuthGuard:
-  → 200 → render app
-  → 403 → render <AccessDenied />
-  → 401 → redirect to /login
-```
-
-**Key architectural decisions resolved by research:**
-- Export is server-side via `Response` with `Content-Disposition` for JSON (full fidelity, includes system/tool messages not in frontend state); Markdown is client-side via Blob/URL for simplicity — ARCHITECTURE.md recommends server-side for both formats for consistency, while STACK.md recommends client-side for Markdown. See "Conflicts and Agreements" section below.
-- Search backend endpoint (`GET /api/threads/search`) uses FTS5 with `AND t.user_id = ?` ownership join — never returns raw FTS results without scoping to the requesting user.
-- Feedback state is local `useState` in `AssistantMessage` — no global state library needed. Historical feedback loads lazily via a separate `GET /api/threads/<id>/feedback` endpoint to avoid blocking message display.
-
-**New backend files:**
-- `chat_app/feedback.py` — Blueprint: `POST /api/threads/<id>/messages/<idx>/feedback`, `DELETE` same path
-- `chat_app/export.py` — Blueprint: `GET /api/threads/<id>/export?format=markdown|json`
-
-**Modified backend files (key changes):**
-- `chat_app/auth.py` — add `role_required` decorator, `REQUIRED_ROLE` constant
-- `chat_app/app.py` — register blueprints; update `/api/me` to return 403 for role failure
-- `chat_app/conversations.py` — add `GET /api/threads/search`; swap `@login_required` to `@role_required`
-- `chat_app/chat.py` — swap `@login_required` to `@role_required` (critical; easy to miss)
-- `chat_app/schema.sql` — feedback table, threads_fts virtual table, three sync triggers
-
-**New frontend files:**
-- `frontend/src/components/AccessDenied.tsx`
-- `frontend/src/components/Sidebar/SearchInput.tsx`
-- `frontend/src/api/feedback.ts`
-
-**Modified frontend files (key changes):**
-- `frontend/src/api/me.ts` — handle 403 distinctly from 401
-- `frontend/src/contexts/AuthContext.tsx` — add `accessDenied: boolean` state
-- `frontend/src/App.tsx` — extend AuthGuard for 403 → `<AccessDenied />`
-- `frontend/src/components/ChatPane/AssistantMessage.tsx` — feedback buttons + motion animations
-- `frontend/src/components/Sidebar/ThreadList.tsx` — search mode
+**Major components:**
+1. **`get_message_trace` tool handler** (tools.py) -- builds Get-MessageTraceV2 cmdlet string, dispatches via ExchangeClient, normalizes results
+2. **`exchange_mcp/feedback_analytics.py`** (new file) -- 3 analytics handlers + `_get_analytics_db()` read-only connection + tool correlation utility
+3. **System prompt updates** (openai_client.py) -- message trace vs check_mail_flow disambiguation, feedback analytics tool routing guidance
+4. **Tool definitions + dispatch entries** (tools.py) -- 4 new entries in TOOL_DEFINITIONS and TOOL_DISPATCH
 
 ### From PITFALLS.md
 
-Full pitfall inventory: 6 CRITICAL, 8 HIGH, 10 MEDIUM severity issues across the five features. The five most dangerous are documented in "Critical Pitfalls" below.
+16 pitfalls identified: 3 CRITICAL, 5 HIGH, 6 MEDIUM, 2 LOW. Top five:
+
+1. **Get-MessageTrace is DEPRECATED (CRITICAL)** -- must use Get-MessageTraceV2 from day one. The legacy cmdlet was deprecated Sept 2025; the Reporting Webservice removal is scheduled April 8, 2026. Detection: check for "Get-MessageTrace" without "V2" suffix in tools.py.
+2. **Unbounded result sets causing timeout (CRITICAL)** -- hard cap ResultSize to 50-100, require at least one of sender_address or recipient_address. Broad queries on large tenants can hang the PowerShell subprocess and stall the SSE stream.
+3. **SQLite write contention if MCP writes (CRITICAL)** -- prevented entirely by opening the database with `?mode=ro` URI parameter. MCP analytics tools must be read-only; all writes go through Flask.
+4. **PII exposure in Subject lines (HIGH)** -- message trace returns subjects that may contain confidential information. Strip or truncate subjects in the handler before returning to the AI.
+5. **Tool confusion: check_mail_flow vs get_message_trace (HIGH)** -- semantic overlap in "mail flow" domain. Mitigate with contrastive descriptions in both tool definitions and a dedicated system prompt section.
 
 ---
 
 ## Conflicts and Agreements Between Research Files
 
-### Resolved: Export mechanism (client-side vs. server-side)
+### Naming Inconsistency (Resolved)
 
-STACK.md recommends client-side Blob/URL for Markdown export (no server round-trip, all data already in React state). ARCHITECTURE.md recommends server-side `Response` with `Content-Disposition` for both formats (consistency, full fidelity for JSON).
+| File | Tool name used | Env var name |
+|------|---------------|--------------|
+| STACK-v1.4.md | `get_message_trace` | `ATLAS_DB_PATH` |
+| ARCHITECTURE.md | `trace_messages` | `CHAT_DB_PATH` |
+| FEATURES.md | `message_trace` | (not mentioned) |
+| PITFALLS.md | references both | (not mentioned) |
 
-**Resolution:** Hybrid approach. JSON export is server-side — the server response includes system and tool messages not surfaced in the frontend state, producing higher-fidelity output. Markdown export is client-side — the data is already loaded, the transformation is trivial, and a server round-trip adds latency with no benefit. This is consistent with the FEATURES.md recommendation. PITFALLS.md flags that any export path must include the ownership check — apply to the server-side JSON endpoint.
+**Resolution:** The tool name should be `get_message_trace` (matches the `get_` prefix convention used by all existing tools like `get_mailbox_stats`, `get_dag_health`). The environment variable should be `ATLAS_DB_PATH` (matches the project name). These are naming drafts that must be unified during implementation.
 
-### Agreement: `message_idx` as feedback key
+### 10-Day vs 90-Day Lookback (Clarified)
 
-All three files (STACK.md, ARCHITECTURE.md, PITFALLS.md) converge on using `(thread_id, message_idx)` as the feedback key. PITFALLS.md adds the caveat that this is fragile if message deletion is ever introduced. The agreed position: use `message_idx` for v1.3 with a code comment documenting the append-only assumption. Note: ARCHITECTURE.md uses `rating INTEGER CHECK(rating IN (1, -1))` while STACK.md uses `vote TEXT CHECK(vote IN ('up', 'down'))`. Use the `vote TEXT` schema — it is more human-readable in queries and consistent with the FEATURES.md API shape (`"up"` / `"down"` / `null`).
+STACK-v1.4.md correctly documents both the 90-day total history and 10-day per-query window for V2. ARCHITECTURE.md references only "10-day max lookback" without the 90-day context, appearing to describe the legacy cmdlet behavior.
 
-### Agreement: Client-side thread title filter for v1.3
+**Resolution:** The correct information is: **90-day history available via Get-MessageTraceV2, but each query covers at most 10 days.** For v1.4, accept the 10-day single-query limit without multi-query stitching. The tool description should say "last 10 days" for simplicity, and explain the limitation if users ask about older messages.
 
-STACK.md, FEATURES.md, and ARCHITECTURE.md all recommend client-side filtering of thread names for v1.3. FTS5 is documented and ready to add but is explicitly deferred unless the scope expands. This is the right call — client-side filter on <500 strings is imperceptible.
+### Analytics Tool Names (Aligned)
 
-### Conflict: FTS5 tokenizer for thread names
+STACK-v1.4.md uses `get_feedback_stats` / `get_negative_feedback` / `get_feedback_by_tool`. ARCHITECTURE.md uses `get_feedback_summary` / `get_feedback_by_tool` / `get_low_rated_responses`.
 
-STACK.md recommends `porter unicode61` tokenizer for thread name FTS5. PITFALLS.md explicitly warns against `porter` for Exchange technical terms (`DAGHealth`, `MailboxMoveRequest`, `Get-ExchangeCertificate`) — it over-stems and causes missed matches.
+**Resolution:** Use the ARCHITECTURE.md naming (`get_feedback_summary`, `get_feedback_by_tool`, `get_low_rated_responses`) as it better describes the tool purpose and avoids the ambiguous "stats" and "negative" terms. The AI responds better to descriptive tool names.
 
-**Resolution:** Use `unicode61` tokenizer only (the FTS5 default). It provides case-insensitive matching without over-stemming technical compound terms. If substring matching within compound terms is required later (e.g., `health` matching `DAGHealth`), consider adding the `trigram` tokenizer at that point.
+### Agreement: MCP Reads SQLite Directly (All Files Converge)
 
-### Agreement: No `framer-motion` package
+All four research files agree: the MCP server should query SQLite directly with a read-only connection. ARCHITECTURE.md provides the most detailed option analysis (4 options evaluated, 3 rejected). STACK-v1.4.md provides the implementation pattern. PITFALLS.md provides the safety constraints (read-only mode, per-call connections, no persistent handles). No conflict.
 
-STACK.md explicitly states `framer-motion` is now a thin re-export of `motion` internals and must not be installed alongside `motion`. ARCHITECTURE.md notes this with medium confidence. PITFALLS.md confirms the risk. Install `motion` only.
+### Agreement: No New Packages
 
-### Resolved: `LazyMotion` usage
-
-STACK.md strongly recommends `LazyMotion` + `domAnimation` from the start (bundle size discipline). ARCHITECTURE.md notes it as optional for an internal deployment. Given the enterprise context and standard engineering practice, use `LazyMotion` + `domAnimation` from the start as STACK.md recommends. Bundle discipline costs nothing to establish now.
-
----
-
-## Architecture Approach
-
-The v1.3 architecture is additive. The existing layered structure (Flask blueprints → SQLite WAL → React 19 contexts) does not change shape — it grows new nodes.
-
-**Access control** inserts at the Flask middleware layer via a `role_required` decorator that wraps the existing `login_required` pattern. It reads `session["user"]["roles"]` — a claim that MSAL has been populating in every ID token since auth was first implemented; v1.3 simply starts reading it. The React side adds one new state field to `AuthContext` and one new render branch in `AuthGuard`.
-
-**Feedback** adds one new SQLite table and one new Blueprint. The message-level identity problem (no per-message primary key) is solved by treating `message_idx` as a stable position key under the append-only constraint. Feedback state lives in local component state in `AssistantMessage.tsx`; no context changes needed. Historical feedback loads lazily via a separate endpoint.
-
-**Search** at v1.3 scope is entirely client-side — a `useMemo` filter on the thread list already in memory. If FTS5 is in scope, it adds a virtual table, three sync triggers, and one new endpoint. The FTS5 design scopes all results to the requesting user via a JOIN on `threads.user_id`.
-
-**Export** adds one new Blueprint with a single endpoint that branches on `?format=`. Ownership check is mandatory (thread IDs are auto-increment integers — enumerable by design). JSON export serves the raw `messages_json` with thread metadata. Markdown export filters out system/tool messages and renders a human-readable format.
-
-**Animations** are purely additive — `motion.div` and `motion.button` wrappers replace plain HTML elements where animations apply. No structural component changes. `LazyMotion` wraps the app root. `MotionConfig reducedMotion="user"` is added alongside it to respect OS-level accessibility settings.
-
----
-
-## Critical Pitfalls
-
-### 1. Portal "Assignment Required" without code-level role check (CRITICAL)
-
-Enabling "User Assignment Required" in Entra ID is not sufficient access control. This Entra ID setting can be changed by any Cloud Application Administrator — it is not defense in depth. If the Flask `@login_required` decorator is not extended to check `session["user"].get("roles", [])`, all 80K tenant users regain access the moment the portal setting is changed. The code-level check in `auth.py` is mandatory and must be implemented before the portal setting is enabled.
-
-**Prevention:** Add `role_required` decorator to `auth.py`. Apply it to every protected route in `conversations.py`, `chat.py`, and `app.py`. Verify with a test that a session without the `Atlas.User` role receives 403.
-
-### 2. Missing `role_required` on `/chat/stream` in `chat.py` (CRITICAL)
-
-`chat.py` is a separate Blueprint from `conversations.py`. Role checking is not centralized — each Blueprint applies decorators independently. A developer who updates `conversations.py` and misses `chat.py` leaves the SSE streaming endpoint unprotected. An unauthorized user who knows the endpoint URL can call the AI directly.
-
-**Prevention:** After adding `role_required`, grep for all `@login_required` usages and verify each has the role check. Consider combining both checks into a single `@require_app_role` decorator to eliminate the possibility of applying one without the other.
-
-### 3. Existing sessions lack the `roles` claim on deployment day (CRITICAL)
-
-Flask filesystem sessions (`/tmp/flask-sessions`) persist across deployments. Users who authenticated before App Role enforcement have `session["user"]` populated from their previous login — which does not contain a `roles` claim. When the deployment goes live, all IT engineers with an open browser session will immediately receive 403 errors on their next API call, even if they are in the authorized group.
-
-**Prevention:** Include a session flush step in the deployment runbook: `rm -rf /tmp/flask-sessions/*`. Communicate the forced re-login to users before deployment. Make the 403 message actionable ("Please log in again to apply new access settings") rather than generic ("Access denied").
-
-### 4. Export endpoint missing ownership check (CRITICAL)
-
-Thread IDs are auto-incrementing integers starting from 1 — trivially enumerable. If the export endpoint queries `messages` by `thread_id` alone without the `AND user_id = ?` ownership check, any authenticated user can export any other user's conversation by incrementing the ID. Every other `conversations.py` query includes the ownership check; the export Blueprint, being new, may miss it.
-
-**Prevention:** Follow the same ownership verification pattern as `get_messages()` in `conversations.py`: verify thread ownership with a `SELECT id FROM threads WHERE id = ? AND user_id = ?` query before accessing message content. Code review must verify this check before any export endpoint is merged. Add a test: attempt to export a thread owned by user A while authenticated as user B — expect 404.
-
-### 5. `prefers-reduced-motion` not respected in animation implementation (HIGH)
-
-WCAG 2.1 SC 2.3.3 requires that motion triggered by user interaction can be disabled. Enterprise Windows machines commonly have "Reduce animations" enabled in accessibility settings. Sidebar animations that fire on every thread switch are a significant accessibility failure for users with vestibular disorders.
-
-**Prevention:** Wrap the app in `<MotionConfig reducedMotion="user">` in `App.tsx`. This single wrapper disables transform and layout animations for users with OS-level motion reduction enabled. Test by enabling "Reduce animations" in Windows Settings before reviewing any animation work. Do not ship animation code without this wrapper.
+All four files confirm zero new Python and zero new npm packages needed. STACK-v1.4.md explicitly lists temptations to avoid (pandas, sqlalchemy, plotly, recharts) with reasons.
 
 ---
 
 ## Implications for Roadmap
 
-Research across all four files converges on a clear phase ordering driven by two constraints: (1) access control is a security gate that must be verified before other features are user-tested, and (2) features 2-4 are independent of each other and can be built in parallel.
+Based on research, suggested phase structure:
 
-### Phase 1: App Role Access Control
+### Phase 0: RBAC Verification (Pre-Implementation Gate)
 
-**Rationale:** Security feature; gates all subsequent user-facing testing. If access control ships broken (over-permissive or over-restrictive), any user testing of feedback/search/export is compromised. It also touches the most files (auth.py, app.py, conversations.py, chat.py, AuthContext, App.tsx) — doing it first avoids merge conflicts with the other features.
+**Rationale:** The Message Tracking management role must be confirmed before writing any code. Enterprise RBAC changes can take days/weeks through change management. This is a blocking dependency identified in both STACK-v1.4.md and PITFALLS.md (#14).
+**Delivers:** Confirmed permission for Get-MessageTraceV2 on the Atlas service principal.
+**Addresses:** Pitfall #14 (RBAC permissions)
+**Effort:** 1 manual PowerShell test + potentially a change request
+**Risk if skipped:** All Phase 1 work is wasted if permissions are denied
 
-**Delivers:** Users without `Atlas.User` assignment see the `<AccessDenied />` screen. All 80K tenant users who are not IT engineers are blocked. IT engineers see no change.
+### Phase 1: Message Trace Tool
 
-**Implements:** `role_required` decorator in `auth.py`; 403 path in `/api/me`; `accessDenied` state in `AuthContext`; `<AccessDenied />` component; Azure AD App Role manifest configuration; session flush on deployment.
+**Rationale:** Zero architectural risk -- identical pattern to 14 existing Exchange tools. Validates the Get-MessageTraceV2 cmdlet integration and system prompt changes independently of feedback analytics. Delivers the #1 IT helpdesk feature ("where is my email?").
+**Delivers:** `get_message_trace` MCP tool with sender/recipient/date/status/subject filters. Updated system prompt with trace vs check_mail_flow disambiguation. Updated check_mail_flow description with contrastive language.
+**Addresses features:** Sender/recipient search, date range, status display, subject search, no-results handling, result capping
+**Avoids pitfalls:** #1 (deprecated cmdlet), #2 (unbounded results), #4 (date format), #5 (tool confusion), #6 (PII in subjects), #7 (prompt bloat), #9 (10-day limit comms)
+**Key decisions:**
+- Hard cap ResultSize at 100
+- Require at least one of sender_address or recipient_address
+- Compute UTC dates in Python, pass to PowerShell
+- Strip or truncate Subject lines for PII safety
+- Contrastive descriptions in both tool definitions
 
-**Must avoid:** Pitfalls 1.1 (portal-only enforcement), 1.3 (existing sessions), 6.2 (missing decorator on `chat.py`).
+### Phase 2: Feedback Analytics (Foundation + Full)
 
-**Research flags:** Standard pattern (Microsoft Entra docs are authoritative; no deeper research needed during planning). Azure AD manifest configuration is an admin task, not a code task — coordinate with the tenant admin.
-
-### Phase 2a: Per-Message Feedback
-
-**Rationale:** Schema decision (vote TEXT vs rating INTEGER; `message_idx` key) must be locked before building. Once locked, the feature is fully self-contained: one new table, one new Blueprint, local state in `AssistantMessage.tsx`. No dependencies on search or export.
-
-**Delivers:** IT engineers can vote thumbs up/down on assistant messages. Votes persist to SQLite. Toggle-off by clicking the same button again. Feedback buttons absent during streaming.
-
-**Implements:** `feedback` table in `schema.sql`; `feedback.py` Blueprint; `AssistantMessage.tsx` feedback buttons with Fluent UI icon variants; optimistic state with revert on error.
-
-**Must avoid:** Pitfall 2.1 (fragile `message_idx` — document append-only assumption); Pitfall 2.2 (UNIQUE constraint and INSERT OR REPLACE for double-vote prevention); Pitfall 2.3 (hide buttons during streaming).
-
-**Research flags:** Schema design decision (vote TEXT vs integer) is the only decision point needing confirmation before planning. Standard implementation pattern otherwise.
-
-### Phase 2b: Thread Search (Client-Side)
-
-**Rationale:** Client-side filter is independent of Phase 2a and can build in parallel. Zero backend changes. Immediate value. Establishes the search input component that FTS5 would extend if server-side search is added later.
-
-**Delivers:** Users can filter the thread sidebar by typing in a search box. Instant results. Clear button. Empty state.
-
-**Implements:** `SearchInput.tsx` component; `useMemo` filter in `ThreadList.tsx`; Fluent UI `SearchBox` or styled `<input type="search">`.
-
-**Must avoid:** No critical pitfalls for this scope; pure frontend filter has no security or data integrity implications.
-
-**Research flags:** No deeper research needed. Standard React filter pattern.
-
-### Phase 2c: Conversation Export
-
-**Rationale:** Also independent of feedback and search. One new Blueprint, one new endpoint. The ownership check pitfall makes this worth a dedicated phase rather than bundling with other backend work — reviewers should be focused on export-specific code.
-
-**Delivers:** IT engineers can download the active thread as Markdown or JSON from the thread context menu.
-
-**Implements:** `export.py` Blueprint; `GET /api/threads/<id>/export?format=` endpoint with ownership check; Markdown renderer that filters system/tool messages; JSON export with `Content-Disposition`; export trigger in `ThreadItem.tsx`.
-
-**Must avoid:** Pitfall 4.1 (raw messages_json without transformation); Pitfall 4.2 (missing ownership check — CRITICAL); Pitfall 4.3 (HTML escaping if HTML export is ever added).
-
-**Research flags:** No deeper research needed. Standard Flask Response pattern.
-
-### Phase 3: Animations
-
-**Rationale:** Purely additive — applies motion wrappers to components whose structure is settled after Phases 1-2. Building animations last avoids re-animating components whose structure is still changing. `MotionConfig reducedMotion="user"` must be added before any animation ships.
-
-**Delivers:** Message entrance animations; sidebar collapse transition; feedback button micro-interaction; `AccessDenied` fade-in. Polished feel consistent with Copilot aesthetic established in v1.2.
-
-**Implements:** `npm install motion`; `LazyMotion` + `domAnimation` in `App.tsx`; `MotionConfig reducedMotion="user"`; `m.div` wrappers in `AssistantMessage`, `UserMessage`, `ThreadItem`, `Sidebar`; `whileTap` on feedback buttons.
-
-**Must avoid:** Pitfall 5.1 (prefers-reduced-motion — CRITICAL for WCAG); Pitfall 5.2 (layout prop on thread list — jank during streaming); Pitfall 5.3 (entry animation on streaming message component).
-
-**Research flags:** `motion` + React 19 compatibility is MEDIUM confidence. Test the `npm install motion` and a basic `<m.div>` render against the existing app before committing to the full animation plan.
+**Rationale:** Validates the one new architectural pattern (MCP process reading SQLite via read-only connection) with `get_feedback_summary` first, then builds the complex tool correlation logic for the remaining two tools. Splitting into sub-phases within one phase is optional -- the risk gradient is: simple aggregation first, complex JSON parsing second.
+**Delivers:** 3 MCP analytics tools (`get_feedback_summary`, `get_feedback_by_tool`, `get_low_rated_responses`). New `feedback_analytics.py` module. Feedback analytics section in system prompt.
+**Addresses features:** Vote counts, satisfaction rate, date-filtered queries, tool-to-feedback correlation, negative feedback review with comments
+**Avoids pitfalls:** #3 (SQLite write contention), #8 (array index mapping), #10 (DB path config), #11 (WAL checkpoint), #12 (user privacy), #13 (namespace separation)
+**Key decisions:**
+- `sqlite3.connect("file:{path}?mode=ro", uri=True)` for read-only enforcement
+- Open/close per call, no persistent connections
+- `asyncio.to_thread()` wrapper for sync SQLite
+- Two-step Python correlation (not giant SQL JOIN with json_each)
+- Shared `_extract_tool_for_message()` utility with unit tests
+- Aggregate-only analytics -- never expose per-user voting patterns
+- `ATLAS_DB_PATH` environment variable for DB path
 
 ### Phase Ordering Rationale
 
-- Phase 1 first: security gate; touches auth infrastructure that all other phases depend on
-- Phases 2a, 2b, 2c in parallel: independent of each other after auth is locked; no shared files except `app.py` (blueprint registration), which can be merged last
-- Phase 3 last: additive polish; component structure must be settled before applying motion wrappers; `MotionConfig` must be established before any animation PR is reviewed
+- **Phase 0 before Phase 1** because RBAC verification is a hard external dependency that can block implementation for days/weeks in an enterprise environment
+- **Phase 1 before Phase 2** because it has zero architectural risk and delivers immediate user value; also validates system prompt changes independently
+- **Phase 2 foundation before Phase 2 correlation** because it validates cross-process SQLite access with the simplest possible query before building complex JSON parsing on top
+- **The two feature clusters are independent** -- no code dependencies between trace and analytics. But the phasing creates a deliberate risk gradient: known pattern first, new pattern second, complex logic third
+- **No frontend changes in any phase.** All new tools return data through the existing MCP-to-AI-to-chat pipeline. This is a backend-only milestone.
 
 ### Research Flags
 
-Phases needing deeper research during planning:
-- **Phase 1 (Azure AD config):** Not code research — requires confirmation that the Entra admin has created the `Atlas.User` App Role and assigned the IT engineers group before code can be tested end-to-end. Block on this admin task.
-- **Phase 2a (schema design):** Confirm vote field type (`TEXT` vs `INTEGER`) and whether optional comment field is in scope for v1.3 before writing the schema. Comment field changes the API shape.
-- **Phase 3 (motion compat):** Spike `npm install motion` and a basic `<m.div animate>` in the dev environment before planning the full animation scope.
+Phases likely needing deeper research during planning:
+- **Phase 1 (PII decision):** Whether to strip Subject entirely, truncate to N characters, or gate behind a role. This is a stakeholder decision, not a technical one -- needs input from the MMC security/compliance team.
+- **Phase 2 (tool correlation):** The `assistant_message_idx` to array position mapping needs validation against real `messages_json` data from production. Write tests with known conversation structures first. If the frontend's index counting logic diverges from the analytics utility, correlation results will be silently wrong.
 
-Phases with standard patterns (skip research):
-- **Phase 2b (client-side search):** `useMemo` filter on a string array. No research needed.
-- **Phase 2c (export):** Standard Flask `Response` with `Content-Disposition`. Blueprint ownership check pattern is already established in `conversations.py`.
+Phases with standard patterns (skip additional research):
+- **Phase 0:** Standard RBAC verification -- run a PowerShell cmdlet, check if it works
+- **Phase 1 (tool implementation):** Identical to the pattern used 14 times. Copy an existing handler, change the cmdlet name and parameters.
+- **Phase 2 (SQLite access):** WAL concurrent reads, `asyncio.to_thread()`, and `?mode=ro` URI mode are all well-documented and already used in the codebase (`_search_colleagues_handler`)
 
 ---
 
@@ -309,54 +177,41 @@ Phases with standard patterns (skip research):
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| App Roles in ID token | HIGH | Official Microsoft Entra docs (2024-11-13, 2025-04-18) with explicit token payload examples |
-| No MSAL config change needed | HIGH | Auth code flow with any scope emits ID token with roles once user is assigned; `User.Read` scope confirmed sufficient |
-| `session["user"]["roles"]` access pattern | HIGH | Direct codebase inspection: `session["user"] = result.get("id_token_claims")` confirmed in `auth.py` |
-| SQLite FTS5 in Python stdlib | HIGH | CPython standard library; built-in on all platforms; no compilation flags needed |
-| FTS5 external content table + trigger pattern | HIGH | Official SQLite FTS5 docs; pattern stable since FTS5 stable release |
-| FTS5 backfill required for existing data | HIGH | SQLite FTS5 docs explicit: content tables do not auto-populate on creation |
-| Client-side Blob/URL export | HIGH | W3C-specified browser API; universally supported in modern browsers |
-| Server-side Flask Response export | HIGH | Standard pattern; no new dependencies |
-| `motion` v12.38.0 | HIGH | Verified against GitHub CHANGELOG (released 2026-03-16) |
-| `LazyMotion + domAnimation` bundle ~19.6KB | HIGH | Verified against official motion.dev docs (March 2026) |
-| `motion` + React 19 compatibility | MEDIUM | Library uses standard React APIs; no explicit React 19 compatibility statement found in docs |
-| `feedback.message_idx` stability | MEDIUM | Holds under append-only constraint; fragile if message deletion is ever added |
-| `@fluentui/react-motion` lacks AnimatePresence | MEDIUM | Inferred from package scope (Web Animations API utilities for Fluent components only); not directly verified |
+| Stack | HIGH | Zero new dependencies. Get-MessageTraceV2 docs verified against Microsoft Learn (updated Feb 2026). All SQLite features already proven in project. |
+| Features | HIGH | Feature landscape derived from official cmdlet documentation and direct codebase analysis. Edge cases and presentation patterns well-documented. |
+| Architecture | HIGH | Option A (direct SQLite read from MCP) supported by existing codebase precedent (`_search_colleagues_handler`) and SQLite WAL guarantees. Three alternatives evaluated and rejected with rationale. |
+| Pitfalls | HIGH | 16 pitfalls identified from official docs, codebase analysis, and domain knowledge. Critical pitfalls have concrete prevention strategies with detection methods. |
 
-**Overall confidence:** HIGH for all four security and data features. MEDIUM for animation library compatibility — mitigated by the recommendation to spike `motion` before committing to the full animation scope.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-- **`motion` React 19 compat spike:** Install `motion` and render a basic `<m.div animate>` before planning Phase 3 in detail. If incompatibility is found, the fallback is CSS `@keyframes` for entrance animations (documented in FEATURES.md as the zero-dependency alternative).
-- **Optional comment on thumbs-down:** FEATURES.md lists this as a differentiator worth building; STACK.md does not include the API field for it. Decide during Phase 2a planning whether the `comment` field is in scope. If yes, the API shape changes to `{"vote": "up"|"down"|null, "comment"?: string}` and the schema adds a nullable `comment TEXT` column.
-- **FTS5 in scope for v1.3?** Research consistently defers server-side FTS5 search to a future milestone, with client-side title filter shipping in v1.3. Confirm this scope decision before planning Phase 2b. If FTS5 is in scope, Phase 2b grows to include the schema migration, backfill command, and search endpoint.
-- **Session flush coordination:** The session flush on deployment day (`rm -rf /tmp/flask-sessions/*`) requires coordination with the server admin (usdf11v1784.mercer.com). Include this in the deployment runbook, not just the code review.
-- **Azure AD admin task timing:** The `Atlas.User` App Role must be created in the Entra admin center and the IT engineers group assigned before any end-to-end testing of Phase 1 is possible. This is a blocking dependency that is not in the developer's control.
+- **RBAC verification (blocking):** Must confirm Message Tracking role on Atlas service principal before implementation. Cannot be resolved through research alone -- requires a live PowerShell test against Exchange Online.
+- **PII policy for Subject lines:** Technical options are clear (strip, truncate, gate). The business decision on which approach to use needs stakeholder input. Recommend defaulting to strip-by-default with an opt-in flag for future consideration.
+- **assistant_message_idx mapping correctness:** The correlation algorithm is logically sound but untested against real production data. Must write unit tests with known conversation structures before relying on analytics results. The frontend counting logic must be verified to match.
+- **Environment variable unification:** Research files use both `ATLAS_DB_PATH` and `CHAT_DB_PATH`. Unify to `ATLAS_DB_PATH` during implementation. Verify it propagates correctly through `mcp_client.py` line 128 (`env=dict(os.environ)`).
+- **Tool name unification:** Research files use `get_message_trace`, `trace_messages`, and `message_trace` interchangeably. Standardize on `get_message_trace` to match existing naming convention.
 
 ---
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Microsoft Entra: Add app roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps) (updated 2024-11-13)
-- [Microsoft Entra: Configure group claims and app roles in tokens](https://learn.microsoft.com/en-us/security/zero-trust/develop/configure-tokens-group-claims-app-roles) (updated 2025-04-18)
-- [Microsoft Entra app manifest reference](https://learn.microsoft.com/en-us/entra/identity-platform/reference-microsoft-graph-app-manifest)
-- [SQLite FTS5 Extension — official documentation](https://sqlite.org/fts5.html)
-- [Reduce bundle size — motion.dev](https://motion.dev/docs/react-reduce-bundle-size) (March 2026)
-- [motion CHANGELOG — GitHub](https://github.com/motiondivision/motion/blob/main/CHANGELOG.md) (v12.38.0, 2026-03-16)
-- [Fluent 2 Motion Design System](https://fluent2.microsoft.design/motion)
-- Direct codebase inspection: `auth.py`, `schema.sql`, `conversations.py`, `chat.py`, `frontend/package.json`
+- [Get-MessageTraceV2 - Microsoft Learn](https://learn.microsoft.com/en-us/powershell/module/exchangepowershell/get-messagetracev2?view=exchange-ps) -- cmdlet parameters, output properties, deprecation status (updated Feb 2026)
+- [Get-MessageTraceV2 GA announcement](https://techcommunity.microsoft.com/blog/exchange/announcing-general-availability-ga-of-the-new-message-trace-in-exchange-online/4420243) -- deprecation timeline, V2 migration guidance
+- [SQLite WAL documentation](https://www.sqlite.org/wal.html) -- concurrent reader guarantees, checkpoint behavior
+- [SQLite JSON1 extension](https://sqlite.org/json1.html) -- json_each, json_extract function reference
+- Direct codebase analysis -- tools.py (17 tools), openai_client.py (SYSTEM_PROMPT ~680 tokens), feedback.py, schema.sql, mcp_client.py, exchange_client.py, ps_runner.py
 
 ### Secondary (MEDIUM confidence)
-- [Motion for React quick start](https://motion.dev/docs/react-quick-start)
-- [Motion — Accessibility / useReducedMotion](https://motion.dev/docs/react-accessibility)
-- [SQLite FTS5 tokenizers — audrey.feldroy.com (2025)](https://audrey.feldroy.com/articles/2025-01-13-SQLite-FTS5-Tokenizers-unicode61-and-ascii)
-- [Mickaël Derriey — consequences of user assignment required](https://mderriey.com/2019/04/19/aad-apps-user-assignment-required/)
-- [Josh W. Comeau — Accessible Animations with prefers-reduced-motion](https://www.joshwcomeau.com/react/prefers-reduced-motion/)
-- [NN/G — Animation Duration and Motion Characteristics](https://www.nngroup.com/articles/animation-duration/)
+- [Exchange Online RBAC for Message Trace - TechCommunity](https://techcommunity.microsoft.com/discussions/exchange_general/rbac-role-to-allow-you-to-see-in-exchange-admin-portal-messagetrace/4446434) -- Message Tracking role requirement
+- [Exchange Online feature permissions](https://learn.microsoft.com/en-us/exchange/permissions-exo/feature-permissions) -- role group documentation
+- [MC1092458: Deprecation timeline](https://mc.merill.net/message/MC1092458) -- Get-MessageTrace removal schedule
+- [Petri.com Get-MessageTrace guide](https://petri.com/powershell-get-messagetrace/) -- output property verification
+- [RAG-MCP tool selection research](https://arxiv.org/html/2505.03275v1) -- tool count impact on LLM selection accuracy
+- [Chatbot analytics metrics guide - Hiver](https://hiverhq.com/blog/chatbot-analytics) -- general analytics patterns
 
 ---
-
-*Research completed: 2026-04-01*
-*Replaces: SUMMARY.md for v1.2 (Atlas UI/UX Redesign)*
+*Research completed: 2026-04-02*
+*Replaces: SUMMARY.md for v1.3 (App Role Access Control, Feedback, Search, Export, Animations)*
 *Ready for roadmap: yes*

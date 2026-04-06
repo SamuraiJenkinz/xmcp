@@ -1,660 +1,460 @@
-# Architecture Patterns: v1.3 Feature Integration
+# Architecture Patterns: v1.4 Message Trace & Feedback Analytics
 
-**Project:** Atlas — Exchange Infrastructure Chat App
-**Milestone:** v1.3 — App Role Access Control, Feedback, Search, Export, Animations
-**Researched:** 2026-04-01
-**Scope:** How five new features integrate with the existing Flask 3.x + React 19 + SQLite architecture.
+**Domain:** MCP tool integration + cross-process data access
+**Researched:** 2026-04-02
+**Overall confidence:** HIGH (based on direct codebase analysis, no external sources needed)
 
----
-
-## Baseline Architecture (as of v1.2)
+## Current Architecture Summary
 
 ```
-Browser (on-prem / VPN)
+User Browser
     |
-    | HTTPS (self-signed cert, Waitress WSGI)
     v
-+-----------------------------------------------+
-|  Flask 3.x / Waitress                         |
-|  Blueprints:                                  |
-|    auth_bp         /login /auth/callback      |
-|                    /logout                    |
-|    chat_bp         POST /chat/stream (SSE)    |
-|    conversations_bp /api/threads/* (CRUD)     |
-|  Routes (app.py):                             |
-|    GET /api/me       → user identity JSON     |
-|    GET /api/photo/<id> → Graph photo proxy    |
-|    GET /api/health   → JSON                   |
-|  Session: filesystem (flask-session)          |
-|    session["user"] = id_token_claims dict     |
-|      contains: oid, name, preferred_username  |
-|      v1.3 adds:  roles (list[str])            |
-|  Auth: MSAL ConfidentialClientApplication     |
-|  DB: SQLite WAL                               |
-|    threads(id, user_id, name, created_at,     |
-|            updated_at)                        |
-|    messages(id, thread_id, messages_json)     |
-+-----------------------------------------------+
+Flask (Waitress WSGI, sync)
+    |-- chat_app/app.py ................ routes, session
+    |-- chat_app/openai_client.py ...... tool-calling loop
+    |-- chat_app/feedback.py ........... feedback CRUD (Flask Blueprint)
+    |-- chat_app/db.py ................. SQLite via Flask g context
+    |-- chat_app/mcp_client.py ......... stdio bridge to MCP child process
     |
-    +-- React 19 SPA (served from frontend_dist/)
-    |     AuthContext   (user state, no roles yet)
-    |     ThreadContext (thread list + active id)
-    |     ChatContext   (messages + streaming)
-    |
-    +-- SQLite WAL (chat.db)
-    |
-    +-- exchange_mcp server (subprocess JSON-RPC)
+    v  (stdin/stdout JSON-RPC)
+MCP Server (asyncio subprocess)
+    |-- exchange_mcp/server.py ......... async Server, tool dispatch
+    |-- exchange_mcp/tools.py .......... 17 tool defs + handlers
+    |-- exchange_mcp/exchange_client.py  PowerShell subprocess per call
+    |-- exchange_mcp/ps_runner.py ...... Base64-encoded PS execution
 ```
 
-**Key constraint for v1.3:** Session already contains `id_token_claims` from MSAL. The `roles` claim is populated automatically by Azure AD when the user has been assigned an App Role — it arrives as `session["user"]["roles"]` (list of strings, e.g. `["Atlas.User"]`). No token re-acquisition is needed; the claim is present in the ID token that MSAL already captures at `auth_callback`.
+Key architectural constraints:
+- MCP server is a **child process** spawned by `mcp_client.py` via `stdio_client()`
+- Communication is **stdio JSON-RPC only** -- no shared memory, no HTTP
+- SQLite is accessed **exclusively** from Flask via `get_db()` (per-request `g` context)
+- MCP server has **no Flask app context** and no access to `get_db()`
+- Tool handler signature: `async def handler(arguments: dict, client: ExchangeClient | None) -> dict`
+- The `client` parameter is always `ExchangeClient` -- there is no mechanism to inject other dependencies
+- The MCP subprocess inherits `os.environ` via `StdioServerParameters(env=dict(os.environ))` in `mcp_client.py`
 
----
+## Feature 1: trace_messages (Message Trace)
 
-## Feature 1: App Role Access Control
+### Integration: Straightforward
 
-### How roles appear in the existing session
+This follows the **exact same pattern** as every other Exchange tool. No architectural changes needed.
 
-MSAL's `acquire_token_by_auth_code_flow` returns `id_token_claims` in the result. Azure AD populates a `roles` claim (list of strings) in the ID token when App Roles are configured and assigned. The existing `auth_callback` in `auth.py` stores the entire `id_token_claims` dict as `session["user"]` — so `session["user"].get("roles", [])` is already the right access pattern. No changes to the auth flow are needed.
+**New components:**
+| Component | File | Change Type |
+|-----------|------|-------------|
+| Tool definition | `exchange_mcp/tools.py` | Add to `TOOL_DEFINITIONS` list |
+| Handler function | `exchange_mcp/tools.py` | New `_trace_messages_handler` |
+| Dispatch entry | `exchange_mcp/tools.py` | Add to `TOOL_DISPATCH` dict |
+| System prompt | `chat_app/openai_client.py` | Add trace_messages guidance to `SYSTEM_PROMPT` |
 
-**HIGH confidence** — confirmed by [Microsoft Entra docs: Add app roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps): "for an app that signs in users, the roles claims are included in the ID token."
+**Data flow (identical to existing tools):**
+```
+User: "trace messages from alice@contoso.com in the last 24 hours"
+  -> OpenAI: tool_call trace_messages {sender_address: "alice@contoso.com", start_date: "24h"}
+  -> mcp_client.call_mcp_tool("trace_messages", {...})
+  -> MCP server -> _trace_messages_handler
+  -> exchange_client.run_cmdlet("Get-MessageTrace ...")
+  -> JSON result back through the chain
+```
 
-### Backend changes
+### Date Range Parameter Design
 
-**Modified file: `chat_app/auth.py`**
+**Recommendation: Accept both ISO and relative, normalize to ISO in the handler.**
 
-Add a new decorator alongside the existing `login_required`. The new decorator checks both session existence AND roles claim:
+The tool inputSchema should accept:
+```json
+{
+  "sender_address": "string (optional)",
+  "recipient_address": "string (optional)",
+  "start_date": "string (optional) - ISO 8601 or relative like '24h', '7d'",
+  "end_date": "string (optional) - ISO 8601, defaults to now",
+  "message_id": "string (optional) - filter by specific Message-ID header",
+  "status": "string (optional) - enum: Delivered, Failed, Pending, Expanded, FilteredAsSpam, Quarantined"
+}
+```
+
+**Rationale:**
+- LLMs handle both relative ("last 24 hours" -> "24h") and absolute ("since March 1st" -> "2026-03-01") formats well
+- The handler normalizes both to PowerShell DateTime expressions for Get-MessageTrace
+- Default: last 48 hours when no start_date provided (Get-MessageTrace max lookback is 10 days for EXO)
+- At least one of sender_address or recipient_address is required for reasonable performance -- enforce in handler
+
+**Handler date normalization pattern:**
+```python
+def _parse_date_param(value: str | None, default_hours_ago: int = 48) -> str:
+    """Convert '24h', '7d', or ISO string to PowerShell-compatible datetime."""
+    if value is None:
+        return f"(Get-Date).AddHours(-{default_hours_ago})"
+    if re.match(r'^\d+h$', value):
+        hours = int(value[:-1])
+        return f"(Get-Date).AddHours(-{hours})"
+    if re.match(r'^\d+d$', value):
+        days = int(value[:-1])
+        return f"(Get-Date).AddDays(-{days})"
+    # Assume ISO format, convert to PowerShell datetime literal
+    return f"[datetime]'{value}'"
+```
+
+### Get-MessageTrace Constraints (EXO-specific)
+
+- **Max lookback: 10 days** for real-time Get-MessageTrace
+- For older traces: Get-HistoricalSearch (async, returns a report) -- different UX, defer to future milestone
+- **Max results: 1000 per call** (PageSize parameter)
+- At least one address filter required for performance -- tool description should guide the AI
+- Results include: Received, SenderAddress, RecipientAddress, Subject, Status, MessageId, Size
+
+## Feature 2: Feedback Analytics (The Architectural Decision)
+
+### The Core Problem
+
+Feedback data lives in SQLite, accessed via Flask's `get_db()`. The MCP server is a child process with **no Flask app context** and **no direct DB access**. The AI needs to query feedback analytics through the tool-calling loop so it can reason about the data conversationally.
+
+### Option Analysis
+
+#### Option A: MCP tools query SQLite directly
+
+The MCP server opens its own read-only SQLite connection using the same DB path.
+
+**How it works:**
+- MCP server reads `CHAT_DB_PATH` env var (already propagated via `dict(os.environ)` in `mcp_client.py` line 128)
+- Handler opens `sqlite3.connect(db_path, mode=ro)` directly (no Flask context needed)
+- Uses `asyncio.to_thread()` for sync SQLite calls (same pattern as `_search_colleagues_handler` at tools.py line 1897)
+
+**Pros:**
+- Simplest implementation -- no new communication channels
+- Precedent exists: `_search_colleagues_handler` already imports from `chat_app` at function scope and uses `asyncio.to_thread()` for sync operations
+- SQLite WAL mode explicitly supports concurrent readers from multiple processes
+- No latency overhead (direct file access)
+- The AI sees these as normal tools -- no special routing needed
+
+**Cons:**
+- Couples MCP server to SQLite schema (but same codebase, same repo)
+- Two processes accessing the same DB file (but WAL mode is designed for this)
+- MCP server gains a new dependency type (DB reads, not just PowerShell)
+
+#### Option B: MCP tools call Flask API endpoints (HTTP to localhost)
+
+**Pros:** Clean DB access separation
+**Cons:** Circular dependency (Flask spawns MCP, MCP calls Flask). Requires auth context bypass for internal calls. Additional latency. If Flask is overloaded, analytics fail too.
+
+**Verdict: REJECTED** -- circular dependency is an anti-pattern, complexity for no benefit.
+
+#### Option C: Feedback analytics as Flask endpoints only (not MCP tools)
+
+**Pros:** No MCP changes needed
+**Cons:** The AI cannot query and reason about feedback data conversationally. User asks "how's feedback looking?" and gets a link instead of analysis. Defeats the entire value proposition.
+
+**Verdict: REJECTED** -- defeats the purpose of conversational analytics.
+
+#### Option D: Chat app intercepts tool calls before MCP dispatch
+
+**How it works:** `mcp_client.call_mcp_tool()` checks if tool name starts with `feedback_`, handles in-process using `get_db()`, otherwise dispatches to MCP normally.
+
+**Pros:** Feedback tools get native Flask DB access
+**Cons:** Splits dispatch table across two locations (mcp_client.py AND tools.py). Tool definitions must still be in TOOL_DEFINITIONS for OpenAI, but handlers are NOT in TOOL_DISPATCH -- confusing split. Future DB-accessing tools create more interception points. Testing becomes harder.
+
+**Verdict: REJECTED** -- fractures the dispatch model, maintenance burden.
+
+### DECISION: Option A -- MCP tools query SQLite directly
+
+**Rationale (in priority order):**
+
+1. **SQLite WAL is designed for this.** WAL mode supports one writer + multiple concurrent readers across processes. The MCP server only needs read access for analytics.
+
+2. **Precedent exists in the codebase.** `_search_colleagues_handler` (tools.py:1885) already imports from `chat_app` at function scope and uses `asyncio.to_thread()` for sync operations. Feedback analytics follows the identical pattern.
+
+3. **Minimal architectural change.** No new communication channels, no interception logic, no new protocols. Just new tool handlers that read SQLite instead of running PowerShell.
+
+4. **Uniform tool model.** The AI treats all tools identically. No special routing, no system prompt workarounds. `get_feedback_summary` is dispatched exactly like `get_mailbox_stats`.
+
+### Implementation Pattern for Feedback Analytics
+
+**New file: `exchange_mcp/feedback_analytics.py`**
 
 ```python
-REQUIRED_ROLE = "Atlas.User"  # or read from Config
-
-def role_required(f):
-    """Decorator: requires authentication AND the Atlas.User app role."""
-    @functools.wraps(f)
-    def decorated(*args, **kwargs):
-        user = session.get("user")
-        if not user:
-            if request.path.startswith("/api/"):
-                return jsonify({"error": "authentication required"}), 401
-            return redirect(url_for("catch_all", path=""))
-        roles = user.get("roles") or []
-        if REQUIRED_ROLE not in roles:
-            if request.path.startswith("/api/"):
-                return jsonify({"error": "access denied", "code": "insufficient_role"}), 403
-            return redirect(url_for("access_denied"))
-        return f(*args, **kwargs)
-    return decorated
-```
-
-The `REQUIRED_ROLE` value string must exactly match the **Value** field of the App Role in the Azure AD manifest (case-sensitive).
-
-**Decorator replacement strategy:** Replace `@login_required` with `@role_required` on all protected routes in `conversations_bp`, `chat_bp`, and `app.py` (`/api/me`, `/api/photo`, `/api/health`). The `login_required` decorator can remain for `/api/health` if that endpoint should be accessible to all authenticated users regardless of role.
-
-**New route in `app.py`:** `GET /access-denied` — serves a React-compatible response. In React SPA mode, this returns `index.html` so the frontend can render the access-denied screen. Alternatively the `/api/me` response can include a `hasAccess: false` flag and the frontend renders the gate.
-
-**Preferred approach:** Return a `403` from `/api/me` (not a JSON body with `hasAccess: false`) when the user is authenticated but lacks the role. This means `api_me` in `app.py` also uses `@role_required`. The React `AuthGuard` in `App.tsx` already handles 401; it needs a 403 branch added.
-
-### Frontend changes
-
-**Modified file: `frontend/src/api/me.ts`**
-
-Handle `403` response distinctly from `401`:
-```typescript
-if (res.status === 401) return null;       // not authenticated → redirect to /login
-if (res.status === 403) throw new AccessDeniedError();  // authenticated, no role
-```
-
-**Modified file: `frontend/src/contexts/AuthContext.tsx`**
-
-Add `accessDenied: boolean` to `AuthState`. Set it when `/api/me` returns 403.
-
-**Modified file: `frontend/src/App.tsx`**
-
-Extend `AuthGuard` to render an `<AccessDenied />` component when `accessDenied` is true, instead of redirecting to login.
-
-**New file: `frontend/src/components/AccessDenied.tsx`**
-
-Standalone screen explaining the user is authenticated but does not have access. Shows their email, a contact-IT message, and a logout link.
-
-### Azure AD manifest changes
-
-1. Open App Registration in Entra admin center.
-2. Under **App roles**, create a new role:
-   - Display name: `Atlas User`
-   - Allowed member types: `Users/Groups`
-   - Value: `Atlas.User` (this exact string goes in `REQUIRED_ROLE`)
-   - Description: `Can access the Atlas Exchange chat application`
-   - Enabled: `true`
-3. Under **Enterprise Applications** → the app → **Users and groups**, assign the pilot group or individual users to the `Atlas.User` role.
-4. No manifest JSON editing is required; the portal UI handles it.
-
-**No new environment variables needed** — the role name string can be hardcoded as a constant in `auth.py` or added to `Config` if it needs to vary across environments.
-
----
-
-## Feature 2: Thumbs Up/Down Feedback
-
-### Data model
-
-**New SQLite table (add to `schema.sql`):**
-
-```sql
-CREATE TABLE IF NOT EXISTS feedback (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    thread_id   INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
-    message_idx INTEGER NOT NULL,   -- 0-based index into messages_json array
-    user_id     TEXT    NOT NULL,
-    rating      INTEGER NOT NULL CHECK (rating IN (1, -1)),
-    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    UNIQUE (thread_id, message_idx, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_feedback_thread
-    ON feedback(thread_id);
-```
-
-`message_idx` is the position of the assistant message within the `messages_json` array. Using an index (not a content hash or timestamp) is simplest given the existing storage model — the array is append-only and messages do not reorder.
-
-The `UNIQUE` constraint prevents double-voting and makes upsert semantics possible (a second vote on the same message flips or removes the rating).
-
-### Backend changes
-
-**New file: `chat_app/feedback.py`** — new Blueprint with two endpoints:
-
-- `POST /api/threads/<thread_id>/messages/<int:message_idx>/feedback` — body `{"rating": 1}` or `{"rating": -1}`. Verifies thread ownership first (same ownership pattern as `conversations.py`). Upserts feedback row using `INSERT OR REPLACE`.
-- `DELETE /api/threads/<thread_id>/messages/<int:message_idx>/feedback` — removes the user's feedback row (allows un-rating).
-
-**Modified file: `chat_app/app.py`**
-
-Register `feedback_bp` blueprint.
-
-### Frontend changes
-
-**New file: `frontend/src/api/feedback.ts`** — `submitFeedback(threadId, messageIdx, rating)` and `deleteFeedback(threadId, messageIdx)`.
-
-**Modified file: `frontend/src/types/index.ts`**
-
-Add `feedback?: 1 | -1 | null` to `DisplayMessage`.
-
-**Modified file: `frontend/src/components/ChatPane/AssistantMessage.tsx`**
-
-Add thumbs-up / thumbs-down buttons below assistant message content. On click, call `submitFeedback`. Show active state (filled vs outline icon) based on local optimistic state. Use Fluent UI `ThumbLike20Regular` / `ThumbLike20Filled` / `ThumbDislike20Regular` / `ThumbDislike20Filled` icons (already available from `@fluentui/react-icons`).
-
-**State management note:** Feedback state is local to each message component — no global state changes needed. The `DisplayMessage` type gets a `feedback` field, populated when loading historical messages if feedback data is included in the response.
-
-**Loading historical feedback:** The `GET /api/threads/<id>/messages` endpoint in `conversations.py` currently returns only `messages_json`. Options:
-
-- Option A: Add a separate `GET /api/threads/<id>/feedback` endpoint that returns `{messageIdx: rating}` map. Frontend fetches this alongside messages when switching threads.
-- Option B: Extend the existing messages endpoint to include feedback in the response.
-
-Recommendation: Option A (separate endpoint). It keeps `conversations.py` unchanged and allows feedback to load lazily without blocking message display.
-
----
-
-## Feature 3: Thread Search
-
-### Storage design
-
-The messages are stored as a JSON array in `messages.messages_json`. FTS5 cannot index JSON arrays directly. Two approaches:
-
-**Option A: FTS5 external content table on threads.name only (thread-level search)**
-
-Search thread names only. Simple to implement — thread names are plain text strings.
-
-```sql
-CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
-    name,
-    content='threads',
-    content_rowid='id'
-);
-```
-
-**Option B: FTS5 on a denormalized message_text table (message-level search)**
-
-Maintain a separate `message_text(id, thread_id, message_idx, role, content)` table alongside `messages`. FTS5 indexes this table. The `chat.py` SSE endpoint writes to `message_text` after each conversation turn.
-
-Recommendation: **Option A first, Option B later.** Thread-name search satisfies the use case of "find that conversation about Exchange quota issues." Searching within message content can be a v1.4 feature. Thread names are meaningful (auto-named from first message), searchable, and index simply.
-
-**Schema additions for thread search (add to `schema.sql`):**
-
-```sql
--- FTS5 index on thread names (content table approach)
-CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
-    name,
-    content='threads',
-    content_rowid='id'
-);
-
--- Triggers to keep FTS index in sync with threads table
-CREATE TRIGGER IF NOT EXISTS threads_fts_ai AFTER INSERT ON threads BEGIN
-    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
-END;
-
-CREATE TRIGGER IF NOT EXISTS threads_fts_au AFTER UPDATE OF name ON threads BEGIN
-    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
-    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
-END;
-
-CREATE TRIGGER IF NOT EXISTS threads_fts_ad AFTER DELETE ON threads BEGIN
-    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
-END;
-```
-
-**Important:** FTS5 external content tables do not auto-populate on creation. After running the schema migration, a one-time backfill is required:
-
-```sql
-INSERT INTO threads_fts(rowid, name) SELECT id, name FROM threads WHERE name != '';
-```
-
-This backfill must run as part of the `flask init-db` command or as a separate migration step.
-
-### Backend changes
-
-**Modified file: `chat_app/conversations.py`**
-
-Add one new endpoint:
-
-```python
-@conversations_bp.route("/api/threads/search")
-@role_required
-def search_threads():
-    q = request.args.get("q", "").strip()
-    if not q:
-        return jsonify([])
-    db = get_db()
-    rows = db.execute(
-        """
-        SELECT t.id, t.name, t.updated_at
-        FROM threads_fts
-        JOIN threads t ON threads_fts.rowid = t.id
-        WHERE threads_fts MATCH ?
-          AND t.user_id = ?
-        ORDER BY bm25(threads_fts)
-        LIMIT 20
-        """,
-        (q, _user_id()),
-    ).fetchall()
-    return jsonify([dict(r) for r in rows])
-```
-
-The `AND t.user_id = ?` join ensures users can only search their own threads — same ownership model as the rest of `conversations.py`.
-
-### Frontend changes
-
-**Modified file: `frontend/src/api/threads.ts`**
-
-Add `searchThreads(q: string): Promise<Thread[]>`.
-
-**Modified file: `frontend/src/components/Sidebar/ThreadList.tsx`**
-
-Add a search input at the top of the thread list. When focused or when the user types, switch between the full thread list and search results. A debounced `onChange` handler calls `searchThreads`. An empty query string reverts to the normal thread list.
-
-**State:** Search query string and search results are local state within `ThreadList` — no context changes needed.
-
-**New file (optional): `frontend/src/components/Sidebar/SearchInput.tsx`**
-
-Extracted input component for the search box — Fluent UI `SearchBox` or a styled `<input type="search">`.
-
----
-
-## Feature 4: Conversation Export
-
-### Design decisions
-
-Export is generated server-side from the stored `messages_json`. This keeps the frontend thin and ensures the export accurately reflects what is persisted (not transient UI state).
-
-**Supported formats:**
-
-- Markdown (`.md`) — human-readable, copy-pasteable, renders in tools like Obsidian/VS Code
-- JSON (`.json`) — full fidelity, includes tool events and metadata
-
-### Backend changes
-
-**New file: `chat_app/export.py`** — Blueprint with one endpoint:
-
-```python
-@export_bp.route("/api/threads/<int:thread_id>/export")
-@role_required
-def export_thread(thread_id: int):
-    fmt = request.args.get("format", "markdown")  # "markdown" or "json"
-    db = get_db()
-    # ownership check (same pattern as conversations.py)
-    thread = db.execute(
-        "SELECT id, name FROM threads WHERE id = ? AND user_id = ?",
-        (thread_id, _user_id()),
-    ).fetchone()
-    if thread is None:
-        return jsonify({"error": "Not found"}), 404
-
-    row = db.execute(
-        "SELECT messages_json FROM messages WHERE thread_id = ?", (thread_id,)
-    ).fetchone()
-    messages = json.loads(row["messages_json"]) if row else []
-
-    if fmt == "json":
-        payload = json.dumps({
-            "thread_id": thread_id,
-            "name": thread["name"],
-            "exported_at": datetime.utcnow().isoformat() + "Z",
-            "messages": messages,
-        }, indent=2)
-        filename = f"atlas-thread-{thread_id}.json"
-        return Response(
-            payload,
-            mimetype="application/json",
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+import sqlite3
+import json
+import os
+import asyncio
+from typing import Any
+
+_DB_PATH: str | None = None
+
+def _get_analytics_db() -> sqlite3.Connection:
+    """Open a read-only SQLite connection to the chat database.
+    
+    Uses URI mode with ?mode=ro to enforce read-only access.
+    Connection is opened per-call and must be closed by caller.
+    """
+    global _DB_PATH
+    if _DB_PATH is None:
+        _DB_PATH = os.environ.get(
+            "CHAT_DB_PATH",
+            os.path.join(os.path.dirname(__file__), "..", "chat.db"),
         )
+    conn = sqlite3.connect(f"file:{_DB_PATH}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-    # Markdown format
-    lines = [f"# {thread['name'] or f'Thread {thread_id}'}", ""]
-    for msg in messages:
-        role = msg.get("role", "")
-        content = msg.get("content") or ""
-        if role == "system":
-            continue
-        if role == "user":
-            lines += [f"**You:** {content}", ""]
-        elif role == "assistant":
-            lines += [f"**Atlas:** {content}", ""]
-        # tool and tool_calls messages are omitted from markdown export
 
-    payload = "\n".join(lines)
-    safe_name = (thread["name"] or f"thread-{thread_id}").replace(" ", "-")[:50]
-    filename = f"atlas-{safe_name}.md"
-    return Response(
-        payload,
-        mimetype="text/markdown",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
-    )
+async def get_feedback_summary_handler(
+    arguments: dict[str, Any], client: Any
+) -> dict[str, Any]:
+    """Return aggregate feedback statistics."""
+    def _query():
+        db = _get_analytics_db()
+        try:
+            # ... aggregate queries ...
+            return result
+        finally:
+            db.close()
+    return await asyncio.to_thread(_query)
 ```
 
-**Modified file: `chat_app/app.py`**
+**Key design decisions:**
+- **Read-only connection** (`?mode=ro` URI) -- MCP server must never write to feedback
+- **Open/close per call** -- no persistent connection (matches per-call PowerShell pattern)
+- **`asyncio.to_thread()`** -- wraps sync SQLite in async handler (same as Graph API handlers)
+- **Separate module** -- `feedback_analytics.py` keeps tools.py focused on Exchange tools
 
-Register `export_bp` blueprint.
+### Feedback Analytics Tool Granularity
 
-### Frontend changes
+**Recommendation: 3 specific tools.**
 
-**Modified file: `frontend/src/components/Sidebar/ThreadItem.tsx`**
+| Tool | Purpose | Trigger phrases |
+|------|---------|-----------------|
+| `get_feedback_summary` | Aggregate stats: total votes, up/down ratio, votes per day, most-commented messages | "How's feedback looking?" / "What's our satisfaction rate?" |
+| `get_feedback_by_tool` | Correlate feedback with Exchange tools: which tools get thumbs-up vs thumbs-down | "Which tools are users unhappy with?" / "Best-rated tool?" |
+| `get_low_rated_responses` | Recent thumbs-down with comments and tool context | "Show me negative feedback" / "What are users complaining about?" |
 
-Add "Export" to the existing thread item context menu (or as an icon button alongside rename/delete). The export triggers a `window.location.href` navigation to `/api/threads/<id>/export?format=markdown` — the browser handles the file download natively. No API module change needed for the simplest path.
+**Why 3 specific tools, not 1 general-purpose query tool:**
+- LLMs choose well from small sets of clearly-described tools; they struggle with query DSLs
+- Each tool maps to a distinct natural-language question pattern
+- A general `query_feedback(params)` risks SQL injection and prompt confusion
+- 3 is enough to cover the primary analytics use cases; more can be added later
 
-Alternatively, add `exportThread(id, format)` to `frontend/src/api/threads.ts` using `fetch` + `URL.createObjectURL` for a programmatic download, which avoids navigating away. The programmatic approach is cleaner for a SPA.
+### Tool Correlation: Mapping Feedback to Tools
 
----
+The hardest analytics query correlates `feedback.assistant_message_idx` with tool calls embedded in `messages_json`. The `messages_json` array contains the full conversation including system, user, assistant, and tool messages. The `assistant_message_idx` is a 0-based ordinal counting only **content-bearing assistant messages** (per schema.sql comment, line 27-28).
 
-## Feature 5: Motion Animations
-
-### Library
-
-**Package:** `motion` (formerly framer-motion, rebranded). Import from `"motion/react"`.
-
-```bash
-npm install motion
-```
-
-The package is `motion`, not `framer-motion`. The import path is `motion/react` for React components. React 19 compatibility is not explicitly documented but the library uses standard React APIs (hooks, ref forwarding) — no known incompatibility.
-
-**Confidence: MEDIUM** — library docs verified via WebFetch but explicit React 19 compat statement not found. Risk is low; motion uses standard React APIs.
-
-### Integration points
-
-Animations are additive to existing components — no structural changes required. The `motion.div` / `motion.button` etc. wrappers replace the plain HTML elements where animations are wanted.
-
-**Candidate locations:**
-
-| Component | Animation | Motion API |
-|-----------|-----------|------------|
-| `AssistantMessage.tsx` | Fade + slide in on mount | `initial={{ opacity: 0, y: 8 }}` → `animate={{ opacity: 1, y: 0 }}` |
-| `UserMessage.tsx` | Fade in on mount | Same pattern |
-| `ThreadItem.tsx` | Subtle scale on hover | `whileHover={{ scale: 1.01 }}` |
-| `Sidebar` | Slide transition on collapse/expand | `animate={{ width: collapsed ? 48 : 260 }}` |
-| Feedback thumbs | Scale bounce on click | `whileTap={{ scale: 0.85 }}` |
-| `AccessDenied.tsx` | Fade in on mount | `initial={{ opacity: 0 }}` |
-
-**Anti-pattern to avoid:** Animating streaming message chunks. Each SSE `text` delta appends to the assistant message content string. Wrapping the entire streaming message in a `motion` component and animating on every `content` change will cause jank. Animation on mount (when the component first appears) is fine. Content updates during streaming should not trigger re-animation.
-
-**LazyMotion:** For bundle size, use `LazyMotion` with `domAnimation` feature set if bundle size becomes a concern. Not needed immediately given the internal deployment context.
-
----
-
-## New Components Summary
-
-### New backend files
-
-| File | Type | Purpose |
-|------|------|---------|
-| `chat_app/feedback.py` | New Blueprint | POST/DELETE feedback endpoints |
-| `chat_app/export.py` | New Blueprint | GET export endpoint (Markdown + JSON) |
-
-### Modified backend files
-
-| File | Change |
-|------|--------|
-| `chat_app/auth.py` | Add `role_required` decorator, `REQUIRED_ROLE` constant |
-| `chat_app/app.py` | Register feedback + export blueprints; update `api_me` to use `role_required`; add access-denied route |
-| `chat_app/conversations.py` | Add `GET /api/threads/search` endpoint; switch to `role_required` |
-| `chat_app/chat.py` | Switch `@login_required` to `@role_required` |
-| `chat_app/schema.sql` | Add `feedback` table, `threads_fts` virtual table, three FTS sync triggers |
-
-### New frontend files
-
-| File | Purpose |
-|------|---------|
-| `frontend/src/components/AccessDenied.tsx` | Access denied screen for role-gated users |
-| `frontend/src/components/Sidebar/SearchInput.tsx` | Search input component |
-| `frontend/src/api/feedback.ts` | Feedback API calls |
-
-### Modified frontend files
-
-| File | Change |
-|------|--------|
-| `frontend/src/api/me.ts` | Handle 403 → `AccessDeniedError` |
-| `frontend/src/api/threads.ts` | Add `searchThreads`, optionally `exportThread` |
-| `frontend/src/contexts/AuthContext.tsx` | Add `accessDenied` state field |
-| `frontend/src/types/index.ts` | Add `feedback` field to `DisplayMessage`; add `AccessDeniedError` |
-| `frontend/src/App.tsx` | Extend `AuthGuard` for 403 → `<AccessDenied />` |
-| `frontend/src/components/ChatPane/AssistantMessage.tsx` | Add feedback buttons; add motion animations |
-| `frontend/src/components/ChatPane/UserMessage.tsx` | Add motion animations |
-| `frontend/src/components/Sidebar/ThreadList.tsx` | Add search input + results mode |
-| `frontend/src/components/Sidebar/ThreadItem.tsx` | Add export action; add motion hover |
-
----
-
-## SQLite Schema Additions
-
-Full additions to append to `chat_app/schema.sql`:
-
-```sql
--- Feedback ratings for assistant messages
-CREATE TABLE IF NOT EXISTS feedback (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    thread_id   INTEGER NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
-    message_idx INTEGER NOT NULL,
-    user_id     TEXT    NOT NULL,
-    rating      INTEGER NOT NULL CHECK (rating IN (1, -1)),
-    created_at  TEXT    NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
-    UNIQUE (thread_id, message_idx, user_id)
-);
-
-CREATE INDEX IF NOT EXISTS idx_feedback_thread
-    ON feedback(thread_id);
-
--- FTS5 virtual table for thread name search
-CREATE VIRTUAL TABLE IF NOT EXISTS threads_fts USING fts5(
-    name,
-    content='threads',
-    content_rowid='id'
-);
-
--- Triggers to keep threads_fts in sync with threads.name
-CREATE TRIGGER IF NOT EXISTS threads_fts_ai AFTER INSERT ON threads BEGIN
-    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
-END;
-
-CREATE TRIGGER IF NOT EXISTS threads_fts_au AFTER UPDATE OF name ON threads BEGIN
-    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
-    INSERT INTO threads_fts(rowid, name) VALUES (new.id, new.name);
-END;
-
-CREATE TRIGGER IF NOT EXISTS threads_fts_ad AFTER DELETE ON threads BEGIN
-    INSERT INTO threads_fts(threads_fts, rowid, name) VALUES ('delete', old.id, old.name);
-END;
-```
-
-**Migration note:** `CREATE VIRTUAL TABLE IF NOT EXISTS` is safe to run on an existing database. However, the FTS index will be empty until the backfill runs. Add a backfill step to the `flask init-db` CLI command or as a separate `flask backfill-fts` command:
+**Correlation algorithm:**
+1. Load `messages_json` for the thread from `messages` table
+2. Parse the JSON array
+3. Walk the array counting assistant messages with non-null content until reaching `assistant_message_idx`
+4. Look backwards from that position for preceding `tool` role messages to identify which tool produced the data the AI used
 
 ```python
-@click.command("backfill-fts")
-def backfill_fts_command():
-    """Populate threads_fts from existing thread names."""
-    db = get_db()
-    db.execute(
-        "INSERT INTO threads_fts(rowid, name) SELECT id, name FROM threads WHERE name != ''"
-    )
-    db.commit()
-    click.echo("FTS backfill complete.")
+def _extract_tool_for_message(messages_json: str, assistant_idx: int) -> str | None:
+    """Find which tool was called before the Nth assistant message."""
+    messages = json.loads(messages_json)
+    assistant_count = 0
+    target_pos = None
+    for i, msg in enumerate(messages):
+        if msg.get("role") == "assistant" and msg.get("content"):
+            if assistant_count == assistant_idx:
+                target_pos = i
+                break
+            assistant_count += 1
+    if target_pos is None:
+        return None
+    # Walk backwards to find the tool call
+    for j in range(target_pos - 1, -1, -1):
+        if messages[j].get("role") == "tool":
+            return messages[j].get("name")
+        if messages[j].get("role") in ("user", "system"):
+            break  # Passed the tool boundary
+    return None  # No tool call preceded this response
 ```
 
----
+This correlation logic lives in `feedback_analytics.py`, not in SQL. SQLite's JSON functions cannot do this array traversal efficiently.
 
-## Azure AD Manifest Changes
+## Component Boundaries
 
-All changes are made via Entra admin center UI — no raw manifest JSON editing needed.
+### New Components
 
-**App Registration → App roles:**
+| Component | Location | Type |
+|-----------|----------|------|
+| `exchange_mcp/feedback_analytics.py` | NEW file | 3 analytics handlers + read-only DB access + tool correlation |
+| `trace_messages` tool def | `exchange_mcp/tools.py` | Added to `TOOL_DEFINITIONS` |
+| `_trace_messages_handler` | `exchange_mcp/tools.py` | New handler function |
+| 3 feedback tool defs | `exchange_mcp/tools.py` | Added to `TOOL_DEFINITIONS` |
+| 3 feedback dispatch entries | `exchange_mcp/tools.py` | Added to `TOOL_DISPATCH`, importing from `feedback_analytics.py` |
 
-| Field | Value |
-|-------|-------|
-| Display name | `Atlas User` |
-| Allowed member types | `Users/Groups` |
-| Value | `Atlas.User` |
-| Description | `Can access the Atlas Exchange chat application` |
-| Enabled | `true` |
+### Modified Components
 
-**Enterprise Applications → [App name] → Users and groups:**
+| Component | Location | Change |
+|-----------|----------|--------|
+| System prompt | `chat_app/openai_client.py` | Add message trace + feedback analytics sections |
+| (Possibly) MCP env | `chat_app/mcp_client.py` | Verify `CHAT_DB_PATH` propagates -- likely already works via `dict(os.environ)` |
 
-- Assign the pilot group or individual users to the `Atlas.User` role.
-- Users without an assignment will receive a `roles` claim with no entries, triggering the 403 path.
+### Unchanged Components
 
-**No redirect URI changes.** The auth code flow callback URL (`/auth/callback`) is unchanged.
+| Component | Why unchanged |
+|-----------|---------------|
+| `chat_app/feedback.py` | CRUD endpoints remain as-is; analytics is additive, read-only |
+| `chat_app/db.py` | No schema changes; feedback table already has needed columns + indexes |
+| `exchange_mcp/server.py` | Tool dispatch unchanged; new tools auto-register via TOOL_DEFINITIONS/TOOL_DISPATCH |
+| `exchange_mcp/exchange_client.py` | trace_messages uses existing `run_cmdlet()` directly |
 
-**Important:** The `roles` claim appears in the **ID token** (not just the access token) because this is a web app signing in users, not a daemon calling an API. MSAL's `acquire_token_by_auth_code_flow` returns `id_token_claims` which includes `roles`. This is already what `auth_callback` stores as `session["user"]`.
+## System Prompt Changes
 
----
-
-## Data Flow Changes
-
-### Access control flow (new)
-
-```
-Browser → GET /api/me
-    ↓
-Flask api_me → @role_required
-    → session["user"]["roles"] contains "Atlas.User" → 200 JSON
-    → session["user"]["roles"] missing "Atlas.User" → 403 JSON
-    → session["user"] not set → 401 JSON
-
-React AuthGuard:
-    → 200 → render app
-    → 403 → render <AccessDenied />
-    → 401 → redirect to /login
-```
-
-### Feedback flow (new)
+Add two new sections to `SYSTEM_PROMPT` in `chat_app/openai_client.py`:
 
 ```
-User clicks thumbs-up on message[idx]
-    → optimistic UI update (local state)
-    → POST /api/threads/<id>/messages/<idx>/feedback {"rating": 1}
-    → Flask: ownership check → INSERT OR REPLACE feedback
-    → 200 → confirm
-    → error → revert optimistic state
+## Message Tracing
+
+You have a tool for tracing email delivery:
+- trace_messages: Traces message delivery path for the last 10 days. Requires at
+  least a sender_address or recipient_address. Accepts relative time ('24h', '7d')
+  or ISO 8601 dates. Default range: last 48 hours.
+
+Rules:
+15. Always ask for at least one email address (sender or recipient) before tracing.
+16. If the user asks about messages older than 10 days, explain that real-time
+    tracing covers 10 days maximum and suggest checking transport logs.
+17. Summarize trace results: total messages found, delivery statuses, any failures
+    with error details. Use a table for multiple results.
+
+## Feedback Analytics
+
+You have tools for analyzing user feedback on Atlas responses:
+- get_feedback_summary: Overall statistics (vote counts, satisfaction rate, trends).
+  Use when asked about general feedback health.
+- get_feedback_by_tool: Which Exchange tools get positive vs negative feedback.
+  Use when asked about tool quality or per-tool satisfaction.
+- get_low_rated_responses: Recent thumbs-down votes with comments and tool context.
+  Use when asked about complaints or negative feedback.
+
+Rules:
+18. These tools show feedback from ALL users across ALL threads -- they are
+    analytics views, not personal feedback lookups.
+19. Focus on actionable insights: which tools need improvement, common complaint
+    themes, satisfaction trends over time.
+20. Never expose raw user identifiers or thread IDs. Summarize and analyze
+    the data rather than dumping records.
 ```
 
-### Search flow (new)
+## Data Flow Diagrams
 
+### Message Trace Flow (new -- follows existing tool pattern)
 ```
-User types in search box (debounced, 300ms)
-    → GET /api/threads/search?q=<term>
-    → Flask: FTS5 MATCH query + user_id filter → list of threads
-    → ThreadList renders search results instead of full list
-    → User clicks result → handleSelectThread (existing)
+User: "trace messages from alice@contoso.com last 24 hours"
+  |
+  v
+Flask openai_client.py -> OpenAI API
+  |                            |
+  |                    tool_call: trace_messages
+  |                      {sender_address: "alice@contoso.com", start_date: "24h"}
+  v
+mcp_client.call_mcp_tool("trace_messages", {...})
+  |
+  v (stdio JSON-RPC)
+MCP server -> _trace_messages_handler
+  |
+  v
+exchange_client.run_cmdlet("Get-MessageTrace -SenderAddress 'alice@contoso.com' ...")
+  |
+  v
+JSON result -> chain -> AI summarizes -> user sees trace results
 ```
 
-### Export flow (new)
-
+### Feedback Analytics Flow (new -- SQLite read from MCP process)
 ```
-User clicks Export on ThreadItem
-    → GET /api/threads/<id>/export?format=markdown
-    → Flask: ownership check → build Markdown → Response with Content-Disposition
-    → Browser: native file download
+User: "which tools get the worst feedback?"
+  |
+  v
+Flask openai_client.py -> OpenAI API
+  |                            |
+  |                    tool_call: get_feedback_by_tool {}
+  v
+mcp_client.call_mcp_tool("get_feedback_by_tool", {})
+  |
+  v (stdio JSON-RPC)
+MCP server -> get_feedback_by_tool_handler (feedback_analytics.py)
+  |
+  v
+asyncio.to_thread:
+  sqlite3.connect("file:chat.db?mode=ro", uri=True)  -- read-only
+  SQL aggregation + Python tool correlation
+  connection.close()
+  |
+  v
+JSON result -> chain -> AI interprets -> user sees analytics insights
 ```
-
----
 
 ## Suggested Build Order
 
-Dependencies drive this order. Each feature can be built and tested independently after its prerequisites.
+**Phase 1: trace_messages tool** (zero architectural risk)
+1. Add tool definition to `TOOL_DEFINITIONS` in tools.py
+2. Implement `_trace_messages_handler` with date normalization logic
+3. Add dispatch entry to `TOOL_DISPATCH`
+4. Add message tracing section to `SYSTEM_PROMPT`
+5. Test with real Get-MessageTrace calls against EXO
 
-```
-1. App Role Access Control  (no dependencies — pure auth layer change)
-   Backend:  auth.py → role_required decorator
-             app.py  → update api_me, add access-denied handling
-             conversations.py / chat.py → swap decorators
-   Frontend: me.ts → 403 handling
-             AuthContext → accessDenied state
-             App.tsx → AuthGuard 403 branch
-             AccessDenied.tsx → new component
-   Azure AD: create Atlas.User app role, assign test users
+**Phase 2: Feedback analytics foundation** (validates the new pattern)
+1. Create `exchange_mcp/feedback_analytics.py` with `_get_analytics_db()`
+2. Implement `get_feedback_summary` handler (simplest -- just aggregates)
+3. Add tool definition + dispatch entry in tools.py
+4. Verify DB path resolution works in MCP subprocess context
+5. Test: Flask writes feedback, MCP reads it back via analytics tool
 
-2. Feedback              (depends on: auth control complete)
-   Backend:  schema.sql → feedback table
-             feedback.py → new Blueprint + endpoints
-             app.py → register blueprint
-   Frontend: types → DisplayMessage.feedback
-             api/feedback.ts → new
-             AssistantMessage.tsx → thumbs buttons
+**Phase 3: Remaining analytics tools + system prompt** (builds on validated pattern)
+1. Implement `get_feedback_by_tool` handler (requires tool correlation logic)
+2. Implement `get_low_rated_responses` handler
+3. Add tool definitions + dispatch entries
+4. Add feedback analytics section to `SYSTEM_PROMPT`
+5. End-to-end test: user asks about feedback, AI calls correct tool, presents insights
 
-3. Thread Search         (depends on: auth control complete; independent of feedback)
-   Backend:  schema.sql → threads_fts + triggers
-             conversations.py → /api/threads/search endpoint
-             db.py → backfill-fts CLI command
-   Frontend: api/threads.ts → searchThreads
-             ThreadList.tsx → search mode
-             SearchInput.tsx → new component
+**Ordering rationale:**
+- Phase 1 has zero architectural risk -- identical to the pattern used 14 times already
+- Phase 2 validates the one new architectural decision (MCP process reading SQLite) with the simplest query
+- Phase 3 builds on the validated infrastructure with progressively complex correlation queries
+- If Phase 2 reveals issues with cross-process SQLite access (unlikely but possible on Windows), the fix is contained before building the complex tools
 
-4. Export                (depends on: auth control complete; independent of 2 and 3)
-   Backend:  export.py → new Blueprint
-             app.py → register blueprint
-   Frontend: ThreadItem.tsx → export action
+## Anti-Patterns to Avoid
 
-5. Animations            (depends on: all other features complete or concurrent)
-   Frontend: npm install motion
-             AssistantMessage, UserMessage, ThreadItem, Sidebar → motion wrappers
-             AccessDenied → fade-in
-             Feedback buttons → whileTap
-```
+### Anti-Pattern: Write Access from MCP
+The MCP server must NEVER write to the feedback table. Writes go through Flask's `feedback.py` Blueprint which has auth context and ownership validation. Enforce with `?mode=ro` in SQLite URI -- write attempts fail at the connection level.
 
-Features 2, 3, and 4 can be built in parallel after feature 1 is complete. Feature 5 is additive and can be layered on at any point, but it is cleanest to apply after the component structure is settled.
+### Anti-Pattern: Persistent DB Connections in MCP
+Do NOT keep a persistent SQLite connection in the MCP server. Open and close per-call, matching the per-call PowerShell pattern. Avoids WAL checkpoint contention and stale reads.
 
----
+### Anti-Pattern: Raw SQL Exposure to AI
+Do NOT create a general-purpose "run this query" tool. Each analytics tool has fixed SQL with at most parameterized date ranges. The AI chooses which analytics view it needs, not how to query.
+
+### Anti-Pattern: Duplicating CRUD Logic
+The analytics module uses raw SQL for read-only aggregates. Do NOT replicate the Flask Blueprint's insert/update/delete patterns. The two access patterns are intentionally different: CRUD via Flask, analytics via MCP.
+
+### Anti-Pattern: Importing Flask Modules in MCP for DB Access
+Do NOT import `chat_app.db.get_db()` in the MCP process. That function requires Flask's `g` context and `current_app`. The analytics module manages its own `sqlite3.connect()` with the raw file path.
+
+## Scalability Considerations
+
+| Concern | Current (<50 users) | At 200 users | At 1000+ users |
+|---------|----------------------|--------------|----------------|
+| SQLite WAL concurrent reads | Fine | Fine | May need read replicas or PostgreSQL |
+| Feedback table size | Negligible | ~10K rows, fast | ~100K rows, add date-range partitioning |
+| Tool correlation (JSON parse in Python) | Fast | Acceptable | Pre-compute a correlation lookup table |
+| Message trace result volume | Fine | Fine | Paginate, summarize server-side |
+
+For the current scale (enterprise internal tool, <50 concurrent users), SQLite WAL with read-only MCP access is more than adequate.
 
 ## Confidence Assessment
 
 | Area | Confidence | Basis |
 |------|------------|-------|
-| App Roles in ID token claims | HIGH | Microsoft Entra docs confirm `roles` in ID token for user sign-in scenario |
-| `session["user"]["roles"]` access pattern | HIGH | `auth_callback` stores full `id_token_claims`; `roles` is a standard claim |
-| FTS5 external content table + triggers | HIGH | SQLite FTS5 official documentation, verified via WebFetch |
-| FTS5 backfill requirement | HIGH | FTS5 doc: content tables do not auto-populate |
-| BM25 ranking direction (lower = better) | HIGH | SQLite FTS5 doc: "better matches receive lower numeric values" |
-| `feedback` table design (index-based) | MEDIUM | Reasonable given messages are append-only; fragile if message deletion is added later |
-| Motion library React 19 compat | MEDIUM | Standard React APIs used; no explicit React 19 statement found in docs |
-| Export server-side generation | HIGH | Standard Flask `Response` with `Content-Disposition`; no new dependencies |
-
----
+| trace_messages integration pattern | HIGH | Identical to 14 existing Exchange tools in codebase |
+| SQLite WAL multi-process reads | HIGH | WAL is designed for concurrent readers; documented behavior |
+| `asyncio.to_thread()` for sync SQLite | HIGH | Exact pattern used by `_search_colleagues_handler` (tools.py:1897) |
+| `CHAT_DB_PATH` env propagation to MCP | HIGH | `mcp_client.py:128` passes `env=dict(os.environ)` to subprocess |
+| `?mode=ro` SQLite URI parameter | HIGH | Standard Python sqlite3 URI parameter |
+| Tool correlation algorithm correctness | MEDIUM | Logic is sound but needs testing against real messages_json data |
+| Get-MessageTrace 10-day limit | MEDIUM | Based on training knowledge of EXO; should verify against current docs |
 
 ## Sources
 
-- [Microsoft Entra: Add app roles and get them from a token](https://learn.microsoft.com/en-us/entra/identity-platform/howto-add-app-roles-in-apps)
-- [SQLite FTS5 documentation](https://sqlite.org/fts5.html)
-- [Motion for React quick start](https://motion.dev/docs/react-quick-start)
+- Direct codebase analysis of all referenced files
+- SQLite WAL documentation: concurrent multi-process reader support is the designed use case
+- Python sqlite3 module: URI `?mode=ro` is the standard read-only parameter
+- Existing codebase patterns: `_search_colleagues_handler` for `asyncio.to_thread()` bridge
