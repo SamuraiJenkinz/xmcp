@@ -1,5 +1,32 @@
 # Project Milestones: Exchange Infrastructure MCP Server
 
+## v1.4 Message Trace & Feedback Analytics (Shipped: 2026-04-06)
+
+**Delivered:** Message trace MCP tool for email delivery tracking via Get-MessageTraceV2 and three feedback analytics MCP tools (summary, low-rated, tool correlation) querying SQLite directly from the MCP server — bringing the total tool count from 17 to 21 with zero frontend changes.
+
+**Phases completed:** 26-28 (6 plans total)
+
+**Key accomplishments:**
+
+- Message trace tool — `get_message_trace` backed by Get-MessageTraceV2 with sender/recipient validation, 10-day range enforcement, PII-safe subject truncation, and RBAC verification
+- System prompt disambiguation — intent-based routing rules (15-18) differentiating delivery tracking from routing topology queries with negative guidance and clarification prompts
+- Feedback analytics module — isolated `feedback_analytics.py` with read-only SQLite access, `get_feedback_summary` and `get_low_rated_responses` tools, asyncio-safe I/O
+- Tool correlation analytics — `get_feedback_by_tool` with fan-out vote attribution, backward-walk message correlation, breakdown/drill-down dual-mode handler
+- 26 system prompt rules — complete numbered rule set (1-26) guiding AI routing and conversational presentation of all 21 tools
+
+**Stats:**
+
+- 28 files created/modified (+4,855 / -83 lines)
+- ~75.7K LOC (Python + TypeScript/CSS/SQL)
+- 3 phases, 6 plans, ~9 tasks
+- 1 day (2026-04-06) — 4 days after v1.3
+
+**Git range:** `2562587` (phase 26 context) → `b13f981` (phase 28 complete)
+
+**What's next:** TBD — historical message trace, Entra ID device lookup, feedback dashboard, or identity pass-through
+
+---
+
 ## v1.3 Access Control, Feedback, Search, Export, Animations (Shipped: 2026-04-02)
 
 **Delivered:** Azure AD App Role access gating, per-message thumbs up/down feedback with SQLite persistence, two-tier thread search (client-side title filter + FTS5 full-text), Markdown conversation export, and motion entrance animations with prefers-reduced-motion compliance.

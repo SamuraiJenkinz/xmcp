@@ -2,7 +2,7 @@
 
 ## What This Is
 
-A complete Exchange management system for Marsh McLennan — an MCP server exposing 17 tools (15 Exchange infrastructure + 2 colleague lookup) paired with a modern React 19 chat application built on Fluent UI v9 and Tailwind v4. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD App Role access gating, per-message feedback (thumbs up/down with SQLite persistence), thread search (client-side title filter + FTS5 full-text), Markdown conversation export, motion entrance animations, Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history with recency grouping, collapsible tool panels with status badges and elapsed time, syntax-highlighted JSON, copy-to-clipboard, keyboard shortcuts (Ctrl+K search), WCAG AA accessible focus management, and dark/light mode with Fluent 2 design tokens. No direct PowerShell access or cmdlet knowledge required.
+A complete Exchange management system for Marsh McLennan — an MCP server exposing 21 tools (15 Exchange infrastructure + 2 colleague lookup + 1 message trace + 3 feedback analytics) paired with a modern React 19 chat application built on Fluent UI v9 and Tailwind v4. Colleagues across Marsh, Mercer, Oliver Wyman, and Guy Carpenter can query Exchange health, mailbox governance, mail flow, hybrid configuration, trace email delivery, review feedback analytics, and look up colleagues with inline profile cards — all through natural language, powered by MMC's corporate Azure OpenAI (gpt-4o-mini-128k). Features include Azure AD App Role access gating, per-message feedback (thumbs up/down with SQLite persistence), thread search (client-side title filter + FTS5 full-text), Markdown conversation export, motion entrance animations, Azure AD SSO, Microsoft Graph API integration, multi-thread conversation history with recency grouping, collapsible tool panels with status badges and elapsed time, syntax-highlighted JSON, copy-to-clipboard, keyboard shortcuts (Ctrl+K search), WCAG AA accessible focus management, and dark/light mode with Fluent 2 design tokens. No direct PowerShell access or cmdlet knowledge required.
 
 ## Core Value
 
@@ -46,13 +46,14 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 - Thread search — instant client-side title filter + SQLite FTS5 full-text search with debounce, snippets, Ctrl+K shortcut — v1.3
 - Conversation export — client-side Markdown with tool panel data, slug-dated filenames, Fluent MenuButton — v1.3
 - Motion entrance animations — m.div fade+slide on messages, sidebar CSS transition, feedback scale micro-interaction, MotionConfig reducedMotion — v1.3
+- Message trace tool — get_message_trace backed by Get-MessageTraceV2 with sender/recipient validation, 10-day range, PII-safe subject truncation, RBAC verification — v1.4
+- Feedback analytics — get_feedback_summary (vote counts, satisfaction, daily trends), get_low_rated_responses (thumbs-down with comments), get_feedback_by_tool (per-tool satisfaction with fan-out attribution) — v1.4
+- Read-only SQLite analytics access from MCP server via ATLAS_DB_PATH, asyncio.to_thread I/O, isolated feedback_analytics.py module — v1.4
+- 26 system prompt rules — complete numbered rule set guiding AI routing and conversational presentation of all 21 tools — v1.4
 
 ### Active
 
-- Message trace tool — search by sender/recipient/date range, return subject, delivery status, timestamps, routing path (Get-MessageTrace, Exchange Online, 10-day window)
-- Feedback analytics MCP tools — query feedback data through conversation (volume, thumbs-down with comments, tool correlation)
-
-### Out of Scope
+(None — planning next milestone)
 
 ### Out of Scope
 
@@ -69,8 +70,8 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 
 ## Context
 
-- **Current milestone:** v1.4 — Message Trace & Feedback Analytics
-- **Current state:** ~75.7K LOC (Python + TypeScript/CSS/SQL). 25 phases, 76 plans complete across 4 milestones.
+- **Current milestone:** v1.4 shipped — planning next milestone
+- **Current state:** ~75.7K LOC (Python + TypeScript/CSS/SQL). 28 phases, 82 plans complete across 5 milestones. 21 MCP tools.
 - **Tech stack:** Python 3.11 (Flask + Waitress backend), React 19 + Vite + TypeScript + Fluent UI v9 + Tailwind v4 + motion@12.38.0 (frontend), PowerShell 5.1+ (Exchange cmdlets)
 - **Design reference:** `designux.md` in project root — comprehensive design brief with component inventory, design tokens, and user flows
 - **Environment:** Hybrid Exchange (Exchange 2019 on-prem + Exchange Online), 80,000+ mailboxes, multiple DAGs, AWS-hosted mailbox servers
@@ -124,6 +125,14 @@ Any colleague with appropriate access can interrogate Exchange infrastructure th
 | motion@12.38.0 (not framer-motion) | Official successor; React 19 compatible; tree-shakeable with LazyMotion | Good — confirmed compat |
 | Client-side Markdown export (not server-side) | Zero server round-trip; tool panel data available in client state | Good — instant download |
 | loadedCountRef for historical message gate | Snapshot messages.length on thread switch; idx >= ref = isNew | Good — prevents disorienting animations |
+| Get-MessageTraceV2 over deprecated V1 | V1 deprecated Sep 2025; V2 has no -Page param, uses -ResultSize instead | Good — future-proof |
+| Explicit negative rule for check_mail_flow misrouting | Surface-level similarity means positive rules alone insufficient for disambiguation | Good — reliable routing |
+| No PRAGMAs in _open_ro for feedback SQLite | Database already has WAL; read-only connections cannot write PRAGMAs | Good — correct behavior |
+| asyncio.to_thread for all sqlite3 I/O | Prevents blocking MCP event loop during database queries | Good — non-blocking |
+| ATLAS_DB_PATH separate from CHAT_DB_PATH | Allows independent configuration even if same file | Good — flexible deployment |
+| Fan-out vote attribution for multi-tool messages | Each tool in a turn contributed to the response; preserves per-tool accuracy | Good — accurate analytics |
+| Two-mode handler via tool_name param | Reduces tool count; tool_name acts as breakdown vs drill-down mode switch | Good — minimal API surface |
+| Low-confidence flag at < 5 votes | Sorted last not excluded — still surfaced but clearly marked | Good — honest analytics |
 
 ---
-*Last updated: 2026-04-06 after v1.4 milestone started*
+*Last updated: 2026-04-06 after v1.4 milestone complete*

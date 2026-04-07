@@ -46,60 +46,14 @@ Delivered Azure AD App Role access gating, per-message thumbs up/down feedback w
 
 </details>
 
-### ✅ v1.4 Message Trace & Feedback Analytics (Complete)
+<details>
+<summary>✅ v1.4 Message Trace & Feedback Analytics (Phases 26-28) - SHIPPED 2026-04-06</summary>
 
-**Milestone Goal:** Add a message trace MCP tool for email delivery tracking (Get-MessageTraceV2) and three feedback analytics MCP tools that query the existing SQLite feedback table directly from the MCP server — bringing the total tool count from 17 to 21. Backend-only milestone with zero frontend changes.
+Delivered message trace tool (Get-MessageTraceV2) and three feedback analytics MCP tools (summary, low-rated, tool correlation) with read-only SQLite access — 17 to 21 tools. Backend-only, zero frontend changes.
 
-- [x] **Phase 26: Message Trace Tool** - Exchange Online message trace via Get-MessageTraceV2 with RBAC verification, PII-safe subject handling, and system prompt disambiguation
-- [x] **Phase 27: Feedback Analytics Foundation** - Read-only SQLite access from MCP server for feedback summary and low-rated response queries
-- [x] **Phase 28: Tool Correlation & Analytics Completion** - Feedback-to-tool correlation logic and system prompt guidance for all analytics tools
+6 plans across 3 phases. See MILESTONES.md for full detail.
 
-## Phase Details
-
-### Phase 26: Message Trace Tool
-**Goal**: Users can track email delivery status through conversational queries — answering "did my email arrive?" without PowerShell access
-**Depends on**: Nothing (first phase of v1.4; uses proven Exchange tool pattern)
-**Requirements**: TRACE-01, TRACE-02, TRACE-03, TRACE-04, TRACE-05, TRACE-06, TRACE-07, TRACE-08, TRACE-09, TRACE-10, INFRA-01
-**Success Criteria** (what must be TRUE):
-  1. User asks "trace emails from john@example.com in the last 3 days" and receives delivery status, timestamps, and recipient for each matching message
-  2. User can filter trace results by subject line keyword and the results narrow accordingly
-  3. The AI correctly chooses `get_message_trace` for delivery tracking questions and `check_mail_flow` for routing topology questions — no tool confusion
-  4. Broad queries (no sender/recipient, wide date range) return a capped result set with a summary instead of hanging or timing out
-  5. Subject lines in trace results are stripped or truncated — no full PII-bearing subjects exposed in tool output
-**Plans**: 2 plans
-
-Plans:
-- [x] 26-01-PLAN.md — RBAC verification and Get-MessageTraceV2 tool handler implementation
-- [x] 26-02-PLAN.md — System prompt disambiguation and tool registration finalization
-
-### Phase 27: Feedback Analytics Foundation
-**Goal**: Users can query aggregate feedback data through conversation — vote counts, satisfaction trends, and detailed negative feedback review
-**Depends on**: Phase 26 (sequential ordering; no code dependency but validates simpler pattern first)
-**Requirements**: FBAN-01, FBAN-02, FBAN-03, FBAN-04, FBAN-07, FBAN-08, FBAN-10, INFRA-02
-**Success Criteria** (what must be TRUE):
-  1. User asks "how is Atlas feedback looking this week?" and receives total votes, thumbs-up/down counts, and satisfaction rate percentage
-  2. User asks "show me the negative feedback with comments" and receives timestamped thumbs-down entries with comment text and thread names — no per-user identity exposed
-  3. Daily trend data is included when querying feedback summaries, showing satisfaction movement over the requested date range
-  4. The MCP server reads the SQLite database in read-only mode — no write operations possible from the analytics module
-**Plans**: 2 plans
-
-Plans:
-- [x] 27-01-PLAN.md — ATLAS_DB_PATH plumbing and read-only SQLite connection pattern
-- [x] 27-02-PLAN.md — get_feedback_summary and get_low_rated_responses tool handlers
-
-### Phase 28: Tool Correlation & Analytics Completion
-**Goal**: Users can identify which Exchange tools produce the worst user experience and the AI presents all analytics results conversationally
-**Depends on**: Phase 27 (builds on SQLite access pattern and feedback_analytics.py module)
-**Requirements**: FBAN-05, FBAN-06, FBAN-09, FBAN-11
-**Success Criteria** (what must be TRUE):
-  1. User asks "which Exchange tools get the most negative feedback?" and receives a per-tool satisfaction breakdown with vote counts
-  2. User asks for the worst-rated tool queries and receives specific examples of low-rated interactions with the tool name and context
-  3. The AI presents analytics results in natural conversational language (not raw JSON or table dumps) guided by system prompt rules
-**Plans**: 2 plans
-
-Plans:
-- [x] 28-01-PLAN.md — get_feedback_by_tool handler with message-to-tool correlation logic
-- [x] 28-02-PLAN.md — System prompt analytics guidance and presentation rules
+</details>
 
 ## Progress
 
@@ -109,6 +63,4 @@ Plans:
 | 10-12. Colleague Lookup | v1.1 | 9/9 | Complete | 2026-03-25 |
 | 13-20. UI/UX Redesign | v1.2 | 22/22 | Complete | 2026-03-30 |
 | 21-25. Access Control, Feedback, Search, Export, Animations | v1.3 | 9/9 | Complete | 2026-04-02 |
-| 26. Message Trace Tool | v1.4 | 2/2 | Complete | 2026-04-06 |
-| 27. Feedback Analytics Foundation | v1.4 | 2/2 | Complete | 2026-04-06 |
-| 28. Tool Correlation & Analytics Completion | v1.4 | 2/2 | Complete | 2026-04-06 |
+| 26-28. Message Trace & Feedback Analytics | v1.4 | 6/6 | Complete | 2026-04-06 |
