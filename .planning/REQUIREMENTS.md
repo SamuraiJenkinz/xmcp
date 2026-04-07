@@ -26,13 +26,13 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [x] **FBAN-02**: `get_feedback_summary` includes daily trend breakdown within the date range
 - [x] **FBAN-03**: New MCP tool `get_low_rated_responses` returns thumbs-down entries with comment text, thread name, and timestamp
 - [x] **FBAN-04**: `get_low_rated_responses` supports limit parameter (default 20) and date range filter
-- [ ] **FBAN-05**: New MCP tool `get_feedback_by_tool` correlates feedback votes with which Exchange tool was invoked for that message
-- [ ] **FBAN-06**: `get_feedback_by_tool` includes top-N worst-rated tool queries
+- [x] **FBAN-05**: New MCP tool `get_feedback_by_tool` correlates feedback votes with which Exchange tool was invoked for that message
+- [x] **FBAN-06**: `get_feedback_by_tool` includes top-N worst-rated tool queries
 - [x] **FBAN-07**: MCP server reads SQLite database in read-only mode (WAL concurrent reader safety)
 - [x] **FBAN-08**: New module `exchange_mcp/feedback_analytics.py` isolates analytics handlers from Exchange tool handlers
-- [ ] **FBAN-09**: Tool correlation parses `messages_json` to match `assistant_message_idx` with tool names from tool_calls
+- [x] **FBAN-09**: Tool correlation parses `messages_json` to match `assistant_message_idx` with tool names from tool_calls
 - [x] **FBAN-10**: No per-user voting patterns exposed — all analytics are aggregate only
-- [ ] **FBAN-11**: System prompt guidance for presenting analytics results conversationally
+- [x] **FBAN-11**: System prompt guidance for presenting analytics results conversationally
 
 ### Infrastructure
 
@@ -83,13 +83,13 @@ Deferred to later milestones.
 | FBAN-02 | Phase 27 | Complete |
 | FBAN-03 | Phase 27 | Complete |
 | FBAN-04 | Phase 27 | Complete |
-| FBAN-05 | Phase 28 | Pending |
-| FBAN-06 | Phase 28 | Pending |
+| FBAN-05 | Phase 28 | Complete |
+| FBAN-06 | Phase 28 | Complete |
 | FBAN-07 | Phase 27 | Complete |
 | FBAN-08 | Phase 27 | Complete |
-| FBAN-09 | Phase 28 | Pending |
+| FBAN-09 | Phase 28 | Complete |
 | FBAN-10 | Phase 27 | Complete |
-| FBAN-11 | Phase 28 | Pending |
+| FBAN-11 | Phase 28 | Complete |
 | INFRA-01 | Phase 26 | Complete |
 | INFRA-02 | Phase 27 | Complete |
 
@@ -100,4 +100,4 @@ Deferred to later milestones.
 
 ---
 *Requirements defined: 2026-04-06*
-*Last updated: 2026-04-06 after Phase 27 completion*
+*Last updated: 2026-04-06 after Phase 28 completion — all v1.4 requirements complete*

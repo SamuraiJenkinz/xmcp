@@ -6,7 +6,7 @@
 - ✅ **v1.1 Colleague Lookup** - Phases 10-12 (shipped 2026-03-25)
 - ✅ **v1.2 UI/UX Redesign** - Phases 13-20 (shipped 2026-03-30)
 - ✅ **v1.3 Access Control, Feedback, Search, Export, Animations** - Phases 21-25 (shipped 2026-04-02)
-- 🚧 **v1.4 Message Trace & Feedback Analytics** - Phases 26-28 (in progress)
+- ✅ **v1.4 Message Trace & Feedback Analytics** - Phases 26-28 (shipped 2026-04-06)
 
 ## Phases
 
@@ -46,13 +46,13 @@ Delivered Azure AD App Role access gating, per-message thumbs up/down feedback w
 
 </details>
 
-### 🚧 v1.4 Message Trace & Feedback Analytics (In Progress)
+### ✅ v1.4 Message Trace & Feedback Analytics (Complete)
 
 **Milestone Goal:** Add a message trace MCP tool for email delivery tracking (Get-MessageTraceV2) and three feedback analytics MCP tools that query the existing SQLite feedback table directly from the MCP server — bringing the total tool count from 17 to 21. Backend-only milestone with zero frontend changes.
 
 - [x] **Phase 26: Message Trace Tool** - Exchange Online message trace via Get-MessageTraceV2 with RBAC verification, PII-safe subject handling, and system prompt disambiguation
 - [x] **Phase 27: Feedback Analytics Foundation** - Read-only SQLite access from MCP server for feedback summary and low-rated response queries
-- [ ] **Phase 28: Tool Correlation & Analytics Completion** - Feedback-to-tool correlation logic and system prompt guidance for all analytics tools
+- [x] **Phase 28: Tool Correlation & Analytics Completion** - Feedback-to-tool correlation logic and system prompt guidance for all analytics tools
 
 ## Phase Details
 
@@ -98,8 +98,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 28-01-PLAN.md — get_feedback_by_tool handler with message-to-tool correlation logic
-- [ ] 28-02-PLAN.md — System prompt analytics guidance and presentation rules
+- [x] 28-01-PLAN.md — get_feedback_by_tool handler with message-to-tool correlation logic
+- [x] 28-02-PLAN.md — System prompt analytics guidance and presentation rules
 
 ## Progress
 
@@ -111,4 +111,4 @@ Plans:
 | 21-25. Access Control, Feedback, Search, Export, Animations | v1.3 | 9/9 | Complete | 2026-04-02 |
 | 26. Message Trace Tool | v1.4 | 2/2 | Complete | 2026-04-06 |
 | 27. Feedback Analytics Foundation | v1.4 | 2/2 | Complete | 2026-04-06 |
-| 28. Tool Correlation & Analytics Completion | v1.4 | 0/2 | Not started | - |
+| 28. Tool Correlation & Analytics Completion | v1.4 | 2/2 | Complete | 2026-04-06 |
